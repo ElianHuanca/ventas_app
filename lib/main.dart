@@ -1,0 +1,58 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:textiles_app/config/config.dart';
+import 'package:textiles_app/features/shared/widgets/menu_index_cubit.dart';
+import 'package:textiles_app/features/sucursales/infrastructure/infrastructure.dart';
+import 'package:textiles_app/features/sucursales/presentation/bloc/bloc.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Environment.initEnvironment();
+
+  SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(statusBarColor: Colors.transparent));
+
+  runApp(
+    MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (_) => MenuIndexCubit()),
+        BlocProvider(
+          create: (_) => SucursalesBloc(
+            sucursalesRepository: SucursalesRepositoryImpl(
+              SucursalesDatasourceImpl(),
+            ),
+          ),
+        ),
+      ],
+      child: const MyApp(),
+    ),
+  );
+}
+
+class MyApp extends StatefulWidget {
+  const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  GoRouter? _router;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _router ??= createAppRouter();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp.router(
+      routerConfig: _router!,
+      theme: AppTheme().getTheme(),
+      debugShowCheckedModeBanner: false,
+    );
+  }
+}
