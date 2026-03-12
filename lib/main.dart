@@ -9,7 +9,6 @@ import 'package:textiles_app/features/sucursales/presentation/bloc/bloc.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Environment.initEnvironment();
 
   SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(statusBarColor: Colors.transparent));

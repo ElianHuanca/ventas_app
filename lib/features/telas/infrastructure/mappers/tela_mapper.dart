@@ -8,6 +8,5 @@ class TelaMapper {
         precxmen: (json['precxmen'] as num?)?.toDouble() ?? 0,
         precxrollo: (json['precxrollo'] as num?)?.toDouble() ?? 0,
         precxcompra: (json['precxcompra'] as num?)?.toDouble() ?? 0,
-        idusuarios: json['idusuarios'],
       );
 }

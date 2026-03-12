@@ -5,16 +5,15 @@ class Tela {
   final double? precxmay;
   final double? precxrollo;
   final double? precxcompra;
-  final int? idusuarios;
 
-  Tela(
-      {this.precxmen,
-      this.precxmay,
-      this.precxrollo,
-      this.precxcompra,
-      this.idusuarios,
-      required this.id,
-      required this.nombre});
+  Tela({
+    this.precxmen,
+    this.precxmay,
+    this.precxrollo,
+    this.precxcompra,
+    required this.id,
+    required this.nombre,
+  });
 
   // Constructor para crear una tela vacía
   factory Tela.empty() {
@@ -25,7 +24,6 @@ class Tela {
       precxmay: 0,
       precxrollo: 0,
       precxcompra: 0,
-      idusuarios: 0,
     );
   }
 }

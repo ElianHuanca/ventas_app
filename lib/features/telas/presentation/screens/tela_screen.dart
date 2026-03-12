@@ -93,23 +93,29 @@ class TelaScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 15),
-              MaterialButtonWidget(
-                onTap: () async {
-                  final value =
-                      await cubit.onSubmit(isUpdate: tela.id != 0);
-                  if (context.mounted) showSnackbarBool(context, value);
-                },
-                texto: tela.id == 0 ? 'Guardar' : 'Modificar',
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  MaterialButtonWidget(
+                    onTap: () async {
+                      final value =
+                          await cubit.onSubmit(isUpdate: tela.id != 0);
+                      if (context.mounted) showSnackbarBool(context, value);
+                    },
+                    texto: tela.id == 0 ? 'Guardar' : 'Modificar',
+                  ),
+                  if (tela.id != 0) ...[
+                    const SizedBox(width: 15),
+                    MaterialButtonWidget(
+                      onTap: () async {
+                        final value = await cubit.onDeleteSubmit();
+                        if (context.mounted) showSnackbarBool(context, value);
+                      },
+                      texto: 'Eliminar',
+                    ),
+                  ],
+                ],
               ),
-              const SizedBox(height: 15),
-              if (tela.id != 0)
-                MaterialButtonWidget(
-                  onTap: () async {
-                    final value = await cubit.onDeleteSubmit();
-                    if (context.mounted) showSnackbarBool(context, value);
-                  },
-                  texto: 'Eliminar',
-                ),
             ],
           ),
         );

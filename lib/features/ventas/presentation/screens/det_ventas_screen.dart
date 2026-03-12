@@ -42,7 +42,13 @@ class DetVentas extends StatelessWidget {
               title: changeFormatDate(venta.fecha),
               isGridview: false,
               backRoute: true,
-              onTap: () => context.push('/det_venta/$idventa'),
+              onTap: () async {
+                await context.push('/det_venta/$idventa');
+                if (context.mounted) {
+                  context.read<DetalleVentasBloc>().add(DetalleVentasLoadRequested());
+                  context.read<VentaBloc>().add(VentaLoadRequested());
+                }
+              },
             );
           },
         );
