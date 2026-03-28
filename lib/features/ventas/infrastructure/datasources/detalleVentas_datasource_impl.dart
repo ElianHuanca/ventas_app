@@ -32,17 +32,48 @@ class DetalleVentasDatasourceImpl extends DetalleVentasDatasource {
     final database = await _db.database;
     final results = <DetalleVenta>[];
     for (final item in detalleVentasLike) {
-      final id = await database.insert('detalle_ventas', {
-        'nombre': item['nombre'],
-        'precio': item['precio'],
-        'cantidad': item['cantidad'],
-        'total': item['total'],
-        'ganancias': item['ganancias'],
-        'idtelas': item['idtelas'],
-        'idventa': idventas,
-      });
+      final existing = await database.query(
+        'detalle_ventas',
+        where: 'idventa = ? AND idtelas = ? AND precio = ?',
+        whereArgs: [idventas, item['idtelas'], item['precio']],
+      );
+
+      int id;
+      if (existing.isNotEmpty) {
+        id = existing.first['id'] as int;
+        final nuevaCantidad =
+            (existing.first['cantidad'] as num).toDouble() +
+                (item['cantidad'] as num).toDouble();
+        final nuevaTotal =
+            (existing.first['total'] as num? ?? 0).toDouble() +
+                (item['total'] as num).toDouble();
+        final nuevaGanancias =
+            (existing.first['ganancias'] as num? ?? 0).toDouble() +
+                (item['ganancias'] as num).toDouble();
+        await database.update(
+          'detalle_ventas',
+          {
+            'cantidad': nuevaCantidad,
+            'total': nuevaTotal,
+            'ganancias': nuevaGanancias,
+          },
+          where: 'id = ?',
+          whereArgs: [id],
+        );
+      } else {
+        id = await database.insert('detalle_ventas', {
+          'nombre': item['nombre'],
+          'precio': item['precio'],
+          'cantidad': item['cantidad'],
+          'total': item['total'],
+          'ganancias': item['ganancias'],
+          'idtelas': item['idtelas'],
+          'idventa': idventas,
+        });
+      }
+
       final row = (await database.query('detalle_ventas',
-          where: 'id = ?', whereArgs: [id]))
+              where: 'id = ?', whereArgs: [id]))
           .first;
       results.add(DetalleVentaMapper.jsonToEntity(_rowToMap(row)));
     }

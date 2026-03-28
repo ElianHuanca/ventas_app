@@ -14,12 +14,18 @@ class MaterialButtonWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = buttonColor ?? _colorForText(texto);
+    final isEliminar = texto == 'Eliminar';
+    final backgroundColor =
+        isEliminar ? Colors.grey[50] : (buttonColor ?? Colors.black);
+    final foregroundColor = isEliminar ? Colors.black : Colors.white;
+    const side = BorderSide(color: Colors.black, width: 1.5);
+
     return MaterialButton(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10),
+        side: side,
       ),
-      color: color,
+      color: backgroundColor,
       onPressed: onTap,
       child: Padding(
         padding: const EdgeInsets.all(10),
@@ -29,22 +35,11 @@ class MaterialButtonWidget extends StatelessWidget {
             const SizedBox(width: 10),
             Text(
               texto,
-              style: const TextStyle(color: Colors.white, fontSize: 20),
+              style: TextStyle(color: foregroundColor, fontSize: 20),
             ),
           ],
         ),
       ),
     );
-  }
-
-  static Color _colorForText(String texto) {
-    switch (texto) {
-      case 'Guardando...':
-        return Colors.grey;
-      case 'Eliminar':
-        return Colors.red;
-      default:
-        return Colors.black;
-    }
   }
 }

@@ -54,23 +54,29 @@ class SucursalScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 20),
-              MaterialButtonWidget(
-                onTap: () async {
-                  final value = await cubit.onSubmit(
-                      isUpdate: sucursal.id != 0);
-                  if (context.mounted) showSnackbarBool(context, value);
-                },
-                texto: sucursal.id == 0 ? 'Guardar' : 'Modificar',
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  MaterialButtonWidget(
+                    onTap: () async {
+                      final value = await cubit.onSubmit(
+                          isUpdate: sucursal.id != 0);
+                      if (context.mounted) showSnackbarBool(context, value);
+                    },
+                    texto: sucursal.id == 0 ? 'Guardar' : 'Modificar',
+                  ),
+                  if (sucursal.id != 0) ...[
+                    const SizedBox(width: 15),
+                    MaterialButtonWidget(
+                      onTap: () async {
+                        final value = await cubit.onDelete();
+                        if (context.mounted) showSnackbarBool(context, value);
+                      },
+                      texto: 'Eliminar',
+                    ),
+                  ],
+                ],
               ),
-              const SizedBox(height: 15),
-              if (sucursal.id != 0)
-                MaterialButtonWidget(
-                  onTap: () async {
-                    final value = await cubit.onDelete();
-                    if (context.mounted) showSnackbarBool(context, value);
-                  },
-                  texto: 'Eliminar',
-                ),
             ],
           ),
         );

@@ -75,22 +75,50 @@ class DetalleVentaFormCubit extends Cubit<DetalleVentaFormState> {
     final double precio = _toDouble(state.precio);
     final double precxcompra = state.precxcompra;
     if (cantidad <= 0 || precio <= 0) return;
-    final double ganancias = precxcompra == 0
-        ? 0
-        : (((precio - precxcompra) * cantidad) * 100).round() / 100.0;
-    final double total = (cantidad * precio * 100).round() / 100.0;
-    final detVentaLike = {
-      'idtelas': state.idtelas,
-      'nombre': state.nombre,
-      'cantidad': cantidad,
-      'precio': precio,
-      'total': total,
-      'ganancias': ganancias,
-    };
+
+    final existingIndex = state.detVentas.indexWhere(
+      (e) => e['idtelas'] == state.idtelas && e['precio'] == precio,
+    );
+
+    final detVentas = List<Map<String, dynamic>>.from(state.detVentas);
+    double totalDelta;
+    double gananciasDelta;
+
+    if (existingIndex != -1) {
+      final existing = detVentas[existingIndex];
+      final nuevaCantidad =
+          (existing['cantidad'] as num).toDouble() + cantidad;
+      totalDelta = (cantidad * precio * 100).round() / 100.0;
+      gananciasDelta = precxcompra == 0
+          ? 0
+          : (((precio - precxcompra) * cantidad) * 100).round() / 100.0;
+      detVentas[existingIndex] = {
+        ...existing,
+        'cantidad': nuevaCantidad,
+        'total': (nuevaCantidad * precio * 100).round() / 100.0,
+        'ganancias': precxcompra == 0
+            ? 0
+            : (((precio - precxcompra) * nuevaCantidad) * 100).round() / 100.0,
+      };
+    } else {
+      totalDelta = (cantidad * precio * 100).round() / 100.0;
+      gananciasDelta = precxcompra == 0
+          ? 0
+          : (((precio - precxcompra) * cantidad) * 100).round() / 100.0;
+      detVentas.insert(0, {
+        'idtelas': state.idtelas,
+        'nombre': state.nombre,
+        'cantidad': cantidad,
+        'precio': precio,
+        'total': totalDelta,
+        'ganancias': gananciasDelta,
+      });
+    }
+
     emit(state.copyWith(
-      detVentas: [detVentaLike, ...state.detVentas],
-      total: state.total + total,
-      ganancias: state.ganancias + ganancias,
+      detVentas: detVentas,
+      total: state.total + totalDelta,
+      ganancias: state.ganancias + gananciasDelta,
       precio: '',
       cantidad: '',
     ));

@@ -32,7 +32,12 @@ class VentasScreen extends StatelessWidget {
         return ItemDashboard(
           title: fecha,
           iconData: Icons.calendar_month_rounded,
-          onTap: () => context.push('/det_ventas/${venta.id}'),
+          onTap: () async {
+            await context.push('/det_ventas/${venta.id}');
+            if (context.mounted) {
+              context.read<VentasBloc>().add(VentasLoadRequested(idsucursal));
+            }
+          },
         );
       }).toList(),
     ];

@@ -57,13 +57,13 @@ List<DataRow> _rows(
       _cellBold('$total Bs'),
       _cell(''),
     ]),
-    DataRow(cells: <DataCell>[
+    /* DataRow(cells: <DataCell>[
       _cell(''),
       _cell(''),
       _cellBold('Ganancias'),
       _cellBold('$ganancias Bs'),
       _cell(''),
-    ]),
+    ]), */
     DataRow(cells: <DataCell>[
       _cell(''),
       _cell(''),

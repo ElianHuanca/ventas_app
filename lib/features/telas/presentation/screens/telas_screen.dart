@@ -19,7 +19,12 @@ class TelasScreen extends StatelessWidget {
                 widget: _buildBody(state.telas, context),
                 title: 'Productos',
                 isGridview: false,
-                onTap: () => context.push('/tela/0'),
+                onTap: () async {
+                  await context.push('/tela/0');
+                  if (context.mounted) {
+                    context.read<TelasBloc>().add(TelasLoadRequested());
+                  }
+                },
               );
       },
     );
@@ -55,7 +60,12 @@ class TelasScreen extends StatelessWidget {
             Text('Precio de compra: ${tela.precxcompra}Bs'),
           ],
         ),
-        onTap: () => context.push('/tela/${tela.id}'),
+        onTap: () async {
+          await context.push('/tela/${tela.id}');
+          if (context.mounted) {
+            context.read<TelasBloc>().add(TelasLoadRequested());
+          }
+        },
       ),
     );
   }

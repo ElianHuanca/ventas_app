@@ -105,7 +105,6 @@ class DetalleVentasBloc extends Bloc<DetalleVentasEvent, DetalleVentasState> {
       final ventaLike = {
         'total': -(response.total ?? 0),
         'ganancias': -(response.ganancias ?? 0),
-        'descuento': 0
       };
       add(DetalleVentasDeleteRequested(id));
       return await updateVenta(ventaLike);

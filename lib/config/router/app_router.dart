@@ -1,5 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:textiles_app/features/dashboard/infrastructure/infrastructure.dart';
+import 'package:textiles_app/features/dashboard/presentation/bloc/dashboard_cubit.dart';
+import 'package:textiles_app/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:textiles_app/features/sucursales/infrastructure/infrastructure.dart';
 import 'package:textiles_app/features/sucursales/presentation/bloc/bloc.dart';
 import 'package:textiles_app/features/sucursales/sucursales.dart';
@@ -23,6 +26,15 @@ GoRouter createAppRouter() {
       GoRoute(
         path: '/',
         builder: (context, state) => const SucursalesScreen(false),
+      ),
+      GoRoute(
+        path: '/dashboard',
+        builder: (context, state) => BlocProvider(
+          create: (_) => DashboardCubit(
+            repository: DashboardRepositoryImpl(DashboardDatasourceImpl()),
+          ),
+          child: const DashboardScreen(),
+        ),
       ),
       GoRoute(
         path: '/sucursales',

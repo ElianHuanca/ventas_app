@@ -4,9 +4,6 @@ import '../infrastructure.dart';
 
 class TelasDatasourceImpl implements TelasDatasource {
   final DatabaseHelper _db = DatabaseHelper();
-  final int idusuario;
-
-  TelasDatasourceImpl({this.idusuario = 1});
 
   Map<String, dynamic> _rowToMap(Map<String, dynamic> row) {
     return {
@@ -16,14 +13,14 @@ class TelasDatasourceImpl implements TelasDatasource {
       'precxmay': (row['precxmay'] as num?)?.toDouble() ?? 0.0,
       'precxrollo': (row['precxrollo'] as num?)?.toDouble() ?? 0.0,
       'precxcompra': (row['precxcompra'] as num?)?.toDouble() ?? 0.0,
-      'idusuarios': row['idusuarios'] ?? idusuario,
     };
   }
 
   @override
   Future<List<Tela>> getTelas() async {
     final database = await _db.database;
-    final list = await database.query('telas');
+    final list =
+        await database.query('telas', orderBy: 'nombre COLLATE NOCASE ASC');
     return list
         .map<Tela>((e) => TelaMapper.jsonToEntity(_rowToMap(e)))
         .toList();
@@ -33,7 +30,8 @@ class TelasDatasourceImpl implements TelasDatasource {
   Future<Tela> getTela(int id) async {
     if (id == 0) return Tela.empty();
     final database = await _db.database;
-    final list = await database.query('telas', where: 'id = ?', whereArgs: [id]);
+    final list =
+        await database.query('telas', where: 'id = ?', whereArgs: [id]);
     if (list.isEmpty) return Tela.empty();
     return TelaMapper.jsonToEntity(_rowToMap(list.first));
   }
@@ -42,7 +40,6 @@ class TelasDatasourceImpl implements TelasDatasource {
   Future<Tela> createTela(Map<String, dynamic> telaLike) async {
     final database = await _db.database;
     telaLike = Map.from(telaLike)..remove('id');
-    telaLike['idusuarios'] = idusuario;
     final id = await database.insert('telas', telaLike);
     return getTela(id);
   }

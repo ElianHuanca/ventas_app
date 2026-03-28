@@ -56,9 +56,12 @@ class VentasDatasourceImpl extends VentasDatasource {
   @override
   Future<Venta> actualizarVenta(Map<String, dynamic> ventaLike, int id) async {
     final database = await _db.database;
-    ventaLike = Map.from(ventaLike)..remove('id');
-    await database
-        .update('ventas', ventaLike, where: 'id = ?', whereArgs: [id]);
+    final delta = Map<String, dynamic>.from(ventaLike)..remove('id');
+    final setClauses = delta.keys.map((k) => '$k = $k + ?').join(', ');
+    await database.rawUpdate(
+      'UPDATE ventas SET $setClauses WHERE id = ?',
+      [...delta.values, id],
+    );
     return getVenta(id);
   }
 }

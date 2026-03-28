@@ -53,8 +53,8 @@ class DetVenta extends StatelessWidget {
                           width: MediaQuery.of(context).size.width * 0.93,
                           hintText: 'Seleccione un Producto',
                           onSelected: (value) {
-                            detVentaFormCubit.onPrecxCompraChanged(
-                                value?.precxcompra ?? 0);
+                            detVentaFormCubit
+                                .onPrecxCompraChanged(value?.precxcompra ?? 0);
                             detVentaFormCubit.onNombreChanged(value!.nombre);
                             detVentaFormCubit.onIdTelasChanged(value.id);
                           },
@@ -74,18 +74,16 @@ class DetVenta extends StatelessWidget {
                     children: [
                       MiTextField(
                         flex: 3,
-                        keyboardType:
-                            const TextInputType.numberWithOptions(
-                                decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
                         label: 'Precio',
                         onChanged: detVentaFormCubit.onPrecioChanged,
                         controller: precioController,
                       ),
                       MiTextField(
                         flex: 3,
-                        keyboardType:
-                            const TextInputType.numberWithOptions(
-                                decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
                         label: 'Cantidad',
                         onChanged: detVentaFormCubit.onCantidadChanged,
                         controller: cantidadController,
@@ -117,8 +115,7 @@ class DetVenta extends StatelessWidget {
         width: MediaQuery.of(context).size.width * 0.9,
         padding: const EdgeInsets.symmetric(horizontal: 5.0),
         child: TextFormField(
-          keyboardType:
-              const TextInputType.numberWithOptions(decimal: true),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
           onChanged: detVentaFormCubit.onDescuentoChanged,
           decoration: const InputDecoration(
             labelText: 'Descuento',
