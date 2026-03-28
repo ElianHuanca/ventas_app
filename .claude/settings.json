@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew clean:*)",
+      "Bash(flutter pub:*)",
+      "Bash(find /d/Elian/DesarrolloMovil/textiles_app/lib -name *.dart -type f -exec sh -c \"echo \"\"=== {} ===\"\" && grep -h \"\"^import\\\\|^export\"\" \"\"$1\"\" 2>/dev/null || true\" _ {})",
+      "Read(//tmp/**)",
+      "Bash(grep -r \"from ''package:textiles_app/features/shared/infrastructure/inputs\" /d/Elian/DesarrolloMovil/textiles_app/lib --include=\"*.dart\")",
+      "Bash(for widget:*)",
+      "Bash(do echo:*)",
+      "Bash(grep -v \"$widget.dart:\")",
+      "Bash(for file:*)",
+      "Bash(do grep:*)"
+    ],
+    "additionalDirectories": [
+      "\\tmp"
+    ]
+  }
+}

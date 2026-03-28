@@ -25,7 +25,7 @@ class ItemDashboard extends StatelessWidget {
               boxShadow: [
                 BoxShadow(
                   offset: const Offset(0, 5),
-                  color: Theme.of(context).primaryColor.withOpacity(.2),
+                  color: Theme.of(context).primaryColor.withValues(alpha: .2),
                   spreadRadius: 2,
                   blurRadius: 5,
                 ),

@@ -55,8 +55,7 @@ class SucursalesBloc extends Bloc<SucursalesEvent, SucursalesState> {
     try {
       final sucursales = await sucursalesRepository.getSucursales();
       emit(state.copyWith(sucursales: sucursales));
-    } catch (e) {
-      print("Error al obtener sucursales: $e");
+    } catch (_) {
     } finally {
       emit(state.copyWith(isLoading: false));
     }
@@ -93,8 +92,7 @@ class SucursalesBloc extends Bloc<SucursalesEvent, SucursalesState> {
       final sucursal = await sucursalesRepository.createSucursal(sucursalLike);
       add(SucursalesCreateRequested(sucursal));
       return true;
-    } catch (e) {
-      print("Error creando sucursal: $e");
+    } catch (_) {
       return false;
     }
   }
@@ -105,8 +103,7 @@ class SucursalesBloc extends Bloc<SucursalesEvent, SucursalesState> {
           sucursalLike, sucursalLike['id']);
       add(SucursalesUpdateRequested(sucursal));
       return true;
-    } catch (e) {
-      print("Error actualizando sucursal: $e");
+    } catch (_) {
       return false;
     }
   }
@@ -117,8 +114,7 @@ class SucursalesBloc extends Bloc<SucursalesEvent, SucursalesState> {
       if (!ok) return false;
       add(SucursalesDeleteRequested(id));
       return true;
-    } catch (e) {
-      print("Error eliminando sucursal: $e");
+    } catch (_) {
       return false;
     }
   }

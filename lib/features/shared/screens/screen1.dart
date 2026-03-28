@@ -23,7 +23,7 @@ class Screen1 extends StatelessWidget {
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
-          drawer: backRoute ? null : SideMenu() ,
+          drawer: backRoute ? null : const SideMenu(),
           appBar: AppBar(
             leading: backRoute
                 ? BackButton(

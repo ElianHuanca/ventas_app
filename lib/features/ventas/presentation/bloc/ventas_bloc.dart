@@ -52,8 +52,7 @@ class VentasBloc extends Bloc<VentasEvent, VentasState> {
         ventas.insert(0, venta);
       }
       emit(state.copyWith(ventas: ventas));
-    } catch (e) {
-      print("Error al obtener ventas: $e");
+    } catch (_) {
     } finally {
       emit(state.copyWith(isLoading: false));
     }

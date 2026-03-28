@@ -53,8 +53,7 @@ class TelasBloc extends Bloc<TelasEvent, TelasState> {
     try {
       final telas = await telasRepository.getTelas();
       emit(state.copyWith(telas: telas));
-    } catch (e) {
-      print("Error al obtener telas: $e");
+    } catch (_) {
     } finally {
       emit(state.copyWith(isLoading: false));
     }
@@ -90,8 +89,7 @@ class TelasBloc extends Bloc<TelasEvent, TelasState> {
       final tela = await telasRepository.createTela(telaLike);
       add(TelasCreateRequested(tela));
       return true;
-    } catch (e) {
-      print("Error creando tela: $e");
+    } catch (_) {
       return false;
     }
   }
@@ -102,8 +100,7 @@ class TelasBloc extends Bloc<TelasEvent, TelasState> {
           await telasRepository.updateTela(telaLike, telaLike['id']);
       add(TelasUpdateRequested(tela));
       return true;
-    } catch (e) {
-      print("Error actualizando tela: $e");
+    } catch (_) {
       return false;
     }
   }
@@ -114,8 +111,7 @@ class TelasBloc extends Bloc<TelasEvent, TelasState> {
       if (!ok) return false;
       add(TelasDeleteRequested(id));
       return true;
-    } catch (e) {
-      print("Error eliminando tela: $e");
+    } catch (_) {
       return false;
     }
   }

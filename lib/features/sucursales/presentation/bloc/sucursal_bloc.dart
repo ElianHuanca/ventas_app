@@ -48,8 +48,7 @@ class SucursalBloc extends Bloc<SucursalEvent, SucursalState> {
       }
       final sucursal = await sucursalesRepository.getSucursal(state.id);
       emit(state.copyWith(sucursal: sucursal));
-    } catch (e) {
-      print(e);
+    } catch (_) {
     } finally {
       emit(state.copyWith(isLoading: false));
     }

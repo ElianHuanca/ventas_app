@@ -65,8 +65,7 @@ class DetalleVentasBloc extends Bloc<DetalleVentasEvent, DetalleVentasState> {
         return;
       }
       emit(state.copyWith(detalleVentas: list));
-    } catch (e) {
-      print("Error al obtener detalle ventas: $e");
+    } catch (_) {
     } finally {
       emit(state.copyWith(isLoading: false));
     }

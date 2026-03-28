@@ -48,8 +48,7 @@ class TelaBloc extends Bloc<TelaEvent, TelaState> {
       }
       final tela = await telasRepository.getTela(state.id);
       emit(state.copyWith(tela: tela));
-    } catch (e) {
-      print("Error cargando tela: $e");
+    } catch (_) {
     } finally {
       emit(state.copyWith(isLoading: false));
     }

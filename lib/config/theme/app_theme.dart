@@ -28,7 +28,7 @@ class AppTheme {
         ),
       ),
       appBarTheme: AppBarTheme(
-        color: scaffoldBackgroundColor,
+        backgroundColor: scaffoldBackgroundColor,
         titleTextStyle: _textStyle(25, weight: FontWeight.bold)
             .copyWith(color: Colors.black),
       ),
