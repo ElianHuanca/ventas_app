@@ -21,6 +21,11 @@ class VentasLoadRequested extends VentasEvent {
   VentasLoadRequested(this.idsucursal);
 }
 
+class _VentasVentaAdded extends VentasEvent {
+  final Venta venta;
+  _VentasVentaAdded(this.venta);
+}
+
 class VentasBloc extends Bloc<VentasEvent, VentasState> {
   final VentasRepository ventasRepository;
   final int idsucursal;
@@ -28,7 +33,28 @@ class VentasBloc extends Bloc<VentasEvent, VentasState> {
   VentasBloc({required this.ventasRepository, required this.idsucursal})
       : super(VentasState()) {
     on<VentasLoadRequested>(_onLoadRequested);
+    on<_VentasVentaAdded>((event, emit) =>
+        emit(state.copyWith(ventas: [event.venta, ...state.ventas])));
     add(VentasLoadRequested(idsucursal));
+  }
+
+  Future<Venta?> createVenta(DateTime fecha) async {
+    try {
+      final venta = await ventasRepository.createVenta(idsucursal, fecha);
+      add(_VentasVentaAdded(venta));
+      return venta;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> deleteVentaIfEmpty(int id) async {
+    try {
+      final venta = await ventasRepository.getVenta(id);
+      if (venta.total == 0) {
+        await ventasRepository.deleteVenta(id);
+      }
+    } catch (_) {}
   }
 
   Future<void> _onLoadRequested(
@@ -39,18 +65,6 @@ class VentasBloc extends Bloc<VentasEvent, VentasState> {
     emit(state.copyWith(isLoading: true));
     try {
       final ventas = await ventasRepository.getVentas(event.idsucursal);
-      if (ventas.isEmpty) {
-        final venta =
-            await ventasRepository.createVentaAhora(event.idsucursal);
-        emit(state.copyWith(ventas: [venta]));
-        return;
-      }
-      final now = DateTime.now();
-      if (ventas[0].fecha.isBefore(DateTime(now.year, now.month, now.day))) {
-        final venta =
-            await ventasRepository.createVentaAhora(event.idsucursal);
-        ventas.insert(0, venta);
-      }
       emit(state.copyWith(ventas: ventas));
     } catch (_) {
     } finally {

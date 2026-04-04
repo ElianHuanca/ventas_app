@@ -17,6 +17,11 @@ class VentasRepositoryImpl extends VentasRepository {
   Future<Venta> createVentaAhora(int idsucursales) {
     return datasource.createVentaAhora(idsucursales);
   }
+
+  @override
+  Future<Venta> createVenta(int idsucursales, DateTime fecha) {
+    return datasource.createVenta(idsucursales, fecha);
+  }
   
   @override
   Future<Venta> getVenta(int id) {
@@ -26,6 +31,10 @@ class VentasRepositoryImpl extends VentasRepository {
   @override
   Future<Venta> actualizarVenta(Map<String, dynamic> ventaLike, int id) {
     return datasource.actualizarVenta(ventaLike, id);
-  }  
-  
+  }
+
+  @override
+  Future<void> deleteVenta(int id) {
+    return datasource.deleteVenta(id);
+  }
 }

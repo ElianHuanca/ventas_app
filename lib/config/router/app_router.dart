@@ -135,6 +135,9 @@ GoRouter createAppRouter() {
         path: '/det_venta/:idventa',
         builder: (context, state) {
           final idventa = _pathParamInt(state, 'idventa');
+          final initialFecha = state.extra is DateTime
+              ? state.extra as DateTime
+              : null;
           final ventasRepo = VentasRepositoryImpl(VentasDatasourceImpl());
           final detVentasRepo =
               DetalleVentasRepositoryImpl(DetalleVentasDatasourceImpl());
@@ -159,6 +162,7 @@ GoRouter createAppRouter() {
                       ctx.read<DetalleVentasBloc>().createDetVenta,
                   onUpdateCallback: ctx.read<VentaBloc>().actualizarVenta,
                   idventa: idventa,
+                  initialFecha: initialFecha,
                 ),
               ),
             ],

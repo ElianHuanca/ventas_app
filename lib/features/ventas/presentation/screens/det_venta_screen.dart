@@ -32,12 +32,45 @@ class DetVenta extends StatelessWidget {
     );
   }
 
+  Future<void> _selectFecha(BuildContext context, DateTime current) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: current,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null && context.mounted) {
+      context.read<DetalleVentaFormCubit>().onFechaChanged(picked);
+    }
+  }
+
   List<Widget> _widget(BuildContext context, Venta venta) {
     final telasState = context.watch<TelasBloc>().state;
     final detalleVentaForm = context.watch<DetalleVentaFormCubit>().state;
     final detVentaFormCubit = context.read<DetalleVentaFormCubit>();
 
     return [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+        child: InkWell(
+          onTap: () => _selectFecha(context, detalleVentaForm.fecha),
+          borderRadius: BorderRadius.circular(10),
+          child: InputDecorator(
+            decoration: const InputDecoration(
+              labelText: 'Fecha',
+              suffixIcon: Icon(Icons.calendar_today, size: 20),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(10)),
+              ),
+            ),
+            child: Text(
+              '${detalleVentaForm.fecha.day.toString().padLeft(2, '0')}/'
+              '${detalleVentaForm.fecha.month.toString().padLeft(2, '0')}/'
+              '${detalleVentaForm.fecha.year}',
+            ),
+          ),
+        ),
+      ),
       telasState.isLoading
           ? const Center(child: CircularProgressIndicator())
           : Container(

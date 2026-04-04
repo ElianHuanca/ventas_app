@@ -41,10 +41,14 @@ class VentasDatasourceImpl extends VentasDatasource {
 
   @override
   Future<Venta> createVentaAhora(int idsucursales) async {
+    return createVenta(idsucursales, DateTime.now());
+  }
+
+  @override
+  Future<Venta> createVenta(int idsucursales, DateTime fecha) async {
     final database = await _db.database;
-    final now = DateTime.now().toIso8601String();
     final id = await database.insert('ventas', {
-      'fecha': now,
+      'fecha': fecha.toIso8601String(),
       'total': 0,
       'ganancias': 0,
       'descuento': 0,
@@ -54,10 +58,18 @@ class VentasDatasourceImpl extends VentasDatasource {
   }
 
   @override
+  Future<void> deleteVenta(int id) async {
+    final database = await _db.database;
+    await database.delete('ventas', where: 'id = ?', whereArgs: [id]);
+  }
+
+  @override
   Future<Venta> actualizarVenta(Map<String, dynamic> ventaLike, int id) async {
     final database = await _db.database;
     final delta = Map<String, dynamic>.from(ventaLike)..remove('id');
-    final setClauses = delta.keys.map((k) => '$k = $k + ?').join(', ');
+    final setClauses = delta.keys
+        .map((k) => k == 'fecha' ? '$k = ?' : '$k = $k + ?')
+        .join(', ');
     await database.rawUpdate(
       'UPDATE ventas SET $setClauses WHERE id = ?',
       [...delta.values, id],

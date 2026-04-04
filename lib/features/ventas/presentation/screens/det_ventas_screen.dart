@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:textiles_app/features/shared/shared.dart';
 import '../bloc/bloc.dart';
 
@@ -42,13 +41,6 @@ class DetVentas extends StatelessWidget {
               title: changeFormatDate(venta.fecha),
               isGridview: false,
               backRoute: true,
-              onTap: () async {
-                await context.push('/det_venta/$idventa');
-                if (context.mounted) {
-                  context.read<DetalleVentasBloc>().add(DetalleVentasLoadRequested());
-                  context.read<VentaBloc>().add(VentaLoadRequested());
-                }
-              },
             );
           },
         );

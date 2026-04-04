@@ -12,6 +12,7 @@ class DetalleVentaFormState {
   final List<Map<String, dynamic>> detVentas;
   final String descuento;
   final double ganancias;
+  final DateTime fecha;
 
   DetalleVentaFormState({
     this.idventa = 0,
@@ -24,7 +25,8 @@ class DetalleVentaFormState {
     this.total = 0,
     this.descuento = '',
     this.ganancias = 0,
-  });
+    DateTime? fecha,
+  }) : fecha = fecha ?? DateTime.now();
 
   DetalleVentaFormState copyWith({
     int? idventa,
@@ -37,6 +39,7 @@ class DetalleVentaFormState {
     double? precxcompra,
     String? descuento,
     double? ganancias,
+    DateTime? fecha,
   }) =>
       DetalleVentaFormState(
         idventa: idventa ?? this.idventa,
@@ -49,6 +52,7 @@ class DetalleVentaFormState {
         precxcompra: precxcompra ?? this.precxcompra,
         descuento: descuento ?? this.descuento,
         ganancias: ganancias ?? this.ganancias,
+        fecha: fecha ?? this.fecha,
       );
 }
 
@@ -60,7 +64,8 @@ class DetalleVentaFormCubit extends Cubit<DetalleVentaFormState> {
     required this.onSubmitCallback,
     required this.onUpdateCallback,
     required int idventa,
-  }) : super(DetalleVentaFormState(idventa: idventa));
+    DateTime? initialFecha,
+  }) : super(DetalleVentaFormState(idventa: idventa, fecha: initialFecha));
 
   bool _isValidDouble(String value) => double.tryParse(value) != null;
   double _toDouble(String value) => double.tryParse(value)!;
@@ -161,6 +166,7 @@ class DetalleVentaFormCubit extends Cubit<DetalleVentaFormState> {
         'total': state.total,
         'descuento': _toDouble(state.descuento),
         'ganancias': state.ganancias,
+        'fecha': state.fecha.toIso8601String(),
       };
 
   void onIdTelasChanged(int value) => _updateState(idtelas: value);
@@ -169,6 +175,7 @@ class DetalleVentaFormCubit extends Cubit<DetalleVentaFormState> {
   void onCantidadChanged(String value) => _updateState(cantidad: value);
   void onPrecxCompraChanged(double value) => _updateState(precxcompra: value);
   void onDescuentoChanged(String value) => _updateState(descuento: value);
+  void onFechaChanged(DateTime value) => _updateState(fecha: value);
 
   void _updateState({
     int? idtelas,
@@ -180,6 +187,7 @@ class DetalleVentaFormCubit extends Cubit<DetalleVentaFormState> {
     double? precxcompra,
     String? descuento,
     double? ganancias,
+    DateTime? fecha,
   }) {
     emit(state.copyWith(
       idtelas: idtelas ?? state.idtelas,
@@ -191,6 +199,7 @@ class DetalleVentaFormCubit extends Cubit<DetalleVentaFormState> {
       precxcompra: precxcompra ?? state.precxcompra,
       descuento: descuento ?? state.descuento,
       ganancias: ganancias ?? state.ganancias,
+      fecha: fecha ?? state.fecha,
     ));
   }
 }
