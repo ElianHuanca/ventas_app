@@ -135,9 +135,8 @@ GoRouter createAppRouter() {
         path: '/det_venta/:idventa',
         builder: (context, state) {
           final idventa = _pathParamInt(state, 'idventa');
-          final initialFecha = state.extra is DateTime
-              ? state.extra as DateTime
-              : null;
+          final initialFecha =
+              state.extra is DateTime ? state.extra as DateTime : null;
           final ventasRepo = VentasRepositoryImpl(VentasDatasourceImpl());
           final detVentasRepo =
               DetalleVentasRepositoryImpl(DetalleVentasDatasourceImpl());
@@ -167,8 +166,8 @@ GoRouter createAppRouter() {
               ),
             ],
             child: BlocProvider(
-              create: (_) =>
-                  TelasBloc(telasRepository: TelasRepositoryImpl(TelasDatasourceImpl())),
+              create: (_) => TelasBloc(
+                  telasRepository: TelasRepositoryImpl(TelasDatasourceImpl())),
               child: DetVenta(idventa: idventa),
             ),
           );

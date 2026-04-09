@@ -21,11 +21,14 @@ class VentasScreen extends StatelessWidget {
     if (fecha == null || !context.mounted) return;
 
     // Si ya existe una venta con esa fecha, navegar a ella
-    final existente = bloc.state.ventas.where((v) =>
-      v.fecha.year == fecha.year &&
-      v.fecha.month == fecha.month &&
-      v.fecha.day == fecha.day,
-    ).toList();
+    final existente = bloc.state.ventas
+        .where(
+          (v) =>
+              v.fecha.year == fecha.year &&
+              v.fecha.month == fecha.month &&
+              v.fecha.day == fecha.day,
+        )
+        .toList();
 
     if (existente.isNotEmpty) {
       await context.push('/det_venta/${existente.first.id}', extra: fecha);

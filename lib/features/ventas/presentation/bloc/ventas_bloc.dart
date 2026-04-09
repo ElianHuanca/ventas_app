@@ -7,8 +7,7 @@ class VentasState {
 
   VentasState({this.isLoading = false, this.ventas = const []});
 
-  VentasState copyWith({bool? isLoading, List<Venta>? ventas}) =>
-      VentasState(
+  VentasState copyWith({bool? isLoading, List<Venta>? ventas}) => VentasState(
         isLoading: isLoading ?? this.isLoading,
         ventas: ventas ?? this.ventas,
       );
