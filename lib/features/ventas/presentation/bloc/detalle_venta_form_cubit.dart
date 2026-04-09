@@ -88,8 +88,7 @@ class DetalleVentaFormCubit extends Cubit<DetalleVentaFormState> {
 
     if (existingIndex != -1) {
       final existing = detVentas[existingIndex];
-      final nuevaCantidad =
-          (existing['cantidad'] as num).toDouble() + cantidad;
+      final nuevaCantidad = (existing['cantidad'] as num).toDouble() + cantidad;
       totalDelta = (cantidad * precio * 100).round() / 100.0;
       gananciasDelta = precxcompra == 0
           ? 0
