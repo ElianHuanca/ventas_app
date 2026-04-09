@@ -40,6 +40,17 @@ class VentasDatasourceImpl extends VentasDatasource {
   }
 
   @override
+  Future<Venta?> getVentaByFecha(int idsucursales, DateTime fecha) async {
+    final database = await _db.database;
+    final dateStr = fecha.toIso8601String().substring(0, 10);
+    final list = await database.query('ventas',
+        where: "idsucursales = ? AND fecha LIKE ?",
+        whereArgs: [idsucursales, '$dateStr%']);
+    if (list.isEmpty) return null;
+    return VentaMapper.jsonToEntity(_rowToMap(list.first));
+  }
+
+  @override
   Future<Venta> createVentaAhora(int idsucursales) async {
     return createVenta(idsucursales, DateTime.now());
   }

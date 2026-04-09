@@ -18,12 +18,22 @@ class DashboardScreen extends StatelessWidget {
           widget: [
             _RangoFechas(state: state),
             const SizedBox(height: 12),
+            if (!state.isLoading && state.resumen != null)
+              _ResumenCards(resumen: state.resumen!),
+            const SizedBox(height: 12),
+            _ToggleVista(verPorCantidad: state.verPorCantidad),
+            const SizedBox(height: 12),
             state.isLoading
                 ? const Padding(
                     padding: EdgeInsets.only(top: 60),
                     child: Center(child: CircularProgressIndicator()),
                   )
-                : _TopProductos(productos: state.topProductos),
+                : _TopProductos(
+                    productos: state.verPorCantidad
+                        ? state.topProductosPorCantidad
+                        : state.topProductos,
+                    verPorCantidad: state.verPorCantidad,
+                  ),
           ],
         );
       },
@@ -106,9 +116,180 @@ class _RangoFechas extends StatelessWidget {
   }
 }
 
+class _ResumenCards extends StatelessWidget {
+  final ResumenVentas resumen;
+  const _ResumenCards({required this.resumen});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          _Card(
+            label: 'Total',
+            valor: '${resumen.total.toStringAsFixed(2)} Bs',
+            icon: Icons.attach_money_rounded,
+            color: colorScheme.primary,
+          ),
+          const SizedBox(width: 10),
+          _Card(
+            label: 'Ganancias',
+            valor: '${resumen.ganancias.toStringAsFixed(2)} Bs',
+            icon: Icons.trending_up_rounded,
+            color: const Color(0xFF2E7D32),
+          ),
+          const SizedBox(width: 10),
+          _Card(
+            label: 'Descuentos',
+            valor: '${resumen.descuento.toStringAsFixed(2)} Bs',
+            icon: Icons.discount_rounded,
+            color: const Color(0xFFE65100),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Card extends StatelessWidget {
+  final String label;
+  final String valor;
+  final IconData icon;
+  final Color color;
+
+  const _Card({
+    required this.label,
+    required this.valor,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: .06),
+              blurRadius: 6,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 22),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11,
+                color: Colors.black54,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 2),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                valor,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ToggleVista extends StatelessWidget {
+  final bool verPorCantidad;
+  const _ToggleVista({required this.verPorCantidad});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: verPorCantidad
+                  ? () => context.read<DashboardCubit>().toggleVista()
+                  : null,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: !verPorCantidad
+                      ? colorScheme.primary
+                      : colorScheme.surfaceContainerHighest,
+                  borderRadius: const BorderRadius.horizontal(
+                      left: Radius.circular(10)),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  'Por monto',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: !verPorCantidad
+                        ? colorScheme.onPrimary
+                        : colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: !verPorCantidad
+                  ? () => context.read<DashboardCubit>().toggleVista()
+                  : null,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: verPorCantidad
+                      ? colorScheme.primary
+                      : colorScheme.surfaceContainerHighest,
+                  borderRadius: const BorderRadius.horizontal(
+                      right: Radius.circular(10)),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  'Por cantidad',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: verPorCantidad
+                        ? colorScheme.onPrimary
+                        : colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _TopProductos extends StatelessWidget {
   final List<TopProducto> productos;
-  const _TopProductos({required this.productos});
+  final bool verPorCantidad;
+  const _TopProductos({required this.productos, required this.verPorCantidad});
 
   @override
   Widget build(BuildContext context) {
@@ -124,7 +305,9 @@ class _TopProductos extends StatelessWidget {
       );
     }
 
-    final maxTotal = productos.first.totalVendido;
+    final maxTotal = verPorCantidad
+        ? productos.first.totalCantidad.toDouble()
+        : productos.first.totalVendido;
     final colorScheme = Theme.of(context).colorScheme;
 
     return Padding(
@@ -133,7 +316,7 @@ class _TopProductos extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Todos los productos por total vendido (${productos.length})',
+            'Todos los productos por ${verPorCantidad ? 'cantidad vendida' : 'total vendido'} (${productos.length})',
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
@@ -144,7 +327,10 @@ class _TopProductos extends StatelessWidget {
           ...productos.asMap().entries.map((entry) {
             final i = entry.key;
             final p = entry.value;
-            final ratio = maxTotal > 0 ? p.totalVendido / maxTotal : 0.0;
+            final valor = verPorCantidad
+                ? p.totalCantidad.toDouble()
+                : p.totalVendido;
+            final ratio = maxTotal > 0 ? valor / maxTotal : 0.0;
 
             return Container(
               margin: const EdgeInsets.only(bottom: 12),
@@ -219,7 +405,9 @@ class _TopProductos extends StatelessWidget {
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    '${p.totalVendido.toStringAsFixed(2)} Bs',
+                    verPorCantidad
+                        ? '${p.totalCantidad} uds'
+                        : '${p.totalVendido.toStringAsFixed(2)} Bs',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.bold,

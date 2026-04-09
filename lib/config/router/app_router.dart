@@ -132,45 +132,27 @@ GoRouter createAppRouter() {
         },
       ),
       GoRoute(
-        path: '/det_venta/:idventa',
+        path: '/det_venta/:idsucursal',
         builder: (context, state) {
-          final idventa = _pathParamInt(state, 'idventa');
-          final initialFecha = state.extra is DateTime
-              ? state.extra as DateTime
-              : null;
+          final idsucursal = _pathParamInt(state, 'idsucursal');
           final ventasRepo = VentasRepositoryImpl(VentasDatasourceImpl());
           final detVentasRepo =
               DetalleVentasRepositoryImpl(DetalleVentasDatasourceImpl());
           return MultiBlocProvider(
             providers: [
               BlocProvider(
-                create: (_) => VentaBloc(
+                create: (_) => DetalleVentaFormCubit(
                   ventasRepository: ventasRepo,
-                  id: idventa,
-                ),
-              ),
-              BlocProvider(
-                create: (ctx) => DetalleVentasBloc(
                   detalleVentasRepository: detVentasRepo,
-                  updateVenta: ctx.read<VentaBloc>().actualizarVenta,
-                  idventa: idventa,
+                  idsucursal: idsucursal,
                 ),
               ),
               BlocProvider(
-                create: (ctx) => DetalleVentaFormCubit(
-                  onSubmitCallback:
-                      ctx.read<DetalleVentasBloc>().createDetVenta,
-                  onUpdateCallback: ctx.read<VentaBloc>().actualizarVenta,
-                  idventa: idventa,
-                  initialFecha: initialFecha,
-                ),
+                create: (_) =>
+                    TelasBloc(telasRepository: TelasRepositoryImpl(TelasDatasourceImpl())),
               ),
             ],
-            child: BlocProvider(
-              create: (_) =>
-                  TelasBloc(telasRepository: TelasRepositoryImpl(TelasDatasourceImpl())),
-              child: DetVenta(idventa: idventa),
-            ),
+            child: DetVenta(),
           );
         },
       ),

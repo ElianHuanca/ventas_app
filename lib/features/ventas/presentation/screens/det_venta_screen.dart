@@ -4,31 +4,21 @@ import 'package:textiles_app/features/shared/shared.dart';
 import 'package:textiles_app/features/shared/widgets/data_table_telas.dart';
 import 'package:textiles_app/features/telas/domain/domain.dart';
 import 'package:textiles_app/features/telas/presentation/bloc/bloc.dart';
-import 'package:textiles_app/features/ventas/domain/domain.dart';
 import '../bloc/bloc.dart';
 
 class DetVenta extends StatelessWidget {
-  final int idventa;
   final TextEditingController precioController = TextEditingController();
   final TextEditingController cantidadController = TextEditingController();
 
-  DetVenta({super.key, required this.idventa});
+  DetVenta({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<VentaBloc, VentaState>(
-      builder: (context, ventaState) {
-        if (ventaState.venta == null) {
-          return const FullScreenLoader();
-        }
-        final venta = ventaState.venta!;
-        return Screen1(
-          widget: _widget(context, venta),
-          title: 'Registro Ventas',
-          isGridview: false,
-          backRoute: true,
-        );
-      },
+    return Screen1(
+      widget: _widget(context),
+      title: 'Registro Ventas',
+      isGridview: false,
+      backRoute: true,
     );
   }
 
@@ -44,7 +34,7 @@ class DetVenta extends StatelessWidget {
     }
   }
 
-  List<Widget> _widget(BuildContext context, Venta venta) {
+  List<Widget> _widget(BuildContext context) {
     final telasState = context.watch<TelasBloc>().state;
     final detalleVentaForm = context.watch<DetalleVentaFormCubit>().state;
     final detVentaFormCubit = context.read<DetalleVentaFormCubit>();

@@ -27,6 +27,11 @@ class VentasRepositoryImpl extends VentasRepository {
   Future<Venta> getVenta(int id) {
     return datasource.getVenta(id);
   }
+
+  @override
+  Future<Venta?> getVentaByFecha(int idsucursales, DateTime fecha) {
+    return datasource.getVentaByFecha(idsucursales, fecha);
+  }
   
   @override
   Future<Venta> actualizarVenta(Map<String, dynamic> ventaLike, int id) {

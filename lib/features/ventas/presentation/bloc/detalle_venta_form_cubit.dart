@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../domain/domain.dart';
 
 class DetalleVentaFormState {
-  final int idventa;
   final int idtelas;
   final String nombre;
   final String cantidad;
@@ -15,7 +15,6 @@ class DetalleVentaFormState {
   final DateTime fecha;
 
   DetalleVentaFormState({
-    this.idventa = 0,
     this.idtelas = 0,
     this.precxcompra = 0,
     this.cantidad = '',
@@ -29,7 +28,6 @@ class DetalleVentaFormState {
   }) : fecha = fecha ?? DateTime.now();
 
   DetalleVentaFormState copyWith({
-    int? idventa,
     int? idtelas,
     String? cantidad,
     String? precio,
@@ -42,7 +40,6 @@ class DetalleVentaFormState {
     DateTime? fecha,
   }) =>
       DetalleVentaFormState(
-        idventa: idventa ?? this.idventa,
         idtelas: idtelas ?? this.idtelas,
         cantidad: cantidad ?? this.cantidad,
         precio: precio ?? this.precio,
@@ -57,15 +54,15 @@ class DetalleVentaFormState {
 }
 
 class DetalleVentaFormCubit extends Cubit<DetalleVentaFormState> {
-  final Future<bool> Function(List<Map<String, dynamic>>) onSubmitCallback;
-  final Future<bool> Function(Map<String, dynamic>) onUpdateCallback;
+  final VentasRepository ventasRepository;
+  final DetalleVentasRepository detalleVentasRepository;
+  final int idsucursal;
 
   DetalleVentaFormCubit({
-    required this.onSubmitCallback,
-    required this.onUpdateCallback,
-    required int idventa,
-    DateTime? initialFecha,
-  }) : super(DetalleVentaFormState(idventa: idventa, fecha: initialFecha));
+    required this.ventasRepository,
+    required this.detalleVentasRepository,
+    required this.idsucursal,
+  }) : super(DetalleVentaFormState());
 
   bool _isValidDouble(String value) => double.tryParse(value) != null;
   double _toDouble(String value) => double.tryParse(value)!;
@@ -153,9 +150,22 @@ class DetalleVentaFormCubit extends Cubit<DetalleVentaFormState> {
       if (state.detVentas.isEmpty) return false;
       if (state.descuento == '') onDescuentoChanged('0');
       if (!_isValidDouble(state.descuento)) return false;
-      final value1 = await onSubmitCallback(state.detVentas);
-      final value2 = await onUpdateCallback(_toMap());
-      return value1 && value2;
+
+      // Buscar o crear venta para la fecha + sucursal
+      Venta? venta = await ventasRepository.getVentaByFecha(
+          idsucursal, state.fecha);
+      venta ??= await ventasRepository.createVenta(idsucursal, state.fecha);
+
+      final idventa = venta.id;
+
+      // Crear detalles de venta
+      await detalleVentasRepository.createDetalleVenta(
+          state.detVentas, idventa);
+
+      // Actualizar totales de la venta (incremental)
+      await ventasRepository.actualizarVenta(_toMap(), idventa);
+
+      return true;
     } catch (e) {
       debugPrint('Error al crear detalle venta: $e');
       return false;

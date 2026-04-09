@@ -10,39 +10,10 @@ class VentasScreen extends StatelessWidget {
   const VentasScreen({super.key, required this.idsucursal});
 
   Future<void> _onCreateVenta(BuildContext context) async {
-    final bloc = context.read<VentasBloc>();
-    final now = DateTime.now();
-    final fecha = await showDatePicker(
-      context: context,
-      initialDate: now,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2100),
-    );
-    if (fecha == null || !context.mounted) return;
-
-    // Si ya existe una venta con esa fecha, navegar a ella
-    final existente = bloc.state.ventas.where((v) =>
-      v.fecha.year == fecha.year &&
-      v.fecha.month == fecha.month &&
-      v.fecha.day == fecha.day,
-    ).toList();
-
-    if (existente.isNotEmpty) {
-      await context.push('/det_venta/${existente.first.id}', extra: fecha);
-      if (context.mounted) bloc.add(VentasLoadRequested(idsucursal));
-      return;
+    await context.push('/det_venta/$idsucursal');
+    if (context.mounted) {
+      context.read<VentasBloc>().add(VentasLoadRequested(idsucursal));
     }
-
-    // Crear nueva venta
-    final venta = await bloc.createVenta(fecha);
-    if (venta == null || !context.mounted) return;
-
-    await context.push('/det_venta/${venta.id}', extra: fecha);
-
-    if (!context.mounted) return;
-    // Si el usuario no guardó nada (total == 0), eliminar la venta vacía
-    await bloc.deleteVentaIfEmpty(venta.id);
-    bloc.add(VentasLoadRequested(idsucursal));
   }
 
   @override
