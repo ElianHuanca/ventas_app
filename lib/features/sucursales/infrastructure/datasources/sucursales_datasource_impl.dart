@@ -1,62 +1,49 @@
-import 'package:textiles_app/features/database/database_helper.dart';
+import 'package:textiles_app/config/supabase/supabase_config.dart';
 import '../../domain/domain.dart';
 import '../infrastructure.dart';
 
 class SucursalesDatasourceImpl implements SucursalesDatasource {
-  final DatabaseHelper _db = DatabaseHelper();
-  final int idusuario; // ignorado en SQLite, se mantiene por compatibilidad
+  final _db = SupabaseConfig.client;
+  static const _table = 'sucursales';
 
+  final int idusuario; // se mantiene por compatibilidad de firma
   SucursalesDatasourceImpl({this.idusuario = 1});
 
   @override
   Future<List<Sucursal>> getSucursales() async {
-    final database = await _db.database;
-    final list = await database.query('sucursales');
-    return list
-        .map<Sucursal>((e) => SucursalMapper.jsonToEntity(e))
-        .toList();
+    final list = await _db.from(_table).select().order('id');
+    return list.map<Sucursal>((e) => SucursalMapper.jsonToEntity(e)).toList();
   }
 
   @override
   Future<Sucursal> getSucursal(int id) async {
     if (id == 0) return Sucursal.empty();
-    final database = await _db.database;
-    final list =
-        await database.query('sucursales', where: 'id = ?', whereArgs: [id]);
-    if (list.isEmpty) return Sucursal.empty();
-    return SucursalMapper.jsonToEntity(list.first);
+    final row =
+        await _db.from(_table).select().eq('id', id).maybeSingle();
+    if (row == null) return Sucursal.empty();
+    return SucursalMapper.jsonToEntity(row);
   }
 
   @override
   Future<Sucursal> createSucursal(Map<String, dynamic> sucursalLike) async {
-    final database = await _db.database;
-    sucursalLike.remove('id');
-    final id = await database.insert('sucursales', sucursalLike);
-    return getSucursal(id);
+    final data = Map<String, dynamic>.from(sucursalLike)..remove('id');
+    final row = await _db.from(_table).insert(data).select().single();
+    return SucursalMapper.jsonToEntity(row);
   }
 
   @override
   Future<Sucursal> updateSucursal(
       Map<String, dynamic> sucursalLike, int id) async {
-    final database = await _db.database;
-    sucursalLike.remove('id');
-    await database.update(
-      'sucursales',
-      sucursalLike,
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-    return getSucursal(id);
+    final data = Map<String, dynamic>.from(sucursalLike)..remove('id');
+    final row =
+        await _db.from(_table).update(data).eq('id', id).select().single();
+    return SucursalMapper.jsonToEntity(row);
   }
 
   @override
   Future<bool> deleteSucursal(int id) async {
-    final database = await _db.database;
-    final n = await database.delete(
-      'sucursales',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-    return n > 0;
+    final rows =
+        await _db.from(_table).delete().eq('id', id).select('id');
+    return rows.isNotEmpty;
   }
 }

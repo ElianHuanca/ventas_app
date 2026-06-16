@@ -10,7 +10,8 @@
       "Bash(do echo:*)",
       "Bash(grep -v \"$widget.dart:\")",
       "Bash(for file:*)",
-      "Bash(do grep:*)"
+      "Bash(do grep:*)",
+      "Bash(./gradlew assembleDebug)"
     ],
     "additionalDirectories": [
       "\\tmp"

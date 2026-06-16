@@ -1,61 +1,47 @@
-import 'package:textiles_app/features/database/database_helper.dart';
+import 'package:textiles_app/config/supabase/supabase_config.dart';
 import '../../domain/domain.dart';
 import '../infrastructure.dart';
 
 class TelasDatasourceImpl implements TelasDatasource {
-  final DatabaseHelper _db = DatabaseHelper();
-
-  Map<String, dynamic> _rowToMap(Map<String, dynamic> row) {
-    return {
-      'id': row['id'],
-      'nombre': row['nombre'] ?? '',
-      'precxmen': (row['precxmen'] as num?)?.toDouble() ?? 0.0,
-      'precxmay': (row['precxmay'] as num?)?.toDouble() ?? 0.0,
-      'precxrollo': (row['precxrollo'] as num?)?.toDouble() ?? 0.0,
-      'precxcompra': (row['precxcompra'] as num?)?.toDouble() ?? 0.0,
-    };
-  }
+  final _db = SupabaseConfig.client;
+  static const _table = 'telas';
 
   @override
   Future<List<Tela>> getTelas() async {
-    final database = await _db.database;
-    final list =
-        await database.query('telas', orderBy: 'nombre COLLATE NOCASE ASC');
-    return list
-        .map<Tela>((e) => TelaMapper.jsonToEntity(_rowToMap(e)))
-        .toList();
+    final list = await _db.from(_table).select();
+    final telas = list.map<Tela>((e) => TelaMapper.jsonToEntity(e)).toList();
+    // ordenado por nombre ascendente, sin distinguir mayúsculas (equiv. COLLATE NOCASE)
+    telas.sort((a, b) =>
+        a.nombre.toLowerCase().compareTo(b.nombre.toLowerCase()));
+    return telas;
   }
 
   @override
   Future<Tela> getTela(int id) async {
     if (id == 0) return Tela.empty();
-    final database = await _db.database;
-    final list =
-        await database.query('telas', where: 'id = ?', whereArgs: [id]);
-    if (list.isEmpty) return Tela.empty();
-    return TelaMapper.jsonToEntity(_rowToMap(list.first));
+    final row = await _db.from(_table).select().eq('id', id).maybeSingle();
+    if (row == null) return Tela.empty();
+    return TelaMapper.jsonToEntity(row);
   }
 
   @override
   Future<Tela> createTela(Map<String, dynamic> telaLike) async {
-    final database = await _db.database;
-    telaLike = Map.from(telaLike)..remove('id');
-    final id = await database.insert('telas', telaLike);
-    return getTela(id);
+    final data = Map<String, dynamic>.from(telaLike)..remove('id');
+    final row = await _db.from(_table).insert(data).select().single();
+    return TelaMapper.jsonToEntity(row);
   }
 
   @override
   Future<Tela> updateTela(Map<String, dynamic> telaLike, int id) async {
-    final database = await _db.database;
-    telaLike = Map.from(telaLike)..remove('id');
-    await database.update('telas', telaLike, where: 'id = ?', whereArgs: [id]);
-    return getTela(id);
+    final data = Map<String, dynamic>.from(telaLike)..remove('id');
+    final row =
+        await _db.from(_table).update(data).eq('id', id).select().single();
+    return TelaMapper.jsonToEntity(row);
   }
 
   @override
   Future<bool> deleteTela(int id) async {
-    final database = await _db.database;
-    final n = await database.delete('telas', where: 'id = ?', whereArgs: [id]);
-    return n > 0;
+    final rows = await _db.from(_table).delete().eq('id', id).select('id');
+    return rows.isNotEmpty;
   }
 }

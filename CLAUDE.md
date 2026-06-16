@@ -4,7 +4,7 @@
 
 Flutter mobile/desktop/web application for managing textile sales. Features branch management (sucursales), fabric catalog (telas), sales transactions (ventas), and a sales dashboard.
 
-> **La app usa SQLite exclusivamente — no consume ninguna API REST.** `dio`, `google_fonts`, `shared_preferences`, `formz`, `cupertino_icons` y `flutter_dotenv` fueron eliminados del proyecto.
+> **La app usa Supabase (PostgreSQL) como backend.** Antes usaba SQLite (`sqflite`), que fue eliminado. La conexión se inicializa en `main.dart` vía `SupabaseConfig.init()` y los datasources acceden con `SupabaseConfig.client`. El esquema y las funciones RPC del dashboard están en `supabase/schema.sql`.
 
 ## Tech Stack
 
@@ -13,8 +13,7 @@ Flutter mobile/desktop/web application for managing textile sales. Features bran
 | Framework | Flutter (Dart ≥3.0.6) |
 | State Management | BLoC pattern (`flutter_bloc` v8.1.6) |
 | Navigation | `go_router` v13.1.0 |
-| Local DB | SQLite (`sqflite` v2.3.0) |
-| Path utils | `path` |
+| Backend / DB | Supabase — PostgreSQL (`supabase_flutter` v2.8) |
 | UI | Material 3 |
 
 ## Architecture
@@ -28,31 +27,33 @@ feature/
   presentation/   # Screens, BLoCs/Cubits, form providers
 ```
 
-Features: `sucursales`, `telas`, `ventas`, `dashboard`, `shared`, `database`
+Features: `sucursales`, `telas`, `ventas`, `dashboard`, `shared`
 
-## Database Schema (SQLite, v2)
+## Database Schema (Supabase / PostgreSQL)
 
 | Table | Key Columns |
 |-------|-------------|
 | sucursales | id, nombre |
-| telas | id, nombre, precxmen, precxmay, precxrollo, precxcompra, idusuarios |
+| telas | id, nombre, precxmen, precxmay, precxrollo, precxcompra |
 | ventas | id, fecha, total, ganancias, descuento, idsucursales |
 | detalle_ventas | id, nombre, precio, cantidad, total, ganancias, idtelas, idventa |
 
-Schema gestionado en `lib/features/database/database_helper.dart`. Incrementar `_databaseVersion` y agregar un caso en `_onUpgrade` al cambiar el esquema.
+Schema definido en `supabase/schema.sql` (tablas, índices, RLS, seed de telas y funciones RPC `top_productos` / `resumen_ventas`). Al cambiar el esquema, editar ese archivo y volver a aplicarlo en Supabase. `fecha` se almacena como TEXT ISO8601 (igual que en la versión SQLite) para preservar la lógica de comparación.
 
 ### Convención importante: `actualizarVenta`
 
-`VentasDatasourceImpl.actualizarVenta` usa **aritmética SQL incremental** (`total = total + ?`), no un SET directo. Siempre pasar **deltas** (no valores absolutos) desde los BLoCs al llamar a este método.
+`VentasDatasourceImpl.actualizarVenta` mantiene la convención **incremental**: lee el valor actual y le suma el delta (`total = total + delta`), excepto `fecha` que se asigna directa. Siempre pasar **deltas** (no valores absolutos) desde los BLoCs.
 
 ## Key Files
 
-- `lib/main.dart` — Entry point, BLoC providers setup
+- `lib/main.dart` — Entry point, init de Supabase + BLoC providers
+- `lib/config/supabase/supabase_config.dart` — credenciales e init del cliente Supabase
+- `supabase/schema.sql` — esquema PostgreSQL, RLS, seed y funciones RPC
 - `lib/config/router/app_router.dart` — Todas las rutas (GoRouter + BLoC providers por ruta)
 - `lib/config/theme/app_theme.dart` — Material 3 theme
-- `lib/features/database/database_helper.dart` — SQLite init & migraciones
 - `lib/features/ventas/infrastructure/datasources/ventas_datasource_impl.dart` — lógica incremental de ventas
 - `lib/features/ventas/infrastructure/datasources/detalleVentas_datasource_impl.dart` — upsert por idtelas+precio al crear detalles
+- `lib/features/dashboard/infrastructure/datasources/dashboard_datasource_impl.dart` — llama a las RPC del dashboard
 
 ## Rutas registradas
 
@@ -105,9 +106,16 @@ flutter pub get
 
 ## Dependencias activas
 
-Solo 5 dependencias declaradas en `pubspec.yaml`:
+Dependencias declaradas en `pubspec.yaml`:
 - `flutter_bloc` — estado
 - `go_router` — navegación
-- `sqflite` — base de datos local
-- `path` — rutas de archivo (usado en `database_helper.dart`)
+- `supabase_flutter` — backend / base de datos (PostgreSQL)
+- `flutter_localizations` — i18n
 - `flutter_lints` (dev) — linting
+
+## Supabase
+
+- Credenciales y init en `lib/config/supabase/supabase_config.dart`.
+- `SupabaseConfig.client` es el cliente compartido por todos los datasources.
+- Las tablas tienen RLS habilitado con políticas abiertas (app de un solo usuario, sin login). Si se agrega Supabase Auth, restringir las políticas en `supabase/schema.sql`.
+- El dashboard usa funciones RPC (`top_productos`, `resumen_ventas`) porque el cliente no permite GROUP BY/SUM directo.

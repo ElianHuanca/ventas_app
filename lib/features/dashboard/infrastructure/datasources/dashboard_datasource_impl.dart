@@ -1,29 +1,20 @@
+import 'package:textiles_app/config/supabase/supabase_config.dart';
 import 'package:textiles_app/features/dashboard/domain/domain.dart';
-import 'package:textiles_app/features/database/database_helper.dart';
 
 class DashboardDatasourceImpl extends DashboardDatasource {
-  final DatabaseHelper _db = DatabaseHelper();
+  final _db = SupabaseConfig.client;
 
   @override
   Future<List<TopProducto>> getTopProductos({
     required DateTime desde,
     required DateTime hasta,
   }) async {
-    final database = await _db.database;
-
-    // hasta al final del día
     final hastaFin = DateTime(hasta.year, hasta.month, hasta.day, 23, 59, 59);
 
-    final rows = await database.rawQuery('''
-      SELECT dv.nombre,
-             SUM(dv.total) AS total_vendido,
-             SUM(dv.cantidad) AS total_cantidad
-      FROM detalle_ventas dv
-      JOIN ventas v ON dv.idventa = v.id
-      WHERE v.fecha >= ? AND v.fecha <= ?
-      GROUP BY dv.nombre
-      ORDER BY total_vendido DESC
-    ''', [desde.toIso8601String(), hastaFin.toIso8601String()]);
+    final rows = await _db.rpc('top_productos', params: {
+      'desde': desde.toIso8601String(),
+      'hasta': hastaFin.toIso8601String(),
+    }) as List;
 
     return rows
         .map((row) => TopProducto(
@@ -39,22 +30,19 @@ class DashboardDatasourceImpl extends DashboardDatasource {
     required DateTime desde,
     required DateTime hasta,
   }) async {
-    final database = await _db.database;
     final hastaFin = DateTime(hasta.year, hasta.month, hasta.day, 23, 59, 59);
 
-    final rows = await database.rawQuery('''
-      SELECT COALESCE(SUM(total), 0) AS total,
-             COALESCE(SUM(ganancias), 0) AS ganancias,
-             COALESCE(SUM(descuento), 0) AS descuento
-      FROM ventas
-      WHERE fecha >= ? AND fecha <= ?
-    ''', [desde.toIso8601String(), hastaFin.toIso8601String()]);
+    final result = await _db.rpc('resumen_ventas', params: {
+      'desde': desde.toIso8601String(),
+      'hasta': hastaFin.toIso8601String(),
+    });
 
-    final row = rows.first;
+    // La función devuelve una sola fila (puede llegar como lista o como mapa).
+    final row = result is List ? result.first : result;
     return ResumenVentas(
-      total: (row['total'] as num).toDouble(),
-      ganancias: (row['ganancias'] as num).toDouble(),
-      descuento: (row['descuento'] as num).toDouble(),
+      total: (row['total'] as num?)?.toDouble() ?? 0.0,
+      ganancias: (row['ganancias'] as num?)?.toDouble() ?? 0.0,
+      descuento: (row['descuento'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }
