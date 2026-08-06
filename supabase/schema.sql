@@ -19,11 +19,26 @@
 -- ---------------------------------------------------------------------
 -- sucursales
 -- ---------------------------------------------------------------------
+CREATE TABLE categorias (
+  id     BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  nombre TEXT NOT NULL UNIQUE,     -- 'Telas', 'Apliques'
+  slug   TEXT NOT NULL UNIQUE,     -- 'telas', 'apliques'
+  activo  BOOLEAN NOT NULL DEFAULT TRUE
+);
+INSERT INTO categorias (nombre, slug)
+VALUES ('Telas','telas'), ('Apliques','apliques');
+
 CREATE TABLE IF NOT EXISTS sucursales (
   id     BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   nombre TEXT NOT NULL
 );
 
+ALTER TABLE sucursales
+  ADD COLUMN slug        TEXT UNIQUE,          
+  ADD COLUMN latitud   TEXT,
+  ADD COLUMN longitud   TEXT,
+  ADD COLUMN direccion  TEXT,
+  ADD COLUMN activo   BOOLEAN NOT NULL DEFAULT TRUE;
 -- ---------------------------------------------------------------------
 -- telas (productos)
 -- En SQLite REAL -> en Postgres usamos NUMERIC para precios (evita errores
@@ -38,6 +53,33 @@ CREATE TABLE IF NOT EXISTS telas (
   precxcompra NUMERIC(12, 2) NOT NULL DEFAULT 0
 );
 
+ALTER TABLE telas
+  ADD COLUMN categoria_id     BIGINT REFERENCES categorias(id),
+  ADD COLUMN slug             TEXT UNIQUE,          -- URL bonita + SEO
+  ADD COLUMN descripcion      TEXT,
+  ADD COLUMN ancho              NUMERIC(4, 2),      -- ancho en mts (hasta 99.99)
+  ADD COLUMN activo       BOOLEAN NOT NULL DEFAULT TRUE;
+
+CREATE TABLE colores (
+  id     BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  nombre TEXT NOT NULL UNIQUE,   -- 'Rojo', 'Negro', 'Palo de rosa'
+  hex    TEXT ,          -- '#C0392B' -> el swatch en la web
+  activo  BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE tela_colores (
+  idtela  BIGINT NOT NULL REFERENCES telas(id)   ON DELETE CASCADE,
+  idcolor BIGINT NOT NULL REFERENCES colores(id) ON DELETE CASCADE,
+  activo BOOLEAN NOT NULL DEFAULT true,
+  PRIMARY KEY (idtela, idcolor)
+);
+
+CREATE TABLE tela_fotos (
+  id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  idtela     BIGINT NOT NULL REFERENCES telas(id)   ON DELETE CASCADE,
+  url        TEXT NOT NULL,
+  activo BOOLEAN NOT NULL DEFAULT true
+);
 -- ---------------------------------------------------------------------
 -- ventas
 -- ---------------------------------------------------------------------
