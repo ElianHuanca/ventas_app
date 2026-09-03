@@ -10,6 +10,22 @@ App **Flutter** (móvil / desktop / web) de punto de venta de **telas** para el 
 
 > **Backend: Supabase (PostgreSQL).** Antes usaba SQLite (`sqflite`), que fue eliminado — `lib/features/database/` quedó vacío. La conexión se inicializa en `main.dart` vía `SupabaseConfig.init()` y los datasources acceden con `SupabaseConfig.client`.
 
+## Conocimiento compartido → vault de notas
+
+Lo que cruza los tres repos —el contrato de la DB compartida, el registro de migraciones, las
+decisiones y su porqué, los riesgos abiertos y los runbooks— **no vive acá**: vive en un vault de
+Obsidian en `f:\Elian\notas` (repo aparte). Entrada: `notas/MAPA.md`.
+
+Este archivo manda sobre el código de **este** repo. El vault manda sobre lo que es de más de uno.
+No duplicar: enlazar.
+
+Como este repo es (parcialmente) dueño del esquema, antes de tocar `supabase/`:
+
+- `notas/runbooks/cambiar-el-esquema.md` — el procedimiento, incluido a quién avisar
+- `notas/datos/migraciones/registro-de-migraciones.md` — qué se aplicó y en qué orden
+- `notas/pendientes/schema-sql-desactualizado.md` — ⚠️ **`schema.sql` ya no describe la producción**
+- `notas/pendientes/origen-sin-usar-en-flutter.md` — 🔴 bug vivo en `VentasDatasourceImpl`
+
 ## Los tres repos comparten UNA base de datos
 
 Una sola DB Postgres en Supabase alimenta tres aplicaciones:

@@ -190,8 +190,10 @@ AS $$
   ORDER BY total_vendido DESC;
 $$;
 
--- Resumen de ventas (totales) en un rango de fechas
-CREATE OR REPLACE FUNCTION resumen_ventas(desde TEXT, hasta TEXT)
+-- Resumen de ventas (totales) en un rango de fechas.
+-- p_origen filtra por el discriminador 'telas'/'apliques'; NULL (default)
+-- devuelve todo, así las llamadas viejas de la app no se rompen.
+CREATE OR REPLACE FUNCTION resumen_ventas(desde TEXT, hasta TEXT, p_origen TEXT DEFAULT NULL)
 RETURNS TABLE (
   total     NUMERIC,
   ganancias NUMERIC,
@@ -204,5 +206,6 @@ AS $$
          COALESCE(SUM(ganancias), 0) AS ganancias,
          COALESCE(SUM(descuento), 0) AS descuento
   FROM ventas
-  WHERE fecha >= desde AND fecha <= hasta;
+  WHERE fecha >= desde AND fecha <= hasta
+    AND (p_origen IS NULL OR origen = p_origen);
 $$;
