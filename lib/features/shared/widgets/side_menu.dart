@@ -6,7 +6,13 @@ import 'package:textiles_app/features/shared/widgets/menu_index_cubit.dart';
 class SideMenu extends StatelessWidget {
   const SideMenu({super.key});
 
-  static const _appLinkItems = ['/', '/sucursales', '/telas', '/dashboard'];
+  static const _appLinkItems = [
+    '/',
+    '/venta-apliques',
+    '/sucursales',
+    '/telas',
+    '/dashboard'
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -30,6 +36,10 @@ class SideMenu extends StatelessWidget {
         const NavigationDrawerDestination(
           icon: Icon(Icons.add_shopping_cart_rounded),
           label: Text('Ventas'),
+        ),
+        const NavigationDrawerDestination(
+          icon: Icon(Icons.auto_awesome_rounded),
+          label: Text('Venta apliques'),
         ),
         const NavigationDrawerDestination(
           icon: Icon(Icons.add_business_rounded),

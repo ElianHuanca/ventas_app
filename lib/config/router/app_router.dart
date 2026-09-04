@@ -1,5 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:textiles_app/features/apliques/apliques.dart';
+import 'package:textiles_app/features/apliques/infrastructure/infrastructure.dart';
+import 'package:textiles_app/features/apliques/presentation/bloc/bloc.dart';
 import 'package:textiles_app/features/dashboard/infrastructure/infrastructure.dart';
 import 'package:textiles_app/features/dashboard/presentation/bloc/dashboard_cubit.dart';
 import 'package:textiles_app/features/dashboard/presentation/screens/dashboard_screen.dart';
@@ -26,6 +29,37 @@ GoRouter createAppRouter() {
       GoRoute(
         path: '/',
         builder: (context, state) => const SucursalesScreen(false),
+      ),
+      GoRoute(
+        path: '/venta-apliques',
+        builder: (context, state) => const VentaApliquesSucursalesScreen(),
+      ),
+      GoRoute(
+        path: '/venta-apliques/:idsucursal',
+        builder: (context, state) {
+          final idsucursal = _pathParamInt(state, 'idsucursal');
+          final apliquesRepo =
+              ApliquesRepositoryImpl(ApliquesDatasourceImpl());
+          final ventasApliquesRepo = VentasApliquesRepositoryImpl(
+              VentasApliquesDatasourceImpl());
+          return MultiBlocProvider(
+            providers: [
+              BlocProvider(
+                create: (_) => ApliquesBloc(
+                  apliquesRepository: apliquesRepo,
+                  idsucursal: idsucursal,
+                ),
+              ),
+              BlocProvider(
+                create: (_) => VentaApliquesFormCubit(
+                  ventasApliquesRepository: ventasApliquesRepo,
+                  idsucursal: idsucursal,
+                ),
+              ),
+            ],
+            child: VentaApliquesScreen(),
+          );
+        },
       ),
       GoRoute(
         path: '/dashboard',

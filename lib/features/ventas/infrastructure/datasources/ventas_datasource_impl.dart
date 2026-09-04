@@ -12,6 +12,7 @@ class VentasDatasourceImpl extends VentasDatasource {
         .from(_table)
         .select()
         .eq('idsucursales', idsucursal)
+        .eq('origen', 'telas')
         .order('fecha', ascending: false);
     return list.map((e) => VentaMapper.jsonToEntity(e)).toList();
   }
@@ -30,6 +31,7 @@ class VentasDatasourceImpl extends VentasDatasource {
         .from(_table)
         .select()
         .eq('idsucursales', idsucursales)
+        .eq('origen', 'telas')
         .like('fecha', '$dateStr%')
         .maybeSingle();
     if (row == null) return null;
@@ -49,6 +51,7 @@ class VentasDatasourceImpl extends VentasDatasource {
       'ganancias': 0,
       'descuento': 0,
       'idsucursales': idsucursales,
+      'origen': 'telas',
     }).select().single();
     return VentaMapper.jsonToEntity(row);
   }

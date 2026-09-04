@@ -2,26 +2,32 @@
 
 import 'package:flutter/material.dart';
 
-void dialogoDeAlerta(BuildContext context, Function onPressed) {
+void dialogoDeAlerta(
+  BuildContext context,
+  Function onPressed, {
+  String titulo = 'Confirmar Eliminación',
+  String mensaje = '¿Está seguro de que desea eliminar este elemento?',
+  String textoConfirmar = 'Eliminar',
+}) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Confirmar Eliminación'),
-          content: const Text('¿Está seguro de que desea eliminar este elemento?'),
+          title: Text(titulo),
+          content: Text(mensaje),
           actions: <Widget>[
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(); 
+                Navigator.of(context).pop();
               },
               child: const Text('Cancelar'),
             ),
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(); 
+                Navigator.of(context).pop();
                 onPressed();
               },
-              child: const Text('Eliminar'),
+              child: Text(textoConfirmar),
             ),
           ],
         );
