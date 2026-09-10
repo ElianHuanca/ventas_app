@@ -28,7 +28,7 @@ class DetVentas extends StatelessWidget {
                               style: TextStyle(fontStyle: FontStyle.italic)),
                         )
                       : dataTableWidget(
-                          ['Producto', 'Cantidad', 'Precio', 'Total', 'Accion'],
+                          ['Tela', 'Cantidad', 'Precio', 'Total', 'Accion'],
                           context,
                           detalleVentasState.detalleVentas,
                           venta.total,

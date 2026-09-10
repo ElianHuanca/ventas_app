@@ -1,3 +1,4 @@
 export 'telas_bloc.dart';
 export 'tela_bloc.dart';
+export 'tela_colores_cubit.dart';
 export 'tela_form_cubit.dart';

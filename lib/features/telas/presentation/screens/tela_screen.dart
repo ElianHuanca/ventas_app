@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:textiles_app/features/shared/shared.dart';
+import '../../infrastructure/infrastructure.dart';
 import '../bloc/bloc.dart';
 
 class TelaScreen extends StatelessWidget {
@@ -23,8 +24,19 @@ class TelaScreen extends StatelessWidget {
           child: GestureDetector(
             onTap: () => FocusScope.of(context).unfocus(),
             child: Screen1(
-              widget: [_telaInformation(context)],
-              title: tela.id == 0 ? 'Crear Producto' : 'Editar Producto',
+              widget: [
+                _telaInformation(context),
+                if (tela.id != 0)
+                  BlocProvider(
+                    create: (_) => TelaColoresCubit(
+                      telasRepository:
+                          TelasRepositoryImpl(TelasDatasourceImpl()),
+                      idtela: tela.id,
+                    ),
+                    child: _coloresSection(context),
+                  ),
+              ],
+              title: tela.id == 0 ? 'Crear Tela' : 'Editar Tela',
               isGridview: false,
               backRoute: true,
             ),
@@ -118,6 +130,18 @@ class TelaScreen extends StatelessWidget {
               ),
             ],
           ),
+        );
+      },
+    );
+  }
+
+  Widget _coloresSection(BuildContext context) {
+    return BlocBuilder<TelaColoresCubit, TelaColoresState>(
+      builder: (context, state) {
+        return ProductoColoresList(
+          isLoading: state.isLoading,
+          colores: state.colores,
+          onToggle: context.read<TelaColoresCubit>().toggleColor,
         );
       },
     );

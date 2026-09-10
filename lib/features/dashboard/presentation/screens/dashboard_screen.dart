@@ -18,8 +18,15 @@ class DashboardScreen extends StatelessWidget {
           widget: [
             _RangoFechas(state: state),
             const SizedBox(height: 12),
-            if (!state.isLoading && state.resumen != null)
+            if (!state.isLoading && state.resumen != null) ...[
+              const _ResumenTitulo('Telas'),
               _ResumenCards(resumen: state.resumen!),
+              if (state.resumenApliques != null) ...[
+                const SizedBox(height: 12),
+                const _ResumenTitulo('Apliques'),
+                _ResumenCards(resumen: state.resumenApliques!),
+              ],
+            ],
             const SizedBox(height: 12),
             _ToggleVista(verPorCantidad: state.verPorCantidad),
             const SizedBox(height: 12),
@@ -110,6 +117,27 @@ class _RangoFechas extends StatelessWidget {
                   color: colorScheme.onPrimaryContainer),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ResumenTitulo extends StatelessWidget {
+  final String texto;
+  const _ResumenTitulo(this.texto);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+      child: Text(
+        texto,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: Colors.black45,
+          letterSpacing: 0.5,
         ),
       ),
     );

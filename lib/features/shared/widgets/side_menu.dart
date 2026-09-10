@@ -9,8 +9,11 @@ class SideMenu extends StatelessWidget {
   static const _appLinkItems = [
     '/',
     '/venta-apliques',
+    '/fabricacion',
     '/sucursales',
     '/telas',
+    '/apliques',
+    '/colores',
     '/dashboard'
   ];
 
@@ -35,18 +38,26 @@ class SideMenu extends StatelessWidget {
         ),
         const NavigationDrawerDestination(
           icon: Icon(Icons.add_shopping_cart_rounded),
-          label: Text('Ventas'),
+          label: Text('Venta telas'),
         ),
         const NavigationDrawerDestination(
           icon: Icon(Icons.auto_awesome_rounded),
           label: Text('Venta apliques'),
         ),
         const NavigationDrawerDestination(
+          icon: Icon(Icons.precision_manufacturing_rounded),
+          label: Text('Fabricación'),
+        ),
+        const NavigationDrawerDestination(
           icon: Icon(Icons.add_business_rounded),
           label: Text('Sucursales'),
         ),
         const NavigationDrawerDestination(
-            icon: Icon(Icons.playlist_add), label: Text('Productos')),
+            icon: Icon(Icons.playlist_add), label: Text('Telas')),
+        const NavigationDrawerDestination(
+            icon: Icon(Icons.category_rounded), label: Text('Apliques')),
+        const NavigationDrawerDestination(
+            icon: Icon(Icons.palette_rounded), label: Text('Colores')),
         const NavigationDrawerDestination(
             icon: Icon(Icons.bar_chart_rounded), label: Text('Dashboard')),
       ],

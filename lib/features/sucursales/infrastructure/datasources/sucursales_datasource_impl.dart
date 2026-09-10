@@ -11,7 +11,7 @@ class SucursalesDatasourceImpl implements SucursalesDatasource {
 
   @override
   Future<List<Sucursal>> getSucursales() async {
-    final list = await _db.from(_table).select().order('id');
+    final list = await _db.from(_table).select().eq('activo', true).order('id');
     return list.map<Sucursal>((e) => SucursalMapper.jsonToEntity(e)).toList();
   }
 
@@ -40,10 +40,35 @@ class SucursalesDatasourceImpl implements SucursalesDatasource {
     return SucursalMapper.jsonToEntity(row);
   }
 
+  // Baja lógica: nunca se borra físicamente, solo activo = false.
   @override
   Future<bool> deleteSucursal(int id) async {
-    final rows =
-        await _db.from(_table).delete().eq('id', id).select('id');
+    final rows = await _db
+        .from(_table)
+        .update({'activo': false})
+        .eq('id', id)
+        .select('id');
     return rows.isNotEmpty;
+  }
+
+  @override
+  Future<List<TelaSucursal>> getTelasSucursal(int idsucursal) async {
+    final list = await _db
+        .from('telas')
+        .select('id, nombre, tela_sucursales(activo)')
+        .eq('tela_sucursales.idsucursal', idsucursal)
+        .order('nombre');
+    return list
+        .map<TelaSucursal>((e) => TelaSucursalMapper.jsonToEntity(e))
+        .toList();
+  }
+
+  @override
+  Future<void> setTelaSucursal(int idtela, int idsucursal, bool activo) async {
+    await _db.from('tela_sucursales').upsert({
+      'idtela': idtela,
+      'idsucursal': idsucursal,
+      'activo': activo,
+    });
   }
 }

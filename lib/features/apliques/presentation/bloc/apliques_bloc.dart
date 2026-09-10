@@ -28,15 +28,31 @@ abstract class ApliquesEvent {}
 
 class ApliquesLoadRequested extends ApliquesEvent {}
 
+class ApliquesCreateRequested extends ApliquesEvent {
+  final Aplique aplique;
+  ApliquesCreateRequested(this.aplique);
+}
+
+class ApliquesUpdateRequested extends ApliquesEvent {
+  final Aplique aplique;
+  ApliquesUpdateRequested(this.aplique);
+}
+
 class ApliquesBloc extends Bloc<ApliquesEvent, ApliquesState> {
   final ApliquesRepository apliquesRepository;
-  final int idsucursal;
+
+  /// Si es null, el bloc se usa para GESTIÓN (lista todos los apliques,
+  /// incluidos los inactivos, y no carga stock). Con sucursal, es el flujo
+  /// de venta: solo activos + stock de esa sucursal.
+  final int? idsucursal;
 
   ApliquesBloc({
     required this.apliquesRepository,
-    required this.idsucursal,
+    this.idsucursal,
   }) : super(ApliquesState()) {
     on<ApliquesLoadRequested>(_onLoadRequested);
+    on<ApliquesCreateRequested>(_onCreateRequested);
+    on<ApliquesUpdateRequested>(_onUpdateRequested);
     add(ApliquesLoadRequested());
   }
 
@@ -47,12 +63,53 @@ class ApliquesBloc extends Bloc<ApliquesEvent, ApliquesState> {
     if (state.isLoading) return;
     emit(state.copyWith(isLoading: true));
     try {
-      final apliques = await apliquesRepository.getApliques();
-      final stock = await apliquesRepository.getStock(idsucursal);
+      final apliques = await apliquesRepository.getApliques(
+          soloActivos: idsucursal != null);
+      final stock = idsucursal == null
+          ? <StockAplique>[]
+          : await apliquesRepository.getStock(idsucursal!);
       emit(state.copyWith(apliques: apliques, stock: stock));
     } catch (_) {
     } finally {
       emit(state.copyWith(isLoading: false));
+    }
+  }
+
+  Future<void> _onCreateRequested(
+    ApliquesCreateRequested event,
+    Emitter<ApliquesState> emit,
+  ) async {
+    emit(state.copyWith(apliques: [event.aplique, ...state.apliques]));
+  }
+
+  Future<void> _onUpdateRequested(
+    ApliquesUpdateRequested event,
+    Emitter<ApliquesState> emit,
+  ) async {
+    emit(state.copyWith(
+        apliques: state.apliques
+            .map((e) => e.id == event.aplique.id ? event.aplique : e)
+            .toList()));
+  }
+
+  Future<bool> createAplique(Map<String, dynamic> apliqueLike) async {
+    try {
+      final aplique = await apliquesRepository.createAplique(apliqueLike);
+      add(ApliquesCreateRequested(aplique));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> updateAplique(Map<String, dynamic> apliqueLike) async {
+    try {
+      final aplique =
+          await apliquesRepository.updateAplique(apliqueLike, apliqueLike['id']);
+      add(ApliquesUpdateRequested(aplique));
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 }

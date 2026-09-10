@@ -1,4 +1,5 @@
 import 'package:textiles_app/config/supabase/supabase_config.dart';
+import 'package:textiles_app/features/apliques/domain/entities/color_item.dart';
 import '../../domain/domain.dart';
 import '../infrastructure.dart';
 
@@ -8,9 +9,33 @@ class TelasDatasourceImpl implements TelasDatasource {
 
   @override
   Future<List<Tela>> getTelas() async {
-    final list = await _db.from(_table).select();
+    final list = await _db.from(_table).select().eq('activo', true);
     final telas = list.map<Tela>((e) => TelaMapper.jsonToEntity(e)).toList();
     // ordenado por nombre ascendente, sin distinguir mayúsculas (equiv. COLLATE NOCASE)
+    telas.sort((a, b) =>
+        a.nombre.toLowerCase().compareTo(b.nombre.toLowerCase()));
+    return telas;
+  }
+
+  @override
+  Future<List<Tela>> getTelasPorSucursal(int idsucursal) async {
+    // Regla de transición: si la sucursal no tiene NINGUNA vinculación
+    // configurada en tela_sucursales, se muestra todo el catálogo.
+    final vinculos = await _db
+        .from('tela_sucursales')
+        .select('idtela')
+        .eq('idsucursal', idsucursal)
+        .eq('activo', true)
+        .limit(1);
+    if (vinculos.isEmpty) return getTelas();
+
+    final list = await _db
+        .from(_table)
+        .select('*, tela_sucursales!inner(*)')
+        .eq('activo', true)
+        .eq('tela_sucursales.idsucursal', idsucursal)
+        .eq('tela_sucursales.activo', true);
+    final telas = list.map<Tela>((e) => TelaMapper.jsonToEntity(e)).toList();
     telas.sort((a, b) =>
         a.nombre.toLowerCase().compareTo(b.nombre.toLowerCase()));
     return telas;
@@ -39,9 +64,40 @@ class TelasDatasourceImpl implements TelasDatasource {
     return TelaMapper.jsonToEntity(row);
   }
 
+  // Baja lógica: nunca se borra físicamente, solo activo = false.
   @override
   Future<bool> deleteTela(int id) async {
-    final rows = await _db.from(_table).delete().eq('id', id).select('id');
+    final rows =
+        await _db.from(_table).update({'activo': false}).eq('id', id).select('id');
     return rows.isNotEmpty;
+  }
+
+  @override
+  Future<List<ColorItem>> getColoresTela(int idtela) async {
+    final list = await _db
+        .from('colores')
+        .select('id, nombre, hex, tela_colores(activo)')
+        .eq('activo', true)
+        .eq('tela_colores.idtela', idtela)
+        .order('nombre');
+    return list
+        .map<ColorItem>((e) => ColorItem(
+              id: e['id'] as int,
+              nombre: e['nombre'] ?? '',
+              hex: e['hex'] ?? '',
+              vinculado: e['tela_colores'] is List &&
+                  (e['tela_colores'] as List)
+                      .any((v) => v is Map && (v['activo'] ?? false)),
+            ))
+        .toList();
+  }
+
+  @override
+  Future<void> setColorTela(int idtela, int idcolor, bool activo) async {
+    await _db.from('tela_colores').upsert({
+      'idtela': idtela,
+      'idcolor': idcolor,
+      'activo': activo,
+    });
   }
 }

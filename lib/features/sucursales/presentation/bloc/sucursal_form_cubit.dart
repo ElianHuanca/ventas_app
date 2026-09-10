@@ -30,8 +30,9 @@ class SucursalFormCubit extends Cubit<SucursalFormState> {
         ));
 
   Future<bool> onSubmit({required bool isUpdate}) async {
-    if (state.nombre.isEmpty) return false;
-    final sucursalLike = {'id': state.id, 'nombre': state.nombre};
+    final nombre = state.nombre.trim();
+    if (nombre.isEmpty) return false;
+    final sucursalLike = {'id': state.id, 'nombre': nombre};
     try {
       return isUpdate
           ? await onUpdateCallback(sucursalLike)

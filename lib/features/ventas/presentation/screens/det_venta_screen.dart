@@ -74,7 +74,7 @@ class DetVenta extends StatelessWidget {
                         flex: 1,
                         child: DropdownMenu<Tela>(
                           width: MediaQuery.of(context).size.width * 0.93,
-                          hintText: 'Seleccione un Producto',
+                          hintText: 'Seleccione una Tela',
                           onSelected: (value) {
                             detVentaFormCubit
                                 .onPrecxCompraChanged(value?.precxcompra ?? 0);

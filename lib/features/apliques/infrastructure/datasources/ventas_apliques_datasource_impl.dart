@@ -3,7 +3,7 @@ import '../../domain/domain.dart';
 
 class VentasApliquesDatasourceImpl implements VentasApliquesDatasource {
   final _db = SupabaseConfig.client;
-  static const _tableVentas = 'ventas';
+  static const _tableVentas = 'ventas_apliques';
   static const _tableDetalle = 'detalle_ventas_apliques';
   static const _tableInventario = 'inventario';
 
@@ -23,7 +23,6 @@ class VentasApliquesDatasourceImpl implements VentasApliquesDatasource {
       'ganancias': ganancias,
       'descuento': descuento,
       'idsucursales': idsucursales,
-      'origen': 'apliques',
     }).select('id').single();
     final idventa = ventaRow['id'] as int;
 
@@ -45,6 +44,7 @@ class VentasApliquesDatasourceImpl implements VentasApliquesDatasource {
           .eq('sucursal_id', idsucursales)
           .eq('aplique_id', item['idapliques'])
           .eq('color_id', item['idcolor'])
+          .eq('activo', true)
           .maybeSingle();
       final stockActual = (stockRow?['stock'] as num?)?.toDouble() ?? 0;
       await _db
@@ -54,7 +54,8 @@ class VentasApliquesDatasourceImpl implements VentasApliquesDatasource {
           })
           .eq('sucursal_id', idsucursales)
           .eq('aplique_id', item['idapliques'])
-          .eq('color_id', item['idcolor']);
+          .eq('color_id', item['idcolor'])
+          .eq('activo', true);
     }
 
     return idventa;

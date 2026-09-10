@@ -7,5 +7,6 @@ class ApliqueMapper {
         costoFabricacion:
             (json['costo_fabricacion'] as num?)?.toDouble() ?? 0,
         tamanio: json['tamanio'] ?? '',
+        activo: json['activo'] ?? true,
       );
 }

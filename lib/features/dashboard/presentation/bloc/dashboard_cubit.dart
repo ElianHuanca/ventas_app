@@ -7,6 +7,7 @@ class DashboardState {
   final List<TopProducto> topProductosPorCantidad;
   final bool verPorCantidad;
   final ResumenVentas? resumen;
+  final ResumenVentas? resumenApliques;
   final DateTime desde;
   final DateTime hasta;
 
@@ -16,6 +17,7 @@ class DashboardState {
     this.topProductosPorCantidad = const [],
     this.verPorCantidad = false,
     this.resumen,
+    this.resumenApliques,
     required this.desde,
     required this.hasta,
   });
@@ -26,6 +28,7 @@ class DashboardState {
     List<TopProducto>? topProductosPorCantidad,
     bool? verPorCantidad,
     ResumenVentas? resumen,
+    ResumenVentas? resumenApliques,
     DateTime? desde,
     DateTime? hasta,
   }) =>
@@ -36,6 +39,7 @@ class DashboardState {
             topProductosPorCantidad ?? this.topProductosPorCantidad,
         verPorCantidad: verPorCantidad ?? this.verPorCantidad,
         resumen: resumen ?? this.resumen,
+        resumenApliques: resumenApliques ?? this.resumenApliques,
         desde: desde ?? this.desde,
         hasta: hasta ?? this.hasta,
       );
@@ -58,10 +62,13 @@ class DashboardCubit extends Cubit<DashboardState> {
       final resultados = await Future.wait([
         repository.getTopProductos(desde: state.desde, hasta: state.hasta),
         repository.getResumenVentas(desde: state.desde, hasta: state.hasta),
+        repository.getResumenVentasApliques(
+            desde: state.desde, hasta: state.hasta),
       ]);
 
       final lista = resultados[0] as List<TopProducto>;
       final resumen = resultados[1] as ResumenVentas;
+      final resumenApliques = resultados[2] as ResumenVentas;
 
       final porCantidad = List<TopProducto>.from(lista)
         ..sort((a, b) => b.totalCantidad.compareTo(a.totalCantidad));
@@ -70,6 +77,7 @@ class DashboardCubit extends Cubit<DashboardState> {
         topProductos: lista,
         topProductosPorCantidad: porCantidad,
         resumen: resumen,
+        resumenApliques: resumenApliques,
       ));
     } finally {
       emit(state.copyWith(isLoading: false));

@@ -3,6 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:textiles_app/features/apliques/apliques.dart';
 import 'package:textiles_app/features/apliques/infrastructure/infrastructure.dart';
 import 'package:textiles_app/features/apliques/presentation/bloc/bloc.dart';
+import 'package:textiles_app/features/colores/colores.dart';
+import 'package:textiles_app/features/colores/infrastructure/infrastructure.dart';
+import 'package:textiles_app/features/colores/presentation/bloc/bloc.dart';
 import 'package:textiles_app/features/dashboard/infrastructure/infrastructure.dart';
 import 'package:textiles_app/features/dashboard/presentation/bloc/dashboard_cubit.dart';
 import 'package:textiles_app/features/dashboard/presentation/screens/dashboard_screen.dart';
@@ -62,6 +65,62 @@ GoRouter createAppRouter() {
         },
       ),
       GoRoute(
+        path: '/fabricacion',
+        builder: (context, state) => BlocProvider(
+          create: (_) => ProduccionFormCubit(
+            apliquesRepository:
+                ApliquesRepositoryImpl(ApliquesDatasourceImpl()),
+          ),
+          child: ProduccionScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/apliques',
+        builder: (context, state) => BlocProvider(
+          create: (_) => ApliquesBloc(
+            apliquesRepository:
+                ApliquesRepositoryImpl(ApliquesDatasourceImpl()),
+          ),
+          child: const ApliquesScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/aplique/:idaplique',
+        builder: (context, state) {
+          final id = _pathParamInt(state, 'idaplique');
+          return BlocProvider(
+            create: (_) => ApliquesBloc(
+              apliquesRepository:
+                  ApliquesRepositoryImpl(ApliquesDatasourceImpl()),
+            ),
+            child: ApliqueScreen(id: id),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/colores',
+        builder: (context, state) => BlocProvider(
+          create: (_) => ColoresBloc(
+            coloresRepository:
+                ColoresRepositoryImpl(ColoresDatasourceImpl()),
+          ),
+          child: const ColoresScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/color/:idcolor',
+        builder: (context, state) {
+          final id = _pathParamInt(state, 'idcolor');
+          return BlocProvider(
+            create: (_) => ColoresBloc(
+              coloresRepository:
+                  ColoresRepositoryImpl(ColoresDatasourceImpl()),
+            ),
+            child: ColorScreen(id: id),
+          );
+        },
+      ),
+      GoRoute(
         path: '/dashboard',
         builder: (context, state) => BlocProvider(
           create: (_) => DashboardCubit(
@@ -90,6 +149,20 @@ GoRouter createAppRouter() {
               ),
               child: SucursalScreen(id: id),
             ),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/sucursal-disponibilidad/:idsucursal',
+        builder: (context, state) {
+          final id = _pathParamInt(state, 'idsucursal');
+          return BlocProvider(
+            create: (_) => SucursalDisponibilidadCubit(
+              sucursalesRepository:
+                  SucursalesRepositoryImpl(SucursalesDatasourceImpl()),
+              idsucursal: id,
+            ),
+            child: const SucursalDisponibilidadScreen(),
           );
         },
       ),
@@ -183,7 +256,7 @@ GoRouter createAppRouter() {
               ),
               BlocProvider(
                 create: (_) =>
-                    TelasBloc(telasRepository: TelasRepositoryImpl(TelasDatasourceImpl())),
+                    TelasBloc(telasRepository: TelasRepositoryImpl(TelasDatasourceImpl()), idsucursal: idsucursal),
               ),
             ],
             child: DetVenta(),

@@ -1,3 +1,4 @@
+import 'package:textiles_app/features/apliques/domain/entities/color_item.dart';
 import '../../domain/domain.dart';
 
 class TelasRepositoryImpl implements TelasRepository {
@@ -8,6 +9,11 @@ class TelasRepositoryImpl implements TelasRepository {
   @override
   Future<List<Tela>> getTelas() {
     return datasource.getTelas();
+  }
+
+  @override
+  Future<List<Tela>> getTelasPorSucursal(int idsucursal) {
+    return datasource.getTelasPorSucursal(idsucursal);
   }
   
   @override
@@ -28,5 +34,15 @@ class TelasRepositoryImpl implements TelasRepository {
   @override
   Future<Tela> getTela(int id) {
     return datasource.getTela(id);
+  }
+
+  @override
+  Future<List<ColorItem>> getColoresTela(int idtela) {
+    return datasource.getColoresTela(idtela);
+  }
+
+  @override
+  Future<void> setColorTela(int idtela, int idcolor, bool activo) {
+    return datasource.setColorTela(idtela, idcolor, activo);
   }
 }

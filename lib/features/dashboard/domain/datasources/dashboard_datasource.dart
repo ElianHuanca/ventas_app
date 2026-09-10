@@ -11,4 +11,9 @@ abstract class DashboardDatasource {
     required DateTime desde,
     required DateTime hasta,
   });
+
+  Future<ResumenVentas> getResumenVentasApliques({
+    required DateTime desde,
+    required DateTime hasta,
+  });
 }

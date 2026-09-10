@@ -4,9 +4,11 @@ Guía para Claude Code (claude.ai/code) al trabajar en este repositorio.
 
 ## Overview
 
-App **Flutter** (móvil / desktop / web) de punto de venta de **telas** para el negocio Huantex. Gestiona sucursales, catálogo de telas, ventas con su detalle, y un dashboard de ventas. Todo el texto está en español.
+App **Flutter** (móvil / desktop / web) de punto de venta de **telas y apliques** para el negocio Huantex. Gestiona sucursales, catálogo de telas, apliques (con stock por color y fabricación), ventas de ambos con su detalle, y un dashboard de ventas. Todo el texto está en español.
 
-> El paquete se llama `textiles_app` en `pubspec.yaml` y los imports son `package:textiles_app/...`. **No confundir con el repo `textiles`**, que es la app PHP de apliques (ver abajo). Este repo es `ventas_app` = telas.
+> Desde la incorporación del feature `apliques/` (ventas con stock, fabricación, gestión y disponibilidad por sucursal), esta app **reemplazó al repo PHP `textiles`**, que fue eliminado (local y GitHub; respaldo en `notas/historico/textiles-php/`).
+
+> El paquete se llama `textiles_app` en `pubspec.yaml` y los imports son `package:textiles_app/...`. **No confundir con el viejo repo `textiles`** (PHP, eliminado). Este repo es `ventas_app` = telas y apliques.
 
 > **Backend: Supabase (PostgreSQL).** Antes usaba SQLite (`sqflite`), que fue eliminado — `lib/features/database/` quedó vacío. La conexión se inicializa en `main.dart` vía `SupabaseConfig.init()` y los datasources acceden con `SupabaseConfig.client`.
 
@@ -14,17 +16,18 @@ App **Flutter** (móvil / desktop / web) de punto de venta de **telas** para el 
 
 Lo que cruza los tres repos —el contrato de la DB compartida, el registro de migraciones, las
 decisiones y su porqué, los riesgos abiertos y los runbooks— **no vive acá**: vive en un vault de
-Obsidian en `f:\Elian\notas` (repo aparte). Entrada: `notas/MAPA.md`.
+Obsidian en `c:\Elian\textiles\notas`. Entrada: `MAPA.md`.
 
 Este archivo manda sobre el código de **este** repo. El vault manda sobre lo que es de más de uno.
 No duplicar: enlazar.
 
 Como este repo es (parcialmente) dueño del esquema, antes de tocar `supabase/`:
 
-- `notas/runbooks/cambiar-el-esquema.md` — el procedimiento, incluido a quién avisar
-- `notas/datos/migraciones/registro-de-migraciones.md` — qué se aplicó y en qué orden
-- `notas/pendientes/schema-sql-desactualizado.md` — ⚠️ **`schema.sql` ya no describe la producción**
-- `notas/pendientes/origen-sin-usar-en-flutter.md` — 🔴 bug vivo en `VentasDatasourceImpl`
+- `../notas/runbooks/cambiar-el-esquema.md` — el procedimiento, incluido a quién avisar
+- `../notas/datos/migraciones/registro-de-migraciones.md` — qué se aplicó y en qué orden
+- `../notas/pendientes/schema-sql-desactualizado.md` — ⚠️ **`schema.sql` ya no describe la producción**
+
+Esta app ahora también cubre **apliques** (ventas con stock, fabricación, gestión y disponibilidad por sucursal), con lo que **reemplazó al repo PHP `textiles`** (eliminado).
 
 ## Los tres repos comparten UNA base de datos
 
@@ -32,11 +35,11 @@ Una sola DB Postgres en Supabase alimenta tres aplicaciones:
 
 | Repo | Stack | Rol |
 |---|---|---|
-| **ventas_app** (este) | Flutter | Punto de venta de **telas**. Dueño del esquema → `github.com/ElianHuanca/ventas_app` |
-| **textiles** | PHP 8.2 MVC | Inventario, compras, gastos y ventas de **apliques** → `github.com/ElianHuanca/textiles` |
+| **ventas_app** (este) | Flutter | Punto de venta de **telas y apliques**. Dueño del esquema → `github.com/ElianHuanca/ventas_app` |
+| ~~**textiles**~~ | PHP 8.2 MVC | **Eliminado** (local y GitHub). Era el módulo de apliques; lo absorbió este repo. Respaldo en `notas/historico/textiles-php/` |
 | **sitio** | Next.js 16 | Landing pública de solo lectura → `github.com/ElianHuanca/sitio` |
 
-En disco son carpetas hermanas (`f:\Elian\ventas_app`, `f:\Elian\textiles`, `f:\Elian\sitio`).
+En disco son carpetas hermanas (`c:\Elian\textiles\ventas_app`, `c:\Elian\textiles\sitio`); el vault de notas está en `c:\Elian\textiles\notas`.
 
 **Este repo es el dueño del esquema.** `supabase/` es la fuente de verdad para las otras dos apps:
 
@@ -47,10 +50,11 @@ Al cambiar el esquema: editar el archivo y volver a aplicarlo en el SQL Editor d
 
 ### ⚠️ Tablas compartidas: cuidado al tocarlas
 
-- **`ventas` es compartida** entre este repo (telas) y `textiles` (apliques). La columna **`origen`** (`'telas'` / `'apliques'`) las separa; la agregó la migración `textiles/migracion/04_origen_ventas.sql`, por eso **no aparece en `schema.sql`**.
-  **Esta app todavía no la usa**: `VentasDatasourceImpl` ni la setea al crear ni filtra por ella al leer. Consecuencias conocidas: `getVentas()` puede traer ventas de apliques de la misma sucursal, y `getVentaByFecha()` usa `.maybeSingle()`, que revienta si ese día hay una venta de telas y una de apliques. Si se toca ese datasource, lo correcto es setear `origen: 'telas'` en `createVenta` y agregar `.eq('origen', 'telas')` en las lecturas.
+- **`ventas` es SOLO telas** desde la migración `supabase/ventas_apliques.sql` (10): las ventas de apliques viven en **`ventas_apliques`** (misma forma, sin `origen`; `detalle_ventas_apliques.idventa` apunta ahí). El discriminador `origen` ya no existe. El PHP `textiles` (obsoleto) filtraba por `origen` y quedó roto con esta migración.
 - **`sucursales`** también la lee `textiles`, y sus columnas `activo`, `direccion`, `latitud`, `longitud` y `slug` las publica la landing. Para dar de baja una sucursal, marcar `activo = false` en vez de borrarla.
 - `categorias` y `colores` son compartidas con `textiles` (que las usa para apliques).
+- **`tela_sucursales`** (migración `supabase/tela_sucursales.sql`) define qué telas se venden en qué sucursal. La venta de telas filtra su selector por ella: si la sucursal tiene vínculos activos solo ofrece esas telas; si no tiene ninguno configurado, muestra todo el catálogo (regla de transición).
+- **`inventario`** (sucursal+aplique+color) es la disponibilidad Y el stock de apliques. La venta de apliques lo descuenta y bloquea sobre-stock; Fabricación lo incrementa (y crea la fila si no existe). Las filas se dan de baja con `activo = false` (solo si stock = 0, desde el datasource `removeInventario`).
 
 ## Tech Stack
 
@@ -75,7 +79,7 @@ feature/
   presentation/   # Screens, BLoCs/Cubits, form providers
 ```
 
-Features: `sucursales`, `telas`, `ventas`, `dashboard`, `shared`
+Features: `sucursales`, `telas`, `ventas`, `apliques`, `colores`, `dashboard`, `shared`
 
 ## Esquema (Supabase / PostgreSQL)
 
@@ -83,16 +87,22 @@ Features: `sucursales`, `telas`, `ventas`, `dashboard`, `shared`
 |---|---|
 | `sucursales` | id, nombre, slug, direccion, latitud, longitud, activo |
 | `telas` | id, nombre, precxmen, precxmay, precxrollo, precxcompra, categoria_id, slug, descripcion, ancho, activo |
-| `ventas` | id, fecha, total, ganancias, descuento, idsucursales (+ `origen`, ver arriba) |
+| `ventas` | id, fecha, total, ganancias, descuento, idsucursales — **solo telas** |
+| `ventas_apliques` | id, fecha, total, ganancias, descuento, idsucursales — **solo apliques** (migración 10) |
 | `detalle_ventas` | id, nombre, precio, cantidad, total, ganancias, idtelas, idventa |
 | `categorias` | id, nombre, slug, activo — seed: `Telas`, `Apliques` |
 | `colores` | id, nombre, hex, activo |
 | `tela_colores` | idtela, idcolor, activo (PK compuesta) |
 | `tela_fotos` | id, idtela, url, activo |
+| `tela_sucursales` | idtela, idsucursal, activo (PK compuesta) — disponibilidad de telas por sucursal (migración `supabase/tela_sucursales.sql`) |
+| `apliques` | id, nombre, costo_fabricacion, tamanio, categoria_id, activo |
+| `inventario` | sucursal_id, aplique_id, color_id, stock (PK compuesta) — disponibilidad y stock de apliques |
+| `producciones` | id, fecha, sucursal_id, aplique_id, color_id, cantidad — entradas de stock por fabricación |
+| `detalle_ventas_apliques` | id, idventa, idapliques, idcolor, nombre, precio, cantidad, total, ganancias |
 
 `fecha` se almacena como **TEXT ISO8601** (igual que en la versión SQLite) para preservar la lógica de comparación — las RPC comparan lexicográficamente y eso depende de este formato. Los precios son `NUMERIC` (no `REAL`) para evitar errores de coma flotante en dinero.
 
-Las tablas nuevas (`categorias`, `colores`, `tela_colores`, `tela_fotos`) y las columnas agregadas a `telas`/`sucursales` existen para el catálogo web; **esta app todavía no las lee ni las escribe**.
+Las tablas nuevas (`categorias`, `colores`, `tela_colores`, `tela_fotos`) y las columnas agregadas a `telas`/`sucursales` existen para el catálogo web; esta app gestiona `colores` (módulo `/colores`, baja lógica) pero **no escribe** `tela_colores`/`tela_fotos` (solo `tela_colores` en la gestión de colores por tela).
 
 ### Convención importante: `actualizarVenta`
 
@@ -115,22 +125,33 @@ Ambas con `GRANT SELECT ... TO anon`. Si se cambia una columna que estas vistas 
 - `supabase/landing.sql` — vistas públicas de la landing
 - `lib/config/router/app_router.dart` — todas las rutas (GoRouter + BLoC providers por ruta)
 - `lib/config/theme/app_theme.dart` — tema Material 3
-- `lib/features/ventas/infrastructure/datasources/ventas_datasource_impl.dart` — lógica incremental de ventas
+- `lib/features/ventas/infrastructure/datasources/ventas_datasource_impl.dart` — lógica incremental de ventas (tabla `ventas`, solo telas)
 - `lib/features/ventas/infrastructure/datasources/detalleVentas_datasource_impl.dart` — upsert por idtelas+precio al crear detalles
-- `lib/features/dashboard/infrastructure/datasources/dashboard_datasource_impl.dart` — llama a las RPC del dashboard
+- `lib/features/apliques/infrastructure/datasources/apliques_datasource_impl.dart` — apliques, inventario, colores y producciones (fabricación sube stock)
+- `lib/features/apliques/infrastructure/datasources/ventas_apliques_datasource_impl.dart` — venta de apliques: insert en `ventas_apliques` + detalles + descuento de stock
+- `lib/features/sucursales/presentation/bloc/sucursal_disponibilidad_cubit.dart` — vinculación telas↔sucursal e inventario de apliques por sucursal
+- `lib/features/dashboard/infrastructure/datasources/dashboard_datasource_impl.dart` — llama a las RPC del dashboard (`top_productos`, `resumen_ventas`, `resumen_ventas_apliques`)
 
 ## Rutas registradas
 
 | Path | Screen |
 |---|---|
-| `/` | SucursalesScreen (ventas) |
+| `/` | SucursalesScreen (ventas de telas) |
+| `/venta-apliques` | VentaApliquesSucursalesScreen (elegir sucursal) |
+| `/venta-apliques/:idsucursal` | VentaApliquesScreen (form con stock por color) |
+| `/fabricacion` | ProduccionScreen (registrar producción → sube stock) |
 | `/sucursales` | SucursalesScreen (gestión) |
-| `/sucursal/:idsucursal` | SucursalScreen |
+| `/sucursal/:idsucursal` | SucursalScreen (form + botón a disponibilidad) |
+| `/sucursal-disponibilidad/:idsucursal` | SucursalDisponibilidadScreen (qué telas se venden en la sucursal) |
 | `/telas` | TelasScreen |
 | `/tela/:idtela` | TelaScreen |
+| `/apliques` | ApliquesScreen (gestión de apliques) |
+| `/aplique/:idaplique` | ApliqueScreen (form: nombre, tamaño, costo fabricación, activo + colores vinculados) |
+| `/colores` | ColoresScreen (gestión de colores) |
+| `/color/:idcolor` | ColorScreen (form: nombre + hex con preview; baja lógica) |
 | `/ventas/:idsucursal` | VentasScreen |
 | `/det_ventas/:idventa` | DetVentas |
-| `/det_venta/:idventa` | DetVenta (formulario de registro) |
+| `/det_venta/:idsucursal` | DetVenta (formulario de registro; telas filtradas por disponibilidad de la sucursal) |
 | `/dashboard` | DashboardScreen |
 
 ## Convenciones de estado
@@ -146,12 +167,14 @@ Ambas con `GRANT SELECT ... TO anon`. Si se cambia una columna que estas vistas 
 - Ruta: `/dashboard`
 - Muestra todos los productos ordenados por total vendido (DESC) en un rango de fechas
 - Rango default: primer día del mes actual → hoy; el selector usa `showDateRangePicker`
-- Usa las RPC `top_productos(desde, hasta)` y `resumen_ventas(desde, hasta)` porque el cliente de Supabase no permite `GROUP BY`/`SUM` directo. Ambas son `LANGUAGE sql STABLE` y comparan `fecha` como texto ISO8601.
+- Usa las RPC `top_productos(desde, hasta)`, `resumen_ventas(desde, hasta)` (telas) y `resumen_ventas_apliques(desde, hasta)` (apliques, migración 10) porque el cliente de Supabase no permite `GROUP BY`/`SUM` directo. Son `LANGUAGE sql STABLE` y comparan `fecha` como texto ISO8601. El dashboard muestra las tarjetas de resumen de telas y de apliques por separado.
 
 ## Supabase
 
 - Credenciales e init en `lib/config/supabase/supabase_config.dart`; `SupabaseConfig.client` es el cliente compartido por todos los datasources.
-- Las tablas tienen RLS habilitado con **políticas abiertas** (app de un solo usuario, sin login). Si se agrega Supabase Auth, restringir las políticas en `supabase/schema.sql`.
+- Las tablas tienen RLS habilitado con **políticas abiertas** (app de un solo usuario, sin login). Si se agrega Supabase Auth, restringir las políticas en `supabase/schema.sql`. **Toda tabla nueva necesita su política `acceso_total_*`** — sin política, PostgREST devuelve `[]` silenciosamente (pasó con `colores`, `inventario`, `apliques`, etc.; se corrigió en `supabase/rls_faltantes.sql`).
+- **Baja lógica en todo:** ningún proceso elimina filas físicamente; se setea `activo = false` (`telas`, `sucursales`, `colores`, `apliques`, `inventario`, `tela_colores`, `aplique_colores`, `tela_sucursales`). Los listados filtran `activo = true`.
+- **Colores por producto:** `tela_colores` (telas) y `aplique_colores` (apliques, migración `supabase/aplique_colores.sql`). Los selectores de color de Fabricación y de la disponibilidad por sucursal solo ofrecen los colores vinculados al aplique.
 
 ## Comandos
 
@@ -160,10 +183,11 @@ flutter pub get          # instalar dependencias
 flutter run              # correr en debug
 flutter build apk        # build Android APK
 flutter analyze          # lint check
+flutter test             # 149 tests unitarios/de widget (fakes en test/helpers/)
 flutter clean            # limpiar build
 ```
 
-No hay tests más allá del `test/` por defecto de Flutter.
+Los tests cubren mappers, cubits de formularios, blocs de listas y utilidades con **fakes en memoria** (`test/helpers/fake_repositories.dart`) — nunca tocan Supabase real. Los datasources `*_impl` y las pantallas con router no se testean (requieren `Supabase.initialize()`).
 
 ## Notas Windows / Android
 

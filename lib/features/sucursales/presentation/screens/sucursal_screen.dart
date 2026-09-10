@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:textiles_app/features/shared/shared.dart';
 import '../bloc/bloc.dart';
 
@@ -77,6 +78,14 @@ class SucursalScreen extends StatelessWidget {
                   ],
                 ],
               ),
+              if (sucursal.id != 0) ...[
+                const SizedBox(height: 15),
+                MaterialButtonWidget(
+                  onTap: () =>
+                      context.push('/sucursal-disponibilidad/${sucursal.id}'),
+                  texto: 'Disponibilidad de telas',
+                ),
+              ],
             ],
           ),
         );

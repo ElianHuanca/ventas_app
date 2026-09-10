@@ -80,7 +80,7 @@ class TelaFormCubit extends Cubit<TelaFormState> {
   Map<String, dynamic> _toMap() {
     return {
       'id': state.id,
-      'nombre': state.nombre,
+      'nombre': state.nombre.trim(),
       'precxmen': _tryParse(state.precxmen) ?? 0,
       'precxmay': _tryParse(state.precxmay) ?? 0,
       'precxrollo': _tryParse(state.precxrollo) ?? 0,
@@ -89,15 +89,17 @@ class TelaFormCubit extends Cubit<TelaFormState> {
   }
 
   bool _isFormInvalid() {
-    return state.nombre.isEmpty ||
-        state.precxmen.isEmpty ||
-        state.precxmay.isEmpty ||
-        state.precxrollo.isEmpty ||
-        state.precxcompra.isEmpty ||
-        _tryParse(state.precxmen) == null ||
-        _tryParse(state.precxmay) == null ||
-        _tryParse(state.precxrollo) == null ||
-        _tryParse(state.precxcompra) == null;
+    final valores = [
+      state.precxmen,
+      state.precxmay,
+      state.precxrollo,
+      state.precxcompra,
+    ];
+    if (state.nombre.trim().isEmpty || valores.any((v) => v.isEmpty)) {
+      return true;
+    }
+    final parseados = valores.map(_tryParse);
+    return parseados.any((v) => v == null || v < 0);
   }
 
   double? _tryParse(String value) => double.tryParse(value);

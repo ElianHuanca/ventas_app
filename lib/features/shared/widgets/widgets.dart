@@ -7,3 +7,5 @@ export 'show_snackbar.dart';
 export 'data_table_widget.dart';
 export 'my_text_form.dart';
 export 'dialogoDeAlerta.dart';
+export 'color_from_hex.dart';
+export 'producto_colores_list.dart';

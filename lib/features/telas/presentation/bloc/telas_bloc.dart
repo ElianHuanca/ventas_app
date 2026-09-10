@@ -37,7 +37,12 @@ class TelasDeleteRequested extends TelasEvent {
 class TelasBloc extends Bloc<TelasEvent, TelasState> {
   final TelasRepository telasRepository;
 
-  TelasBloc({required this.telasRepository}) : super(TelasState()) {
+  /// Si se indica una sucursal, se cargan solo las telas disponibles en ella
+  /// (ver getTelasPorSucursal; sin vínculos configurados = catálogo completo).
+  final int? idsucursal;
+
+  TelasBloc({required this.telasRepository, this.idsucursal})
+      : super(TelasState()) {
     on<TelasLoadRequested>(_onLoadRequested);
     on<TelasCreateRequested>(_onCreateRequested);
     on<TelasUpdateRequested>(_onUpdateRequested);
@@ -51,7 +56,9 @@ class TelasBloc extends Bloc<TelasEvent, TelasState> {
   ) async {
     emit(state.copyWith(isLoading: true));
     try {
-      final telas = await telasRepository.getTelas();
+      final telas = idsucursal == null
+          ? await telasRepository.getTelas()
+          : await telasRepository.getTelasPorSucursal(idsucursal!);
       emit(state.copyWith(telas: telas));
     } catch (_) {
     } finally {

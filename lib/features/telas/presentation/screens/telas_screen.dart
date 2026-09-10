@@ -17,7 +17,7 @@ class TelasScreen extends StatelessWidget {
             : Screen1(
                 backRoute: false,
                 widget: _buildBody(state.telas, context),
-                title: 'Productos',
+                title: 'Telas',
                 isGridview: false,
                 onTap: () async {
                   await context.push('/tela/0');

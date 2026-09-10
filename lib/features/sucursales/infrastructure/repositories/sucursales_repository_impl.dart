@@ -29,4 +29,14 @@ class SucursalesRepositoryImpl implements SucursalesRepository {
   Future<Sucursal> getSucursal(int id) {
     return datasource.getSucursal(id);
   }
+
+  @override
+  Future<List<TelaSucursal>> getTelasSucursal(int idsucursal) {
+    return datasource.getTelasSucursal(idsucursal);
+  }
+
+  @override
+  Future<void> setTelaSucursal(int idtela, int idsucursal, bool activo) {
+    return datasource.setTelaSucursal(idtela, idsucursal, activo);
+  }
 }
