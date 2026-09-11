@@ -9,14 +9,6 @@ class ApliqueScreen extends StatelessWidget {
   final int id;
   const ApliqueScreen({super.key, required this.id});
 
-  static const _tamanios = [
-    'Extra Chico',
-    'Pequeño',
-    'Chico',
-    'Mediano',
-    'Grande',
-  ];
-
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<ApliquesBloc, ApliquesState>(
@@ -74,24 +66,19 @@ class ApliqueScreen extends StatelessWidget {
               const SizedBox(height: 20),
               Row(
                 children: [
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5),
-                      child: DropdownButtonFormField<String>(
-                        initialValue: form.tamanio.isEmpty ? null : form.tamanio,
-                        decoration: InputDecoration(
-                          labelText: 'Tamaño',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        items: _tamanios
-                            .map((e) =>
-                                DropdownMenuItem(value: e, child: Text(e)))
-                            .toList(),
-                        onChanged: cubit.onTamanioChanged,
-                      ),
-                    ),
+                  MiTextField(
+                    label: 'Ancho (cm)',
+                    initialValue: form.anchoCm,
+                    keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true),
+                    onChanged: cubit.onAnchoChanged,
+                  ),
+                  MiTextField(
+                    label: 'Alto (cm)',
+                    initialValue: form.altoCm,
+                    keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true),
+                    onChanged: cubit.onAltoChanged,
                   ),
                 ],
               ),

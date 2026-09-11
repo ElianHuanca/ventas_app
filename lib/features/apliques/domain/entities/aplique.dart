@@ -3,6 +3,8 @@ class Aplique {
   final String nombre;
   final double costoFabricacion;
   final String tamanio;
+  final double? anchoCm;
+  final double? altoCm;
   final bool activo;
 
   Aplique({
@@ -10,6 +12,8 @@ class Aplique {
     required this.nombre,
     this.costoFabricacion = 0,
     this.tamanio = '',
+    this.anchoCm,
+    this.altoCm,
     this.activo = true,
   });
 

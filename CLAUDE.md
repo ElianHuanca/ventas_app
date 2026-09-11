@@ -95,7 +95,7 @@ Features: `sucursales`, `telas`, `ventas`, `apliques`, `colores`, `dashboard`, `
 | `tela_colores` | idtela, idcolor, activo (PK compuesta) |
 | `tela_fotos` | id, idtela, url, activo |
 | `tela_sucursales` | idtela, idsucursal, activo (PK compuesta) — disponibilidad de telas por sucursal (migración `supabase/tela_sucursales.sql`) |
-| `apliques` | id, nombre, costo_fabricacion, tamanio, categoria_id, activo |
+| `apliques` | id, nombre, costo_fabricacion, ancho_cm, alto_cm, categoria_id, activo (tamanio quedó sin uso: ya va en el nombre) |
 | `inventario` | sucursal_id, aplique_id, color_id, stock (PK compuesta) — disponibilidad y stock de apliques |
 | `producciones` | id, fecha, sucursal_id, aplique_id, color_id, cantidad — entradas de stock por fabricación |
 | `detalle_ventas_apliques` | id, idventa, idapliques, idcolor, nombre, precio, cantidad, total, ganancias |
@@ -146,7 +146,7 @@ Ambas con `GRANT SELECT ... TO anon`. Si se cambia una columna que estas vistas 
 | `/telas` | TelasScreen |
 | `/tela/:idtela` | TelaScreen |
 | `/apliques` | ApliquesScreen (gestión de apliques) |
-| `/aplique/:idaplique` | ApliqueScreen (form: nombre, tamaño, costo fabricación, activo + colores vinculados) |
+| `/aplique/:idaplique` | ApliqueScreen (form: nombre, dimensiones cm, costo fabricación, activo + colores vinculados) |
 | `/colores` | ColoresScreen (gestión de colores) |
 | `/color/:idcolor` | ColorScreen (form: nombre + hex con preview; baja lógica) |
 | `/ventas/:idsucursal` | VentasScreen |

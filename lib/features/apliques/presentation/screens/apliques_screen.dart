@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:textiles_app/features/shared/shared.dart';
+import '../../domain/domain.dart';
 import '../bloc/bloc.dart';
 
 class ApliquesScreen extends StatelessWidget {
@@ -42,8 +43,7 @@ class ApliquesScreen extends StatelessWidget {
         .map((aplique) => ListTile(
               title: Text(aplique.nombre),
               subtitle: Text(
-                '${aplique.tamanio.isEmpty ? 'Sin tamaño' : aplique.tamanio}'
-                ' · Costo fabricación: ${aplique.costoFabricacion} Bs',
+                '${_dimensiones(aplique)} · Costo fabricación: ${aplique.costoFabricacion} Bs',
               ),
               trailing: aplique.activo
                   ? null
@@ -56,5 +56,14 @@ class ApliquesScreen extends StatelessWidget {
               },
             ))
         .toList();
+  }
+
+  String _dimensiones(Aplique aplique) {
+    if (aplique.anchoCm == null && aplique.altoCm == null) {
+      return 'Sin dimensiones';
+    }
+    final ancho = aplique.anchoCm?.toString() ?? '?';
+    final alto = aplique.altoCm?.toString() ?? '?';
+    return '$ancho × $alto cm';
   }
 }

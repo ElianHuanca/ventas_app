@@ -24,24 +24,32 @@ void main() {
       );
 
   group('estado inicial', () {
-    test('aplique nuevo: costo 0 se muestra como vacío', () {
+    test('aplique nuevo: costo 0 y medidas se muestran vacíos', () {
       final cubit = crearCubit();
       addTearDown(cubit.close);
 
       expect(cubit.state.id, 0);
       expect(cubit.state.nombre, '');
+      expect(cubit.state.anchoCm, '');
+      expect(cubit.state.altoCm, '');
       expect(cubit.state.costoFabricacion, '');
       expect(cubit.state.activo, true);
     });
 
     test('aplique existente precarga los campos', () {
-      final cubit = crearCubit(
-          Aplique(id: 3, nombre: 'Flor', costoFabricacion: 15, tamanio: 'M', activo: false));
+      final cubit = crearCubit(Aplique(
+          id: 3,
+          nombre: 'Flor',
+          costoFabricacion: 15,
+          anchoCm: 4,
+          altoCm: 5.5,
+          activo: false));
       addTearDown(cubit.close);
 
       expect(cubit.state.id, 3);
       expect(cubit.state.nombre, 'Flor');
-      expect(cubit.state.tamanio, 'M');
+      expect(cubit.state.anchoCm, '4.0');
+      expect(cubit.state.altoCm, '5.5');
       expect(cubit.state.costoFabricacion, '15.0');
       expect(cubit.state.activo, false);
     });
@@ -74,10 +82,25 @@ void main() {
       expect(await cubit.onSubmit(isUpdate: false), false);
       expect(mapRecibido, isNull);
     });
+
+    test('medida no numérica o negativa devuelve false', () async {
+      final cubit = crearCubit();
+      addTearDown(cubit.close);
+      cubit.onNombreChanged('Flor');
+      cubit.onCostoChanged('10');
+
+      cubit.onAnchoChanged('abc');
+      expect(await cubit.onSubmit(isUpdate: false), false);
+
+      cubit.onAnchoChanged('4');
+      cubit.onAltoChanged('-2');
+      expect(await cubit.onSubmit(isUpdate: false), false);
+      expect(mapRecibido, isNull);
+    });
   });
 
   group('onSubmit map generado', () {
-    test('create envía nombre trim, tamanio null si vacío, costo numérico y activo',
+    test('create envía nombre trim, medidas null si vacías, costo numérico y activo',
         () async {
       final cubit = crearCubit();
       addTearDown(cubit.close);
@@ -90,26 +113,30 @@ void main() {
       expect(mapRecibido, {
         'id': 0,
         'nombre': 'Flor',
-        'tamanio': null,
+        'ancho_cm': null,
+        'alto_cm': null,
         'costo_fabricacion': 12.5,
         'activo': true,
       });
     });
 
-    test('tamanio con valor se envía y update usa el callback de update',
+    test('medidas con valor se envían y update usa el callback de update',
         () async {
       final cubit =
           crearCubit(Aplique(id: 7, nombre: 'Luna', costoFabricacion: 3));
       addTearDown(cubit.close);
-      cubit.onTamanioChanged('Grande');
+      cubit.onAnchoChanged('4');
+      cubit.onAltoChanged('5.5');
       cubit.onActivoChanged(false);
 
       final ok = await cubit.onSubmit(isUpdate: true);
 
       expect(ok, true);
       expect(mapRecibido!['id'], 7);
-      expect(mapRecibido!['tamanio'], 'Grande');
+      expect(mapRecibido!['ancho_cm'], 4.0);
+      expect(mapRecibido!['alto_cm'], 5.5);
       expect(mapRecibido!['activo'], false);
+      expect(mapRecibido!.containsKey('tamanio'), false);
     });
 
     test('callback que lanza devuelve false', () async {
