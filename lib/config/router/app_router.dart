@@ -98,6 +98,20 @@ GoRouter createAppRouter() {
         },
       ),
       GoRoute(
+        path: '/aplique-colores/:idaplique',
+        builder: (context, state) {
+          final id = _pathParamInt(state, 'idaplique');
+          return BlocProvider(
+            create: (_) => ApliqueColoresCubit(
+              apliquesRepository:
+                  ApliquesRepositoryImpl(ApliquesDatasourceImpl()),
+              idaplique: id,
+            ),
+            child: ApliqueColoresScreen(idaplique: id),
+          );
+        },
+      ),
+      GoRoute(
         path: '/colores',
         builder: (context, state) => BlocProvider(
           create: (_) => ColoresBloc(

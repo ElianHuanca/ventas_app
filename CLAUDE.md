@@ -146,7 +146,8 @@ Ambas con `GRANT SELECT ... TO anon`. Si se cambia una columna que estas vistas 
 | `/telas` | TelasScreen |
 | `/tela/:idtela` | TelaScreen |
 | `/apliques` | ApliquesScreen (gestión de apliques) |
-| `/aplique/:idaplique` | ApliqueScreen (form: nombre, dimensiones cm, costo fabricación, activo + colores vinculados) |
+| `/aplique/:idaplique` | ApliqueScreen (form: nombre, dimensiones cm, costo fabricación, activo) |
+| `/aplique-colores/:idaplique` | ApliqueColoresScreen (colores vinculados del aplique) |
 | `/colores` | ColoresScreen (gestión de colores) |
 | `/color/:idcolor` | ColorScreen (form: nombre + hex con preview; baja lógica) |
 | `/ventas/:idsucursal` | VentasScreen |

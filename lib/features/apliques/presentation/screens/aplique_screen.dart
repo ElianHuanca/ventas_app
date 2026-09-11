@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:textiles_app/features/shared/shared.dart';
 import '../../domain/domain.dart';
-import '../../infrastructure/infrastructure.dart';
 import '../bloc/bloc.dart';
 
 class ApliqueScreen extends StatelessWidget {
@@ -26,18 +25,7 @@ class ApliqueScreen extends StatelessWidget {
           ),
           child: Screen1(
             backRoute: true,
-            widget: [
-              _form(context),
-              if (aplique.id != 0)
-                BlocProvider(
-                  create: (_) => ApliqueColoresCubit(
-                    apliquesRepository:
-                        ApliquesRepositoryImpl(ApliquesDatasourceImpl()),
-                    idaplique: aplique.id,
-                  ),
-                  child: _coloresSection(context),
-                ),
-            ],
+            widget: [_form(context)],
             title: aplique.id == 0 ? 'Crear Aplique' : 'Editar Aplique',
             isGridview: false,
           ),
@@ -112,18 +100,6 @@ class ApliqueScreen extends StatelessWidget {
               ),
             ],
           ),
-        );
-      },
-    );
-  }
-
-  Widget _coloresSection(BuildContext context) {
-    return BlocBuilder<ApliqueColoresCubit, ApliqueColoresState>(
-      builder: (context, state) {
-        return ProductoColoresList(
-          isLoading: state.isLoading,
-          colores: state.colores,
-          onToggle: context.read<ApliqueColoresCubit>().toggleColor,
         );
       },
     );

@@ -94,57 +94,80 @@ class _ApliquesScreenState extends State<ApliquesScreen> {
           ),
         ],
       ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(10),
-        onTap: () async {
-          await context.push('/aplique/${aplique.id}');
-          if (context.mounted) {
-            context.read<ApliquesBloc>().add(ApliquesLoadRequested());
-          }
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Icon(
-                Icons.auto_awesome_rounded,
-                color: aplique.activo
-                    ? Theme.of(context).primaryColor
-                    : Colors.black26,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      nombre,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color:
-                            aplique.activo ? Colors.black87 : Colors.black38,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
-                      children: [
-                        _chip(_dimensiones(aplique), Icons.straighten),
-                        _chip('${aplique.costoFabricacion} Bs',
-                            Icons.precision_manufacturing_rounded),
-                        if (presentacion != null)
-                          _chip(presentacion, Icons.inventory_2_outlined),
-                        if (!aplique.activo)
-                          _chip('Inactivo', Icons.visibility_off),
-                      ],
-                    ),
-                  ],
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.auto_awesome_rounded,
+                  color: aplique.activo
+                      ? Theme.of(context).primaryColor
+                      : Colors.black26,
                 ),
-              ),
-              const Icon(Icons.chevron_right, color: Colors.black26),
-            ],
-          ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        nombre,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color:
+                              aplique.activo ? Colors.black87 : Colors.black38,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          _chip(_dimensiones(aplique), Icons.straighten),
+                          _chip('${aplique.costoFabricacion} Bs',
+                              Icons.precision_manufacturing_rounded),
+                          if (presentacion != null)
+                            _chip(presentacion, Icons.inventory_2_outlined),
+                          if (!aplique.activo)
+                            _chip('Inactivo', Icons.visibility_off),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () =>
+                        context.push('/aplique-colores/${aplique.id}'),
+                    icon: const Icon(Icons.palette_outlined, size: 16),
+                    label: const Text('Colores'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () async {
+                      await context.push('/aplique/${aplique.id}');
+                      if (context.mounted) {
+                        context
+                            .read<ApliquesBloc>()
+                            .add(ApliquesLoadRequested());
+                      }
+                    },
+                    icon: const Icon(Icons.edit_outlined, size: 16),
+                    label: const Text('Modificar'),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
