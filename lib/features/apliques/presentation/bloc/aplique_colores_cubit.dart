@@ -39,10 +39,11 @@ class ApliqueColoresCubit extends Cubit<ApliqueColoresState> {
       final colores = await apliquesRepository.getColoresAplique(idaplique);
       // Primero los vinculados al aplique, luego el resto; ambos en
       // orden alfabético sin distinguir mayúsculas.
-      colores.sort((a, b) {
-        if (a.vinculado != b.vinculado) return a.vinculado ? -1 : 1;
-        return a.nombre.toLowerCase().compareTo(b.nombre.toLowerCase());
-      });
+      final ordenados = List<ColorItem>.from(colores)
+        ..sort((a, b) {
+          if (a.vinculado != b.vinculado) return a.vinculado ? -1 : 1;
+          return a.nombre.toLowerCase().compareTo(b.nombre.toLowerCase());
+        });
       final apliques =
           await apliquesRepository.getApliques(soloActivos: false);
       final nombre = apliques
@@ -50,7 +51,7 @@ class ApliqueColoresCubit extends Cubit<ApliqueColoresState> {
               .map((a) => a.nombre)
               .firstOrNull ??
           '';
-      emit(state.copyWith(colores: colores, nombreAplique: nombre));
+      emit(state.copyWith(colores: ordenados, nombreAplique: nombre));
     } catch (_) {
     } finally {
       emit(state.copyWith(isLoading: false));

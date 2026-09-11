@@ -101,7 +101,7 @@ void main() {
     });
 
     test('load ordena: primero vinculados, ambos grupos alfabéticos', () async {
-      repo.colores = [
+      repo.colores = const [
         ColorItem(id: 1, nombre: 'Verde', vinculado: false),
         ColorItem(id: 2, nombre: 'azul', vinculado: true),
         ColorItem(id: 3, nombre: 'Blanco', vinculado: true),
