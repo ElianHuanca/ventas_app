@@ -4,13 +4,23 @@ import '../../domain/domain.dart';
 class ApliqueColoresState {
   final bool isLoading;
   final List<ColorItem> colores;
+  final String nombreAplique;
 
-  ApliqueColoresState({this.isLoading = false, this.colores = const []});
+  ApliqueColoresState({
+    this.isLoading = false,
+    this.colores = const [],
+    this.nombreAplique = '',
+  });
 
-  ApliqueColoresState copyWith({bool? isLoading, List<ColorItem>? colores}) =>
+  ApliqueColoresState copyWith({
+    bool? isLoading,
+    List<ColorItem>? colores,
+    String? nombreAplique,
+  }) =>
       ApliqueColoresState(
         isLoading: isLoading ?? this.isLoading,
         colores: colores ?? this.colores,
+        nombreAplique: nombreAplique ?? this.nombreAplique,
       );
 }
 
@@ -27,7 +37,14 @@ class ApliqueColoresCubit extends Cubit<ApliqueColoresState> {
     emit(state.copyWith(isLoading: true));
     try {
       final colores = await apliquesRepository.getColoresAplique(idaplique);
-      emit(state.copyWith(colores: colores));
+      final apliques =
+          await apliquesRepository.getApliques(soloActivos: false);
+      final nombre = apliques
+              .where((a) => a.id == idaplique)
+              .map((a) => a.nombre)
+              .firstOrNull ??
+          '';
+      emit(state.copyWith(colores: colores, nombreAplique: nombre));
     } catch (_) {
     } finally {
       emit(state.copyWith(isLoading: false));

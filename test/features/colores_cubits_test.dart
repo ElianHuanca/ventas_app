@@ -72,7 +72,10 @@ void main() {
     late FakeApliquesRepository repo;
 
     setUp(() {
-      repo = FakeApliquesRepository(colores: colores);
+      repo = FakeApliquesRepository(
+        colores: colores,
+        apliques: [Aplique(id: 3, nombre: 'Flor Petalo Suizo - Bolsa x100 und')],
+      );
     });
 
     Future<ApliqueColoresCubit> crearCubit() async {
@@ -88,6 +91,13 @@ void main() {
 
       expect(cubit.state.isLoading, false);
       expect(cubit.state.colores, colores);
+    });
+
+    test('load resuelve el nombre del aplique (incluidos inactivos)', () async {
+      final cubit = await crearCubit();
+      addTearDown(cubit.close);
+
+      expect(cubit.state.nombreAplique, 'Flor Petalo Suizo - Bolsa x100 und');
     });
 
     test('toggleColor actualiza vinculado solo de ese color', () async {

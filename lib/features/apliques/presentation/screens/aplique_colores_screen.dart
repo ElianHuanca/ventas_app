@@ -11,9 +11,14 @@ class ApliqueColoresScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<ApliqueColoresCubit, ApliqueColoresState>(
       builder: (context, state) {
+        // El nombre viene como "Flor Petalo Suizo Grande - Bolsa x100 und":
+        // el título muestra solo la parte anterior al guion.
+        final titulo = state.nombreAplique.isEmpty
+            ? 'Colores del aplique'
+            : state.nombreAplique.split(' - ').first;
         return Screen1(
           backRoute: true,
-          title: 'Colores del aplique',
+          title: titulo,
           isGridview: false,
           widget: [
             ProductoColoresList(
