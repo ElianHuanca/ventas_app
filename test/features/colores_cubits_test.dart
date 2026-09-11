@@ -100,6 +100,20 @@ void main() {
       expect(cubit.state.nombreAplique, 'Flor Petalo Suizo - Bolsa x100 und');
     });
 
+    test('load ordena: primero vinculados, ambos grupos alfabéticos', () async {
+      repo.colores = [
+        ColorItem(id: 1, nombre: 'Verde', vinculado: false),
+        ColorItem(id: 2, nombre: 'azul', vinculado: true),
+        ColorItem(id: 3, nombre: 'Blanco', vinculado: true),
+        ColorItem(id: 4, nombre: 'Amarillo', vinculado: false),
+      ];
+      final cubit = await crearCubit();
+      addTearDown(cubit.close);
+
+      expect(cubit.state.colores.map((e) => e.nombre),
+          ['azul', 'Blanco', 'Amarillo', 'Verde']);
+    });
+
     test('toggleColor actualiza vinculado solo de ese color', () async {
       final cubit = await crearCubit();
       addTearDown(cubit.close);
