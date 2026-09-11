@@ -11,7 +11,10 @@ class ColoresDatasourceImpl implements ColoresDatasource {
     var query = _db.from(_table).select();
     if (soloActivos) query = query.eq('activo', true);
     final list = await query.order('nombre');
-    return list.map<ColorItem>(_toEntity).toList();
+    // Postgres ordena distinguiendo mayúsculas; se reordena sin distinguir
+    final colores = list.map<ColorItem>(_toEntity).toList()
+      ..sort((a, b) => a.nombre.toLowerCase().compareTo(b.nombre.toLowerCase()));
+    return colores;
   }
 
   @override

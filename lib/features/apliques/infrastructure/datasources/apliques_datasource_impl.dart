@@ -15,7 +15,13 @@ class ApliquesDatasourceImpl implements ApliquesDatasource {
     var query = _db.from(_table).select();
     if (soloActivos) query = query.eq('activo', true);
     final list = await query.order('nombre');
-    return list.map<Aplique>((e) => ApliqueMapper.jsonToEntity(e)).toList();
+    final apliques =
+        list.map<Aplique>((e) => ApliqueMapper.jsonToEntity(e)).toList();
+    // Postgres ordena distinguiendo mayúsculas; se reordena sin distinguir
+    // (equiv. COLLATE NOCASE, igual que telas)
+    apliques.sort((a, b) =>
+        a.nombre.toLowerCase().compareTo(b.nombre.toLowerCase()));
+    return apliques;
   }
 
   @override
