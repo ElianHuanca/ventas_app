@@ -24,7 +24,6 @@ class ProductoColoresList extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 20),
-          const Divider(thickness: 1),
           Text('Colores', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 5),
           if (isLoading)
