@@ -5,13 +5,23 @@ import '../../domain/domain.dart';
 class TelaColoresState {
   final bool isLoading;
   final List<ColorItem> colores;
+  final String nombreTela;
 
-  TelaColoresState({this.isLoading = false, this.colores = const []});
+  TelaColoresState({
+    this.isLoading = false,
+    this.colores = const [],
+    this.nombreTela = '',
+  });
 
-  TelaColoresState copyWith({bool? isLoading, List<ColorItem>? colores}) =>
+  TelaColoresState copyWith({
+    bool? isLoading,
+    List<ColorItem>? colores,
+    String? nombreTela,
+  }) =>
       TelaColoresState(
         isLoading: isLoading ?? this.isLoading,
         colores: colores ?? this.colores,
+        nombreTela: nombreTela ?? this.nombreTela,
       );
 }
 
@@ -28,7 +38,8 @@ class TelaColoresCubit extends Cubit<TelaColoresState> {
     emit(state.copyWith(isLoading: true));
     try {
       final colores = await telasRepository.getColoresTela(idtela);
-      emit(state.copyWith(colores: colores));
+      final tela = await telasRepository.getTela(idtela);
+      emit(state.copyWith(colores: colores, nombreTela: tela.nombre));
     } catch (_) {
     } finally {
       emit(state.copyWith(isLoading: false));

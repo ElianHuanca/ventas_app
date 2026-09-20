@@ -8,6 +8,7 @@ class TelaFormState {
   final String precxmay;
   final String precxrollo;
   final String precxcompra;
+  final bool activo;
 
   TelaFormState({
     this.id = 0,
@@ -16,6 +17,7 @@ class TelaFormState {
     this.precxmay = '',
     this.precxrollo = '',
     this.precxcompra = '',
+    this.activo = true,
   });
 
   TelaFormState copyWith({
@@ -25,6 +27,7 @@ class TelaFormState {
     String? precxmay,
     String? precxrollo,
     String? precxcompra,
+    bool? activo,
   }) =>
       TelaFormState(
         id: id ?? this.id,
@@ -33,18 +36,17 @@ class TelaFormState {
         precxmay: precxmay ?? this.precxmay,
         precxrollo: precxrollo ?? this.precxrollo,
         precxcompra: precxcompra ?? this.precxcompra,
+        activo: activo ?? this.activo,
       );
 }
 
 class TelaFormCubit extends Cubit<TelaFormState> {
   final Future<bool> Function(Map<String, dynamic>) onCreateCallback;
   final Future<bool> Function(Map<String, dynamic>) onUpdateCallback;
-  final Future<bool> Function(int) onDeleteCallback;
 
   TelaFormCubit({
     required this.onCreateCallback,
     required this.onUpdateCallback,
-    required this.onDeleteCallback,
     required Tela tela,
   }) : super(TelaFormState(
           id: tela.id,
@@ -55,6 +57,7 @@ class TelaFormCubit extends Cubit<TelaFormState> {
               tela.precxrollo != 0 ? (tela.precxrollo?.toString() ?? '') : '',
           precxcompra:
               tela.precxcompra != 0 ? (tela.precxcompra?.toString() ?? '') : '',
+          activo: tela.activo,
         ));
 
   Future<bool> onSubmit({required bool isUpdate}) async {
@@ -69,14 +72,6 @@ class TelaFormCubit extends Cubit<TelaFormState> {
     }
   }
 
-  Future<bool> onDeleteSubmit() async {
-    try {
-      return await onDeleteCallback(state.id);
-    } catch (_) {
-      return false;
-    }
-  }
-
   Map<String, dynamic> _toMap() {
     return {
       'id': state.id,
@@ -85,6 +80,7 @@ class TelaFormCubit extends Cubit<TelaFormState> {
       'precxmay': _tryParse(state.precxmay) ?? 0,
       'precxrollo': _tryParse(state.precxrollo) ?? 0,
       'precxcompra': _tryParse(state.precxcompra) ?? 0,
+      'activo': state.activo,
     };
   }
 
@@ -109,6 +105,7 @@ class TelaFormCubit extends Cubit<TelaFormState> {
   void onPrecxmayChanged(String value) => _updateState(precxmay: value);
   void onPrecxrolloChanged(String value) => _updateState(precxrollo: value);
   void onPrecxcompraChanged(String value) => _updateState(precxcompra: value);
+  void onActivoChanged(bool value) => emit(state.copyWith(activo: value));
 
   void _updateState({
     String? nombre,

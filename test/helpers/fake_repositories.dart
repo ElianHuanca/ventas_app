@@ -149,6 +149,7 @@ class FakeApliquesRepository implements ApliquesRepository {
 
   bool? lastSoloActivos;
   int getStockCalls = 0;
+  int? lastGetStockSucursalId;
   int? lastGetColoresApliqueId;
   final List<List<dynamic>> setColorApliqueCalls = [];
   final List<Map<String, dynamic>> produccionesCreadas = [];
@@ -172,6 +173,7 @@ class FakeApliquesRepository implements ApliquesRepository {
   Future<List<StockAplique>> getStock(int sucursalId) async {
     _throwIfError();
     getStockCalls++;
+    lastGetStockSucursalId = sucursalId;
     return stock;
   }
 
@@ -265,8 +267,8 @@ class FakeTelasRepository implements TelasRepository {
   bool getTelasUsado = false;
   bool getTelasPorSucursalUsado = false;
   int? lastIdsucursal;
+  bool? lastSoloActivos;
   final List<List<dynamic>> setColorTelaCalls = [];
-  bool deleteResult = true;
   Object? error;
 
   void _throwIfError() {
@@ -274,9 +276,10 @@ class FakeTelasRepository implements TelasRepository {
   }
 
   @override
-  Future<List<Tela>> getTelas() async {
+  Future<List<Tela>> getTelas({bool soloActivos = true}) async {
     _throwIfError();
     getTelasUsado = true;
+    lastSoloActivos = soloActivos;
     return telas;
   }
 
@@ -302,12 +305,6 @@ class FakeTelasRepository implements TelasRepository {
   Future<Tela> updateTela(Map<String, dynamic> telaLike, int id) async {
     _throwIfError();
     return Tela(id: id, nombre: telaLike['nombre'] ?? '');
-  }
-
-  @override
-  Future<bool> deleteTela(int id) async {
-    _throwIfError();
-    return deleteResult;
   }
 
   @override

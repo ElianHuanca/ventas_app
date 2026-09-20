@@ -75,6 +75,16 @@ GoRouter createAppRouter() {
         ),
       ),
       GoRoute(
+        path: '/fabricacion/historial',
+        builder: (context, state) => BlocProvider(
+          create: (_) => ProduccionesHistorialCubit(
+            apliquesRepository:
+                ApliquesRepositoryImpl(ApliquesDatasourceImpl()),
+          ),
+          child: const ProduccionesHistorialScreen(),
+        ),
+      ),
+      GoRoute(
         path: '/apliques',
         builder: (context, state) => BlocProvider(
           create: (_) => ApliquesBloc(
@@ -209,6 +219,19 @@ GoRouter createAppRouter() {
               ),
             ],
             child: TelaScreen(id: id),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/tela-colores/:idtela',
+        builder: (context, state) {
+          final id = _pathParamInt(state, 'idtela');
+          return BlocProvider(
+            create: (_) => TelaColoresCubit(
+              telasRepository: TelasRepositoryImpl(TelasDatasourceImpl()),
+              idtela: id,
+            ),
+            child: TelaColoresScreen(idtela: id),
           );
         },
       ),

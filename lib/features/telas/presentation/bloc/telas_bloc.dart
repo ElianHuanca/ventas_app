@@ -29,11 +29,6 @@ class TelasUpdateRequested extends TelasEvent {
   TelasUpdateRequested(this.tela);
 }
 
-class TelasDeleteRequested extends TelasEvent {
-  final int id;
-  TelasDeleteRequested(this.id);
-}
-
 class TelasBloc extends Bloc<TelasEvent, TelasState> {
   final TelasRepository telasRepository;
 
@@ -46,7 +41,6 @@ class TelasBloc extends Bloc<TelasEvent, TelasState> {
     on<TelasLoadRequested>(_onLoadRequested);
     on<TelasCreateRequested>(_onCreateRequested);
     on<TelasUpdateRequested>(_onUpdateRequested);
-    on<TelasDeleteRequested>(_onDeleteRequested);
     add(TelasLoadRequested());
   }
 
@@ -57,7 +51,7 @@ class TelasBloc extends Bloc<TelasEvent, TelasState> {
     emit(state.copyWith(isLoading: true));
     try {
       final telas = idsucursal == null
-          ? await telasRepository.getTelas()
+          ? await telasRepository.getTelas(soloActivos: false)
           : await telasRepository.getTelasPorSucursal(idsucursal!);
       emit(state.copyWith(telas: telas));
     } catch (_) {
@@ -83,14 +77,6 @@ class TelasBloc extends Bloc<TelasEvent, TelasState> {
             .toList()));
   }
 
-  Future<void> _onDeleteRequested(
-    TelasDeleteRequested event,
-    Emitter<TelasState> emit,
-  ) async {
-    emit(state.copyWith(
-        telas: state.telas.where((e) => e.id != event.id).toList()));
-  }
-
   Future<bool> createTela(Map<String, dynamic> telaLike) async {
     try {
       final tela = await telasRepository.createTela(telaLike);
@@ -112,14 +98,4 @@ class TelasBloc extends Bloc<TelasEvent, TelasState> {
     }
   }
 
-  Future<bool> deleteTela(int id) async {
-    try {
-      final ok = await telasRepository.deleteTela(id);
-      if (!ok) return false;
-      add(TelasDeleteRequested(id));
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
 }

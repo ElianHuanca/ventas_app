@@ -8,8 +8,10 @@ class TelasDatasourceImpl implements TelasDatasource {
   static const _table = 'telas';
 
   @override
-  Future<List<Tela>> getTelas() async {
-    final list = await _db.from(_table).select().eq('activo', true);
+  Future<List<Tela>> getTelas({bool soloActivos = true}) async {
+    var query = _db.from(_table).select();
+    if (soloActivos) query = query.eq('activo', true);
+    final list = await query;
     final telas = list.map<Tela>((e) => TelaMapper.jsonToEntity(e)).toList();
     // ordenado por nombre ascendente, sin distinguir mayúsculas (equiv. COLLATE NOCASE)
     telas.sort((a, b) =>
@@ -62,14 +64,6 @@ class TelasDatasourceImpl implements TelasDatasource {
     final row =
         await _db.from(_table).update(data).eq('id', id).select().single();
     return TelaMapper.jsonToEntity(row);
-  }
-
-  // Baja lógica: nunca se borra físicamente, solo activo = false.
-  @override
-  Future<bool> deleteTela(int id) async {
-    final rows =
-        await _db.from(_table).update({'activo': false}).eq('id', id).select('id');
-    return rows.isNotEmpty;
   }
 
   @override

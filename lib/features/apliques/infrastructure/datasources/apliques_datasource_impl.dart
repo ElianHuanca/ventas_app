@@ -9,6 +9,7 @@ class ApliquesDatasourceImpl implements ApliquesDatasource {
   static const _tableColores = 'colores';
   static const _tableApliqueColores = 'aplique_colores';
   static const _tableProducciones = 'producciones';
+  static const _tableDetalleProduccion = 'detalle_produccion';
 
   @override
   Future<List<Aplique>> getApliques({bool soloActivos = true}) async {
@@ -153,7 +154,13 @@ class ApliquesDatasourceImpl implements ApliquesDatasource {
   }
 
   // Sin transacción multi-tabla vía supabase-dart: se hace secuencial,
-  // igual que el flujo de ventas. Orden: producción → stock.
+  // igual que el flujo de ventas. Orden: cabecera → detalle → stock.
+  //
+  // producciones es la cabecera (una por sucursal+día, igual que
+  // getVentaByFecha) y detalle_produccion las líneas aplique+color+cantidad,
+  // con upsert por (idproduccion, idaplique, idcolor) igual que
+  // detalle_ventas: si ya se fabricó ese aplique+color hoy, se suma la
+  // cantidad en vez de crear una línea duplicada.
   @override
   Future<void> createProduccion({
     required int sucursalId,
@@ -161,12 +168,30 @@ class ApliquesDatasourceImpl implements ApliquesDatasource {
     required int colorId,
     required double cantidad,
   }) async {
-    await _db.from(_tableProducciones).insert({
-      'sucursal_id': sucursalId,
-      'aplique_id': apliqueId,
-      'color_id': colorId,
-      'cantidad': cantidad,
-    });
+    final idproduccion = await _getOrCreateProduccionDeHoy(sucursalId);
+
+    final lineaExistente = await _db
+        .from(_tableDetalleProduccion)
+        .select('id, cantidad')
+        .eq('idproduccion', idproduccion)
+        .eq('idaplique', apliqueId)
+        .eq('idcolor', colorId)
+        .maybeSingle();
+
+    if (lineaExistente == null) {
+      await _db.from(_tableDetalleProduccion).insert({
+        'idproduccion': idproduccion,
+        'idaplique': apliqueId,
+        'idcolor': colorId,
+        'cantidad': cantidad,
+      });
+    } else {
+      final cantidadActual = (lineaExistente['cantidad'] as num).toDouble();
+      await _db
+          .from(_tableDetalleProduccion)
+          .update({'cantidad': cantidadActual + cantidad})
+          .eq('id', lineaExistente['id']);
+    }
 
     final stockRow = await _db
         .from(_tableInventario)
@@ -196,14 +221,37 @@ class ApliquesDatasourceImpl implements ApliquesDatasource {
   @override
   Future<List<Produccion>> getProducciones({int limit = 20}) async {
     final list = await _db
-        .from(_tableProducciones)
+        .from(_tableDetalleProduccion)
         .select(
-            'id, fecha, cantidad, sucursales(nombre), apliques(nombre), colores(nombre, hex)')
-        .order('fecha', ascending: false)
+            'id, cantidad, apliques(nombre), colores(nombre, hex), producciones(fecha, sucursales(nombre))')
         .order('id', ascending: false)
         .limit(limit);
     return list
         .map<Produccion>((e) => ProduccionMapper.jsonToEntity(e))
         .toList();
+  }
+
+  /// Cabecera de producción del día para esa sucursal (una por sucursal+día,
+  /// igual que getVentaByFecha): la reutiliza si ya existe, si no la crea.
+  Future<int> _getOrCreateProduccionDeHoy(int sucursalId) async {
+    final hoy = DateTime.now();
+    final fechaHoy = '${hoy.year.toString().padLeft(4, '0')}-'
+        '${hoy.month.toString().padLeft(2, '0')}-'
+        '${hoy.day.toString().padLeft(2, '0')}';
+
+    final existente = await _db
+        .from(_tableProducciones)
+        .select('id')
+        .eq('sucursal_id', sucursalId)
+        .eq('fecha', fechaHoy)
+        .maybeSingle();
+    if (existente != null) return existente['id'] as int;
+
+    final row = await _db
+        .from(_tableProducciones)
+        .insert({'sucursal_id': sucursalId})
+        .select('id')
+        .single();
+    return row['id'] as int;
   }
 }

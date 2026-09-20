@@ -5,8 +5,8 @@ class ProduccionFormState {
   final bool isLoading;
   final bool isSubmitting;
   final List<Aplique> apliques;
+  final List<StockAplique> stock;
   final List<ColorItem> colores;
-  final List<Produccion> producciones;
   final int idsucursal;
   final int idapliques;
   final int idcolor;
@@ -16,20 +16,29 @@ class ProduccionFormState {
     this.isLoading = false,
     this.isSubmitting = false,
     this.apliques = const [],
+    this.stock = const [],
     this.colores = const [],
-    this.producciones = const [],
     this.idsucursal = 0,
     this.idapliques = 0,
     this.idcolor = 0,
     this.cantidad = '',
   });
 
+  /// Stock actual del aplique+color seleccionados en la sucursal elegida.
+  /// Sirve de guía al ingresar la cantidad a fabricar.
+  double get stockActual {
+    for (final e in stock) {
+      if (e.apliqueId == idapliques && e.colorId == idcolor) return e.stock;
+    }
+    return 0;
+  }
+
   ProduccionFormState copyWith({
     bool? isLoading,
     bool? isSubmitting,
     List<Aplique>? apliques,
+    List<StockAplique>? stock,
     List<ColorItem>? colores,
-    List<Produccion>? producciones,
     int? idsucursal,
     int? idapliques,
     int? idcolor,
@@ -39,8 +48,8 @@ class ProduccionFormState {
         isLoading: isLoading ?? this.isLoading,
         isSubmitting: isSubmitting ?? this.isSubmitting,
         apliques: apliques ?? this.apliques,
+        stock: stock ?? this.stock,
         colores: colores ?? this.colores,
-        producciones: producciones ?? this.producciones,
         idsucursal: idsucursal ?? this.idsucursal,
         idapliques: idapliques ?? this.idapliques,
         idcolor: idcolor ?? this.idcolor,
@@ -60,19 +69,27 @@ class ProduccionFormCubit extends Cubit<ProduccionFormState> {
     emit(state.copyWith(isLoading: true));
     try {
       final apliques = await apliquesRepository.getApliques();
-      final producciones = await apliquesRepository.getProducciones();
-      emit(state.copyWith(
-        apliques: apliques,
-        producciones: producciones,
-      ));
+      emit(state.copyWith(apliques: apliques));
     } catch (_) {
     } finally {
       emit(state.copyWith(isLoading: false));
     }
   }
 
-  void onSucursalChanged(int value) =>
-      emit(state.copyWith(idsucursal: value));
+  Future<void> onSucursalChanged(int value) async {
+    emit(state.copyWith(
+      idsucursal: value,
+      idapliques: 0,
+      idcolor: 0,
+      colores: [],
+      stock: [],
+    ));
+    if (value == 0) return;
+    try {
+      final stock = await apliquesRepository.getStock(value);
+      emit(state.copyWith(stock: stock));
+    } catch (_) {}
+  }
 
   /// Solo se ofrecen los colores vinculados al aplique (aplique_colores).
   Future<void> onApliqueChanged(Aplique? value) async {
@@ -85,11 +102,15 @@ class ProduccionFormCubit extends Cubit<ProduccionFormState> {
           colores: colores.where((e) => e.vinculado).toList()));
     } catch (_) {}
   }
+
   void onColorChanged(ColorItem? value) =>
       emit(state.copyWith(idcolor: value?.id ?? 0));
   void onCantidadChanged(String value) =>
       emit(state.copyWith(cantidad: value));
 
+  /// Registra la producción y refresca el stock. El propio datasource suma
+  /// la cantidad a la producción del mismo aplique+color+sucursal si ya hay
+  /// una registrada hoy, en vez de crear una fila duplicada por el día.
   /// Devuelve null si se registró, o el mensaje de error a mostrar.
   Future<String?> registrar() async {
     if (state.isSubmitting) return null;
@@ -109,8 +130,8 @@ class ProduccionFormCubit extends Cubit<ProduccionFormState> {
         colorId: state.idcolor,
         cantidad: cantidad,
       );
-      final producciones = await apliquesRepository.getProducciones();
-      emit(state.copyWith(producciones: producciones, cantidad: ''));
+      final stock = await apliquesRepository.getStock(state.idsucursal);
+      emit(state.copyWith(stock: stock, cantidad: ''));
       return null;
     } catch (e) {
       return e.toString().replaceFirst('Exception: ', '');

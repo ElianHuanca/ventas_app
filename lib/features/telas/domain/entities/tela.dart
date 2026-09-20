@@ -5,12 +5,14 @@ class Tela {
   final double? precxmay;
   final double? precxrollo;
   final double? precxcompra;
+  final bool activo;
 
   Tela({
     this.precxmen,
     this.precxmay,
     this.precxrollo,
     this.precxcompra,
+    this.activo = true,
     required this.id,
     required this.nombre,
   });

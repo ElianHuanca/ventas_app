@@ -95,17 +95,19 @@ void main() {
   });
 
   group('ProduccionMapper', () {
-    test('mapea con todos los joins', () {
+    test('mapea con todos los joins (detalle_produccion -> producciones -> sucursales)', () {
       final p = ProduccionMapper.jsonToEntity({
         'id': 10,
-        'fecha': '2024-05-01T10:00:00',
         'cantidad': 4,
-        'sucursales': {'nombre': 'Centro'},
+        'producciones': {
+          'fecha': '2024-05-01',
+          'sucursales': {'nombre': 'Centro'},
+        },
         'apliques': {'nombre': 'Estrella'},
         'colores': {'nombre': 'Azul', 'hex': '#0000FF'},
       });
       expect(p.id, 10);
-      expect(p.fecha, '2024-05-01T10:00:00');
+      expect(p.fecha, '2024-05-01');
       expect(p.sucursalNombre, 'Centro');
       expect(p.apliqueNombre, 'Estrella');
       expect(p.colorNombre, 'Azul');
@@ -116,9 +118,8 @@ void main() {
     test('joins null o no-Map dejan strings vacíos', () {
       final p = ProduccionMapper.jsonToEntity({
         'id': 1,
-        'fecha': null,
         'cantidad': null,
-        'sucursales': null,
+        'producciones': null,
         'apliques': 'no-es-map',
         'colores': null,
       });
@@ -130,10 +131,19 @@ void main() {
       expect(p.cantidad, 0);
     });
 
+    test('sucursal null dentro de producciones deja el nombre vacío', () {
+      final p = ProduccionMapper.jsonToEntity({
+        'id': 1,
+        'producciones': {'fecha': '2024-05-01', 'sucursales': null},
+      });
+      expect(p.fecha, '2024-05-01');
+      expect(p.sucursalNombre, '');
+    });
+
     test('fecha se convierte a string aunque venga como otro tipo', () {
       final p = ProduccionMapper.jsonToEntity({
         'id': 1,
-        'fecha': 12345,
+        'producciones': {'fecha': 12345},
       });
       expect(p.fecha, '12345');
     });

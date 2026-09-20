@@ -97,7 +97,8 @@ Features: `sucursales`, `telas`, `ventas`, `apliques`, `colores`, `dashboard`, `
 | `tela_sucursales` | idtela, idsucursal, activo (PK compuesta) — disponibilidad de telas por sucursal (migración `supabase/tela_sucursales.sql`) |
 | `apliques` | id, nombre, costo_fabricacion, ancho_cm, alto_cm, categoria_id, activo (tamanio quedó sin uso: ya va en el nombre) |
 | `inventario` | sucursal_id, aplique_id, color_id, stock (PK compuesta) — disponibilidad y stock de apliques |
-| `producciones` | id, fecha, sucursal_id, aplique_id, color_id, cantidad — entradas de stock por fabricación |
+| `producciones` | id, fecha (date), sucursal_id — **cabecera** de fabricación: una fila por sucursal+día (migración `supabase/detalle_produccion.sql`) |
+| `detalle_produccion` | id, idproduccion, idaplique, idcolor, cantidad — líneas de la fabricación del día; sube el stock de `inventario` |
 | `detalle_ventas_apliques` | id, idventa, idapliques, idcolor, nombre, precio, cantidad, total, ganancias |
 
 `fecha` se almacena como **TEXT ISO8601** (igual que en la versión SQLite) para preservar la lógica de comparación — las RPC comparan lexicográficamente y eso depende de este formato. Los precios son `NUMERIC` (no `REAL`) para evitar errores de coma flotante en dinero.
@@ -107,6 +108,16 @@ Las tablas nuevas (`categorias`, `colores`, `tela_colores`, `tela_fotos`) y las 
 ### Convención importante: `actualizarVenta`
 
 `VentasDatasourceImpl.actualizarVenta` mantiene la convención **incremental**: lee el valor actual y le suma el delta (`total = total + delta`), excepto `fecha` que se asigna directa. Siempre pasar **deltas** (no valores absolutos) desde los BLoCs.
+
+### Convención importante: fabricación (`producciones` / `detalle_produccion`)
+
+`ApliquesDatasourceImpl.createProduccion` sigue el mismo patrón cabecera+detalle que ventas:
+
+1. Busca la `producción` (cabecera) de esa sucursal con `fecha = hoy`; si no existe, la crea (equivalente a `getVentaByFecha` + `createVenta`).
+2. Hace **upsert** en `detalle_produccion` por `(idproduccion, idaplique, idcolor)`: si ya se fabricó ese aplique+color hoy, suma la cantidad a la línea existente; si no, inserta una línea nueva (igual que `createDetalleVenta` con `idventa+idtelas+precio`).
+3. Suma la cantidad al `stock` de `inventario` (crea la fila si no existe).
+
+Por esto la pantalla de Fabricación (`/fabricacion`) registra cada aplique+color al toque (sin carrito): la agrupación por día ya la resuelve el datasource, no la UI.
 
 ## Vistas públicas (`supabase/landing.sql`)
 
@@ -139,12 +150,14 @@ Ambas con `GRANT SELECT ... TO anon`. Si se cambia una columna que estas vistas 
 | `/` | SucursalesScreen (ventas de telas) |
 | `/venta-apliques` | VentaApliquesSucursalesScreen (elegir sucursal) |
 | `/venta-apliques/:idsucursal` | VentaApliquesScreen (form con stock por color) |
-| `/fabricacion` | ProduccionScreen (registrar producción → sube stock) |
+| `/fabricacion` | ProduccionScreen (registrar producción → sube stock; una fila por aplique+color+sucursal+día, se acumula si ya hay una de hoy) |
+| `/fabricacion/historial` | ProduccionesHistorialScreen (listado de producciones recientes) |
 | `/sucursales` | SucursalesScreen (gestión) |
 | `/sucursal/:idsucursal` | SucursalScreen (form + botón a disponibilidad) |
 | `/sucursal-disponibilidad/:idsucursal` | SucursalDisponibilidadScreen (qué telas se venden en la sucursal) |
 | `/telas` | TelasScreen |
 | `/tela/:idtela` | TelaScreen |
+| `/tela-colores/:idtela` | TelaColoresScreen (colores vinculados de la tela) |
 | `/apliques` | ApliquesScreen (gestión de apliques) |
 | `/aplique/:idaplique` | ApliqueScreen (form: nombre, dimensiones cm, costo fabricación, activo) |
 | `/aplique-colores/:idaplique` | ApliqueColoresScreen (colores vinculados del aplique) |

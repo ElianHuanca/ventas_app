@@ -23,11 +23,12 @@ void main() {
   }
 
   group('carga inicial', () {
-    test('sin idsucursal usa getTelas', () async {
+    test('sin idsucursal usa getTelas incluyendo inactivas', () async {
       final bloc = await crearBloc();
       addTearDown(bloc.close);
 
       expect(repo.getTelasUsado, true);
+      expect(repo.lastSoloActivos, false);
       expect(repo.getTelasPorSucursalUsado, false);
       expect(bloc.state.isLoading, false);
       expect(bloc.state.telas, telas);
@@ -90,28 +91,6 @@ void main() {
       expect(ok, true);
       expect(bloc.state.telas.map((e) => e.nombre),
           ['Lino Premium', 'Seda']);
-    });
-
-    test('deleteTela quita la tela cuando el repo confirma', () async {
-      final bloc = await crearBloc();
-      addTearDown(bloc.close);
-
-      final ok = await bloc.deleteTela(1);
-      await pumpEventQueue();
-
-      expect(ok, true);
-      expect(bloc.state.telas.map((e) => e.id), [2]);
-    });
-
-    test('deleteTela con respuesta false no modifica la lista', () async {
-      final bloc = await crearBloc();
-      addTearDown(bloc.close);
-      repo.deleteResult = false;
-
-      final ok = await bloc.deleteTela(1);
-
-      expect(ok, false);
-      expect(bloc.state.telas.length, 2);
     });
   });
 }

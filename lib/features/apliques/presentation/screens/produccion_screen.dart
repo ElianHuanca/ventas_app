@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:textiles_app/features/shared/shared.dart';
 import 'package:textiles_app/features/sucursales/domain/domain.dart';
 import 'package:textiles_app/features/sucursales/presentation/bloc/bloc.dart';
@@ -21,6 +22,15 @@ class ProduccionScreen extends StatelessWidget {
     );
   }
 
+  double _stockDe(ProduccionFormState state, int idcolor) {
+    for (final e in state.stock) {
+      if (e.apliqueId == state.idapliques && e.colorId == idcolor) {
+        return e.stock;
+      }
+    }
+    return 0;
+  }
+
   Widget _widget(BuildContext context) {
     final sucursalesState = context.watch<SucursalesBloc>().state;
     final state = context.watch<ProduccionFormCubit>().state;
@@ -35,11 +45,18 @@ class ProduccionScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: () => context.push('/fabricacion/historial'),
+              icon: const Icon(Icons.history, size: 18),
+              label: const Text('Ver historial'),
+            ),
+          ),
           DropdownMenu<Sucursal>(
             width: MediaQuery.of(context).size.width * 0.93,
             hintText: 'Seleccione una Sucursal',
-            onSelected: (value) =>
-                cubit.onSucursalChanged(value?.id ?? 0),
+            onSelected: (value) => cubit.onSucursalChanged(value?.id ?? 0),
             dropdownMenuEntries: sucursalesState.sucursales
                 .map<DropdownMenuEntry<Sucursal>>((e) =>
                     DropdownMenuEntry<Sucursal>(value: e, label: e.nombre))
@@ -63,23 +80,31 @@ class ProduccionScreen extends StatelessWidget {
             enabled: state.idapliques != 0,
             onSelected: cubit.onColorChanged,
             dropdownMenuEntries: state.colores
-                .map<DropdownMenuEntry<ColorItem>>(
-                    (e) => DropdownMenuEntry<ColorItem>(
-                          value: e,
-                          label: e.nombre,
-                          labelWidget: Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 8,
-                                backgroundColor: colorFromHex(e.hex),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(e.nombre),
-                            ],
-                          ),
-                        ))
-                .toList(),
+                .map<DropdownMenuEntry<ColorItem>>((e) {
+              final texto = '${e.nombre} (stock: ${_stockDe(state, e.id)})';
+              return DropdownMenuEntry<ColorItem>(
+                value: e,
+                label: texto,
+                labelWidget: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 8,
+                      backgroundColor: colorFromHex(e.hex),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(texto),
+                  ],
+                ),
+              );
+            }).toList(),
           ),
+          if (state.idcolor != 0) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Stock actual en esta sucursal: ${state.stockActual} uds',
+              style: const TextStyle(fontSize: 12, color: Colors.black54),
+            ),
+          ],
           const SizedBox(height: 15),
           Row(
             children: [
@@ -120,22 +145,6 @@ class ProduccionScreen extends StatelessWidget {
             },
             texto: 'Registrar producción',
           ),
-          const SizedBox(height: 15),
-          const Divider(thickness: 1),
-          Text('Producciones recientes',
-              style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 5),
-          ...state.producciones.map((p) => ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                leading: CircleAvatar(
-                  radius: 8,
-                  backgroundColor: colorFromHex(p.hex),
-                ),
-                title: Text('${p.apliqueNombre} (${p.colorNombre})'),
-                subtitle: Text('${p.sucursalNombre} · ${p.fecha}'),
-                trailing: Text('${p.cantidad} uds'),
-              )),
         ],
       ),
     );

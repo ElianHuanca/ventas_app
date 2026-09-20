@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:textiles_app/features/shared/shared.dart';
-import '../../infrastructure/infrastructure.dart';
 import '../bloc/bloc.dart';
 
 class TelaScreen extends StatelessWidget {
@@ -18,24 +17,12 @@ class TelaScreen extends StatelessWidget {
           create: (ctx) => TelaFormCubit(
             onCreateCallback: ctx.read<TelasBloc>().createTela,
             onUpdateCallback: ctx.read<TelasBloc>().updateTela,
-            onDeleteCallback: ctx.read<TelasBloc>().deleteTela,
             tela: tela,
           ),
           child: GestureDetector(
             onTap: () => FocusScope.of(context).unfocus(),
             child: Screen1(
-              widget: [
-                _telaInformation(context),
-                if (tela.id != 0)
-                  BlocProvider(
-                    create: (_) => TelaColoresCubit(
-                      telasRepository:
-                          TelasRepositoryImpl(TelasDatasourceImpl()),
-                      idtela: tela.id,
-                    ),
-                    child: _coloresSection(context),
-                  ),
-              ],
+              widget: [_telaInformation(context)],
               title: tela.id == 0 ? 'Crear Tela' : 'Editar Tela',
               isGridview: false,
               backRoute: true,
@@ -104,6 +91,14 @@ class TelaScreen extends StatelessWidget {
                   ),
                 ],
               ),
+              if (tela.id != 0)
+                SwitchListTile(
+                  title: const Text('Activo'),
+                  subtitle: const Text(
+                      'Las telas inactivas no se ofrecen en las ventas'),
+                  value: telaForm.activo,
+                  onChanged: cubit.onActivoChanged,
+                ),
               const SizedBox(height: 15),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -116,32 +111,10 @@ class TelaScreen extends StatelessWidget {
                     },
                     texto: tela.id == 0 ? 'Guardar' : 'Modificar',
                   ),
-                  if (tela.id != 0) ...[
-                    const SizedBox(width: 15),
-                    MaterialButtonWidget(
-                      onTap: () async {
-                        final value = await cubit.onDeleteSubmit();
-                        if (context.mounted) showSnackbarBool(context, value);
-                      },
-                      texto: 'Eliminar',
-                    ),
-                  ],
                 ],
               ),
             ],
           ),
-        );
-      },
-    );
-  }
-
-  Widget _coloresSection(BuildContext context) {
-    return BlocBuilder<TelaColoresCubit, TelaColoresState>(
-      builder: (context, state) {
-        return ProductoColoresList(
-          isLoading: state.isLoading,
-          colores: state.colores,
-          onToggle: context.read<TelaColoresCubit>().toggleColor,
         );
       },
     );

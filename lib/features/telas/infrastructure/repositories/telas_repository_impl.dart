@@ -7,8 +7,8 @@ class TelasRepositoryImpl implements TelasRepository {
   TelasRepositoryImpl(this.datasource);
 
   @override
-  Future<List<Tela>> getTelas() {
-    return datasource.getTelas();
+  Future<List<Tela>> getTelas({bool soloActivos = true}) {
+    return datasource.getTelas(soloActivos: soloActivos);
   }
 
   @override
@@ -26,11 +26,6 @@ class TelasRepositoryImpl implements TelasRepository {
     return datasource.updateTela(telaLike,id);
   }
 
-  @override
-  Future<bool> deleteTela(int id) {   
-    return datasource.deleteTela(id);
-  }
-  
   @override
   Future<Tela> getTela(int id) {
     return datasource.getTela(id);

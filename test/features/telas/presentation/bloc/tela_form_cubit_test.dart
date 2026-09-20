@@ -4,7 +4,6 @@ import 'package:textiles_app/features/telas/presentation/bloc/tela_form_cubit.da
 
 void main() {
   Map<String, dynamic>? mapRecibido;
-  int? idBorrado;
   bool lanzarError = false;
 
   Future<bool> fakeSubmit(Map<String, dynamic> map) async {
@@ -13,22 +12,14 @@ void main() {
     return true;
   }
 
-  Future<bool> fakeDelete(int id) async {
-    if (lanzarError) throw Exception('fallo');
-    idBorrado = id;
-    return true;
-  }
-
   setUp(() {
     mapRecibido = null;
-    idBorrado = null;
     lanzarError = false;
   });
 
   TelaFormCubit crearCubit([Tela? tela]) => TelaFormCubit(
         onCreateCallback: fakeSubmit,
         onUpdateCallback: fakeSubmit,
-        onDeleteCallback: fakeDelete,
         tela: tela ?? Tela.empty(),
       );
 
@@ -41,7 +32,7 @@ void main() {
   }
 
   group('estado inicial', () {
-    test('tela nueva deja precios vacíos', () {
+    test('tela nueva deja precios vacíos y activo en true', () {
       final cubit = crearCubit();
       addTearDown(cubit.close);
 
@@ -49,9 +40,10 @@ void main() {
       expect(cubit.state.precxmay, '');
       expect(cubit.state.precxrollo, '');
       expect(cubit.state.precxcompra, '');
+      expect(cubit.state.activo, true);
     });
 
-    test('tela existente precarga precios distintos de 0', () {
+    test('tela existente precarga precios distintos de 0 y su activo', () {
       final cubit = crearCubit(Tela(
         id: 2,
         nombre: 'Seda',
@@ -59,6 +51,7 @@ void main() {
         precxmay: 0,
         precxrollo: 90,
         precxcompra: 60,
+        activo: false,
       ));
       addTearDown(cubit.close);
 
@@ -66,6 +59,7 @@ void main() {
       expect(cubit.state.precxmay, ''); // 0 se muestra vacío
       expect(cubit.state.precxrollo, '90.0');
       expect(cubit.state.precxcompra, '60.0');
+      expect(cubit.state.activo, false);
     });
   });
 
@@ -140,10 +134,11 @@ void main() {
         'precxmay': 80.0,
         'precxrollo': 70.0,
         'precxcompra': 50.0,
+        'activo': true,
       });
     });
 
-    test('update usa el callback de update con el id', () async {
+    test('update usa el callback de update con el id y el activo', () async {
       final cubit = crearCubit(Tela(
           id: 8,
           nombre: 'Seda',
@@ -152,11 +147,13 @@ void main() {
           precxrollo: 1,
           precxcompra: 1));
       addTearDown(cubit.close);
+      cubit.onActivoChanged(false);
 
       final ok = await cubit.onSubmit(isUpdate: true);
 
       expect(ok, true);
       expect(mapRecibido!['id'], 8);
+      expect(mapRecibido!['activo'], false);
     });
 
     test('callback que lanza devuelve false', () async {
@@ -166,24 +163,6 @@ void main() {
       lanzarError = true;
 
       expect(await cubit.onSubmit(isUpdate: false), false);
-    });
-  });
-
-  group('onDeleteSubmit', () {
-    test('llama al callback con el id', () async {
-      final cubit = crearCubit(Tela(id: 5, nombre: 'Lino'));
-      addTearDown(cubit.close);
-
-      expect(await cubit.onDeleteSubmit(), true);
-      expect(idBorrado, 5);
-    });
-
-    test('callback que lanza devuelve false', () async {
-      final cubit = crearCubit(Tela(id: 5, nombre: 'Lino'));
-      addTearDown(cubit.close);
-      lanzarError = true;
-
-      expect(await cubit.onDeleteSubmit(), false);
     });
   });
 }
