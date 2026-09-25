@@ -197,11 +197,30 @@ flutter pub get          # instalar dependencias
 flutter run              # correr en debug
 flutter build apk        # build Android APK
 flutter analyze          # lint check
-flutter test             # 149 tests unitarios/de widget (fakes en test/helpers/)
+flutter test             # 163 tests unitarios/de widget (fakes en test/helpers/)
 flutter clean            # limpiar build
 ```
 
 Los tests cubren mappers, cubits de formularios, blocs de listas y utilidades con **fakes en memoria** (`test/helpers/fake_repositories.dart`) — nunca tocan Supabase real. Los datasources `*_impl` y las pantallas con router no se testean (requieren `Supabase.initialize()`).
+
+## Entorno local (pruebas sin tocar producción)
+
+Supabase local en Docker vía CLI (`npx supabase@latest ...`, no hace falta instalarla global). `SupabaseConfig` lee `SUPABASE_URL`/`SUPABASE_KEY` de `--dart-define`; **sin defines apunta a producción**. Con base local la app muestra una cinta verde "LOCAL".
+
+```bash
+npx supabase@latest start -x realtime,storage-api,imgproxy,edge-runtime,logflare,vector,supavisor,mailpit
+flutter run -d windows --dart-define-from-file=env/local.json
+flutter run --dart-define-from-file=env/local-android.json   # emulador (10.0.2.2)
+npx supabase@latest db reset   # vuelve a cero: migraciones + seed.sql
+npx supabase@latest stop
+```
+
+- Studio local: `http://127.0.0.1:54323`. API: `http://127.0.0.1:54321`.
+- `supabase/migrations/20260925000000_prod_schema.sql` es un **dump del esquema real de producción** (2026-09-25) — más fiel que `schema.sql`.
+- `supabase/seed.sql` es una copia de los **datos reales**, está en `.gitignore` (no subir). Para refrescarla: `npx supabase@latest db dump --linked --data-only -f supabase/seed.sql` (sin `--use-copy`, el seed no acepta `COPY`).
+- El `link` a producción necesita IPv4 vía pooler: si `db dump` da `DbConfigIpv6Error`, repetir `npx supabase@latest link --project-ref tacgylhmwqkfhdkpcvkr`.
+- `mailpit` se excluye porque su puerto 54324 chocó en esta máquina.
+- Android: `http://` habilitado solo en `android/app/src/debug/AndroidManifest.xml`.
 
 ## Notas Windows / Android
 

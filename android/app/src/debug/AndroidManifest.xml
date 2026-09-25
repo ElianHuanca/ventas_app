@@ -4,4 +4,6 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Solo debug: permite http:// para el Supabase local (env/local-android.json). -->
+    <application android:usesCleartextTraffic="true"/>
 </manifest>

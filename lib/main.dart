@@ -55,6 +55,15 @@ class _MyAppState extends State<MyApp> {
       routerConfig: _router!,
       theme: AppTheme().getTheme(),
       debugShowCheckedModeBanner: false,
+      // Cinta "LOCAL" para no confundir la base de pruebas con producción.
+      builder: SupabaseConfig.isLocal
+          ? (context, child) => Banner(
+                message: 'LOCAL',
+                location: BannerLocation.topEnd,
+                color: Colors.green.shade700,
+                child: child!,
+              )
+          : null,
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
