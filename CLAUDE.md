@@ -6,7 +6,7 @@ Guía para Claude Code (claude.ai/code) al trabajar en este repositorio.
 
 App **Flutter** (móvil / desktop / web) de punto de venta de **telas y apliques** para el negocio Huantex. Gestiona sucursales, catálogo de telas, apliques (con stock por color y fabricación), ventas de ambos con su detalle, y un dashboard de ventas. Todo el texto está en español.
 
-> Desde la incorporación del feature `apliques/` (ventas con stock, fabricación, gestión y disponibilidad por sucursal), esta app **reemplazó al repo PHP `textiles`**, que se borró de GitHub. ⚠️ La única copia que queda es la carpeta local `F:\Elian	extiles` (no existe respaldo en `notas/historico/`).
+> Desde la incorporación del feature `apliques/` (ventas con stock, fabricación, gestión y disponibilidad por sucursal), esta app **reemplazó al repo PHP `textiles`**, que se borró de GitHub. ⚠️ La única copia que queda es la carpeta local `F:\Elian\textiles` (no existe respaldo en `notas/historico/`).
 
 > El paquete se llama `textiles_app` en `pubspec.yaml` y los imports son `package:textiles_app/...`. **No confundir con el viejo repo `textiles`** (PHP, eliminado). Este repo es `ventas_app` = telas y apliques.
 
@@ -36,7 +36,7 @@ Una sola DB Postgres en Supabase alimenta estas aplicaciones:
 | Repo | Stack | Rol |
 |---|---|---|
 | **ventas_app** (este) | Flutter | Punto de venta de **telas y apliques**. Dueño del esquema → `github.com/ElianHuanca/ventas_app` |
-| ~~**textiles**~~ | PHP 8.2 MVC | **Eliminado** de GitHub; queda solo la carpeta local `F:\Elian	extiles`. Era el módulo de apliques; lo absorbió este repo |
+| ~~**textiles**~~ | PHP 8.2 MVC | **Eliminado** de GitHub; queda solo la carpeta local `F:\Elian\textiles`. Era el módulo de apliques; lo absorbió este repo |
 | **sitio** | Next.js 16 | Landing pública de solo lectura → `github.com/ElianHuanca/sitio` |
 | **ventas_app_android** | Kotlin + Compose | Port nativo Android (por ahora solo telas: sucursales, telas, ventas, dashboard) → `github.com/ElianHuanca/ventas_app_android` (privado). Su build type `local` usa el mismo Supabase de Docker que este repo (ver "Entorno local") |
 
