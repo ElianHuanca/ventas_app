@@ -16,7 +16,7 @@ App **Flutter** (móvil / desktop / web) de punto de venta de **telas y apliques
 
 Lo que cruza los tres repos —el contrato de la DB compartida, el registro de migraciones, las
 decisiones y su porqué, los riesgos abiertos y los runbooks— **no vive acá**: vive en un vault de
-Obsidian en `c:\Elian\textiles\notas`. Entrada: `MAPA.md`.
+Obsidian en `F:\Elian\notas`. Entrada: `MAPA.md`.
 
 Este archivo manda sobre el código de **este** repo. El vault manda sobre lo que es de más de uno.
 No duplicar: enlazar.
@@ -29,24 +29,25 @@ Como este repo es (parcialmente) dueño del esquema, antes de tocar `supabase/`:
 
 Esta app ahora también cubre **apliques** (ventas con stock, fabricación, gestión y disponibilidad por sucursal), con lo que **reemplazó al repo PHP `textiles`** (eliminado).
 
-## Los tres repos comparten UNA base de datos
+## Los repos comparten UNA base de datos
 
-Una sola DB Postgres en Supabase alimenta tres aplicaciones:
+Una sola DB Postgres en Supabase alimenta estas aplicaciones:
 
 | Repo | Stack | Rol |
 |---|---|---|
 | **ventas_app** (este) | Flutter | Punto de venta de **telas y apliques**. Dueño del esquema → `github.com/ElianHuanca/ventas_app` |
 | ~~**textiles**~~ | PHP 8.2 MVC | **Eliminado** (local y GitHub). Era el módulo de apliques; lo absorbió este repo. Respaldo en `notas/historico/textiles-php/` |
 | **sitio** | Next.js 16 | Landing pública de solo lectura → `github.com/ElianHuanca/sitio` |
+| **ventas_app_android** | Kotlin + Compose | Port nativo Android (por ahora solo telas: sucursales, telas, ventas, dashboard) → `github.com/ElianHuanca/ventas_app_android` (privado). Su build type `local` usa el mismo Supabase de Docker que este repo (ver "Entorno local") |
 
-En disco son carpetas hermanas (`c:\Elian\textiles\ventas_app`, `c:\Elian\textiles\sitio`); el vault de notas está en `c:\Elian\textiles\notas`.
+En disco son carpetas hermanas (`F:\Elian\ventas_app`, `F:\Elian\ventas_app_android`, `F:\Elian\sitio`); el vault de notas está en `F:\Elian\notas`.
 
 **Este repo es el dueño del esquema.** `supabase/` es la fuente de verdad para las otras dos apps:
 
 - **`supabase/schema.sql`** — tablas, índices, RLS, seed de telas y las funciones RPC del dashboard.
 - **`supabase/landing.sql`** — las vistas públicas que consume la web (`sitio`). Se aplica **después** de `schema.sql`.
 
-Al cambiar el esquema: editar el archivo y volver a aplicarlo en el SQL Editor de Supabase. **Antes de renombrar o borrar una columna, revisar si `textiles` o `sitio` la usan.**
+Al cambiar el esquema: editar el archivo y volver a aplicarlo en el SQL Editor de Supabase. **Antes de renombrar o borrar una columna, revisar si `sitio` o `ventas_app_android` la usan.**
 
 ### ⚠️ Tablas compartidas: cuidado al tocarlas
 
