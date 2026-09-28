@@ -53,20 +53,23 @@ class ApliquesRepositoryImpl extends ApliquesRepository {
   @override
   Future<void> createProduccion({
     required int sucursalId,
-    required int apliqueId,
-    required int colorId,
-    required double cantidad,
+    required DateTime fecha,
+    required List<Map<String, dynamic>> lineas,
   }) {
     return datasource.createProduccion(
       sucursalId: sucursalId,
-      apliqueId: apliqueId,
-      colorId: colorId,
-      cantidad: cantidad,
+      fecha: fecha,
+      lineas: lineas,
     );
   }
 
   @override
-  Future<List<Produccion>> getProducciones({int limit = 20}) {
-    return datasource.getProducciones(limit: limit);
+  Future<List<ProduccionCabecera>> getProducciones(int sucursalId) {
+    return datasource.getProducciones(sucursalId);
+  }
+
+  @override
+  Future<List<Produccion>> getDetalleProduccion(int idproduccion) {
+    return datasource.getDetalleProduccion(idproduccion);
   }
 }

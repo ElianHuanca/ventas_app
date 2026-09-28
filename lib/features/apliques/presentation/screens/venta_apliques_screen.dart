@@ -65,6 +65,8 @@ class VentaApliquesScreen extends StatelessWidget {
                       Expanded(
                         flex: 1,
                         child: DropdownMenu<StockAplique>(
+                          // La key reinicia la selección visible al cambiar de aplique
+                          key: ValueKey(formState.idapliques),
                           width: MediaQuery.of(context).size.width * 0.93,
                           hintText: 'Seleccione un Color',
                           enabled: formState.idapliques != 0,

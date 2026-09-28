@@ -16,4 +16,12 @@ class ProduccionMapper {
       cantidad: (json['cantidad'] as num?)?.toDouble() ?? 0,
     );
   }
+
+  static ProduccionCabecera jsonToCabecera(Map<String, dynamic> json) {
+    return ProduccionCabecera(
+      id: json['id'] as int,
+      fecha: DateTime.tryParse(json['fecha']?.toString() ?? '') ??
+          DateTime.now(),
+    );
+  }
 }

@@ -1,6 +1,7 @@
 import '../entities/aplique.dart';
 import '../entities/color_item.dart';
 import '../entities/produccion.dart';
+import '../entities/produccion_cabecera.dart';
 import '../entities/stock_aplique.dart';
 
 abstract class ApliquesRepository {
@@ -16,11 +17,13 @@ abstract class ApliquesRepository {
   Future<void> addInventario(int sucursalId, int apliqueId, int colorId);
   Future<void> removeInventario(int sucursalId, int apliqueId, int colorId);
 
+  /// Registra una producción (lote de líneas) y sube el stock en inventario.
+  /// Cada línea es {idaplique, idcolor, cantidad}.
   Future<void> createProduccion({
     required int sucursalId,
-    required int apliqueId,
-    required int colorId,
-    required double cantidad,
+    required DateTime fecha,
+    required List<Map<String, dynamic>> lineas,
   });
-  Future<List<Produccion>> getProducciones({int limit = 20});
+  Future<List<ProduccionCabecera>> getProducciones(int sucursalId);
+  Future<List<Produccion>> getDetalleProduccion(int idproduccion);
 }

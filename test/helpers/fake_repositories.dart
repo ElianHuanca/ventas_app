@@ -106,12 +106,22 @@ class FakeDetalleVentasRepository implements DetalleVentasRepository {
 }
 
 class FakeVentasApliquesRepository implements VentasApliquesRepository {
+  List<VentaAplique> ventas;
+  List<DetalleVentaAplique> detalle;
+
+  FakeVentasApliquesRepository({
+    this.ventas = const [],
+    this.detalle = const [],
+  });
+
   int createCalls = 0;
   int? lastIdsucursales;
   double? lastTotal;
   double? lastGanancias;
   double? lastDescuento;
   List<Map<String, dynamic>>? lastDetalles;
+  int? lastGetVentasApliquesSucursalId;
+  int? lastGetDetalleIdventa;
   Object? error;
 
   @override
@@ -132,18 +142,35 @@ class FakeVentasApliquesRepository implements VentasApliquesRepository {
         detalles.map((e) => Map<String, dynamic>.from(e)).toList();
     return 1;
   }
+
+  @override
+  Future<List<VentaAplique>> getVentasApliques(int idsucursal) async {
+    if (error != null) throw error!;
+    lastGetVentasApliquesSucursalId = idsucursal;
+    return ventas;
+  }
+
+  @override
+  Future<List<DetalleVentaAplique>> getDetalleVentasApliques(
+      int idventa) async {
+    if (error != null) throw error!;
+    lastGetDetalleIdventa = idventa;
+    return detalle;
+  }
 }
 
 class FakeApliquesRepository implements ApliquesRepository {
   List<Aplique> apliques;
   List<StockAplique> stock;
   List<ColorItem> colores;
-  List<Produccion> producciones;
+  List<Produccion> detalleProduccion;
+  List<ProduccionCabecera> producciones;
 
   FakeApliquesRepository({
     this.apliques = const [],
     this.stock = const [],
     this.colores = const [],
+    this.detalleProduccion = const [],
     this.producciones = const [],
   });
 
@@ -151,6 +178,8 @@ class FakeApliquesRepository implements ApliquesRepository {
   int getStockCalls = 0;
   int? lastGetStockSucursalId;
   int? lastGetColoresApliqueId;
+  int? lastGetProduccionesSucursalId;
+  int? lastGetDetalleProduccionId;
   final List<List<dynamic>> setColorApliqueCalls = [];
   final List<Map<String, dynamic>> produccionesCreadas = [];
   final List<List<int>> inventarioAgregado = [];
@@ -211,23 +240,30 @@ class FakeApliquesRepository implements ApliquesRepository {
   @override
   Future<void> createProduccion({
     required int sucursalId,
-    required int apliqueId,
-    required int colorId,
-    required double cantidad,
+    required DateTime fecha,
+    required List<Map<String, dynamic>> lineas,
   }) async {
     _throwIfError();
     produccionesCreadas.add({
       'sucursalId': sucursalId,
-      'apliqueId': apliqueId,
-      'colorId': colorId,
-      'cantidad': cantidad,
+      'fecha': fecha,
+      'lineas':
+          lineas.map((e) => Map<String, dynamic>.from(e)).toList(),
     });
   }
 
   @override
-  Future<List<Produccion>> getProducciones({int limit = 20}) async {
+  Future<List<ProduccionCabecera>> getProducciones(int sucursalId) async {
     _throwIfError();
+    lastGetProduccionesSucursalId = sucursalId;
     return producciones;
+  }
+
+  @override
+  Future<List<Produccion>> getDetalleProduccion(int idproduccion) async {
+    _throwIfError();
+    lastGetDetalleProduccionId = idproduccion;
+    return detalleProduccion;
   }
 
   @override

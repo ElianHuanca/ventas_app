@@ -30,18 +30,30 @@ void main() {
   });
 
   Future<ProduccionFormCubit> crearCubit() async {
-    final cubit = ProduccionFormCubit(apliquesRepository: repo);
+    final cubit =
+        ProduccionFormCubit(apliquesRepository: repo, idsucursal: 1);
     await pumpEventQueue();
     return cubit;
   }
 
+  /// Deja el formulario con Flor + Rojo + cantidad '3' listos para añadir.
+  Future<void> seleccionarLinea(ProduccionFormCubit cubit,
+      {String cantidad = '3'}) async {
+    await cubit.onApliqueChanged(apliques[0]);
+    cubit.onColorChanged(colores[0]);
+    cubit.onCantidadChanged(cantidad);
+  }
+
   group('load', () {
-    test('carga los apliques al crearse', () async {
+    test('carga apliques y stock de la sucursal al crearse', () async {
       final cubit = await crearCubit();
       addTearDown(cubit.close);
 
       expect(cubit.state.isLoading, false);
       expect(cubit.state.apliques, apliques);
+      expect(cubit.state.stock, stockCentro);
+      expect(cubit.state.idsucursal, 1);
+      expect(repo.lastGetStockSucursalId, 1);
     });
 
     test('error del repositorio deja isLoading en false', () async {
@@ -51,31 +63,6 @@ void main() {
 
       expect(cubit.state.isLoading, false);
       expect(cubit.state.apliques, isEmpty);
-    });
-  });
-
-  group('onSucursalChanged', () {
-    test('carga el stock de la sucursal y limpia selección previa', () async {
-      final cubit = await crearCubit();
-      addTearDown(cubit.close);
-      await cubit.onApliqueChanged(apliques[0]);
-
-      await cubit.onSucursalChanged(1);
-
-      expect(repo.lastGetStockSucursalId, 1);
-      expect(cubit.state.stock, stockCentro);
-      expect(cubit.state.idapliques, 0);
-      expect(cubit.state.idcolor, 0);
-      expect(cubit.state.colores, isEmpty);
-    });
-
-    test('con sucursal 0 no consulta stock', () async {
-      final cubit = await crearCubit();
-      addTearDown(cubit.close);
-
-      await cubit.onSucursalChanged(0);
-
-      expect(repo.getStockCalls, 0);
       expect(cubit.state.stock, isEmpty);
     });
   });
@@ -89,6 +76,7 @@ void main() {
 
       expect(repo.lastGetColoresApliqueId, 1);
       expect(cubit.state.colores.map((e) => e.id), [1, 3]);
+      expect(cubit.state.apliqueNombre, 'Flor');
     });
 
     test('con null limpia selección y no consulta colores', () async {
@@ -98,8 +86,25 @@ void main() {
       await cubit.onApliqueChanged(null);
 
       expect(cubit.state.idapliques, 0);
+      expect(cubit.state.apliqueNombre, '');
       expect(cubit.state.colores, isEmpty);
       expect(repo.lastGetColoresApliqueId, isNull);
+    });
+  });
+
+  group('onFechaChanged', () {
+    test('la fecha por defecto es hoy y se puede cambiar', () async {
+      final cubit = await crearCubit();
+      addTearDown(cubit.close);
+
+      final hoy = DateTime.now();
+      expect(cubit.state.fecha.year, hoy.year);
+      expect(cubit.state.fecha.month, hoy.month);
+      expect(cubit.state.fecha.day, hoy.day);
+
+      final otra = DateTime(2024, 5, 10);
+      cubit.onFechaChanged(otra);
+      expect(cubit.state.fecha, otra);
     });
   });
 
@@ -107,7 +112,6 @@ void main() {
     test('devuelve el stock del aplique+color seleccionados', () async {
       final cubit = await crearCubit();
       addTearDown(cubit.close);
-      await cubit.onSucursalChanged(1);
       await cubit.onApliqueChanged(apliques[0]);
 
       cubit.onColorChanged(colores[0]); // Rojo, stock 7
@@ -118,40 +122,123 @@ void main() {
     });
   });
 
-  group('registrar', () {
-    test('valida sucursal, aplique, color y cantidad', () async {
+  group('addDetalleProduccion', () {
+    test('valida aplique, color y cantidad', () async {
       final cubit = await crearCubit();
       addTearDown(cubit.close);
 
-      expect(await cubit.registrar(), 'Seleccione una sucursal');
-
-      await cubit.onSucursalChanged(1);
-      expect(await cubit.registrar(), 'Seleccione un aplique');
+      expect(cubit.addDetalleProduccion(), 'Seleccione un aplique');
 
       await cubit.onApliqueChanged(apliques[0]);
-      expect(await cubit.registrar(), 'Seleccione un color');
+      expect(cubit.addDetalleProduccion(), 'Seleccione un color');
 
       cubit.onColorChanged(colores[0]);
-      expect(
-          await cubit.registrar(), 'Ingrese una cantidad válida mayor a 0');
+      expect(cubit.addDetalleProduccion(),
+          'Ingrese una cantidad válida mayor a 0');
 
       cubit.onCantidadChanged('abc');
-      expect(
-          await cubit.registrar(), 'Ingrese una cantidad válida mayor a 0');
+      expect(cubit.addDetalleProduccion(),
+          'Ingrese una cantidad válida mayor a 0');
 
       cubit.onCantidadChanged('-2');
-      expect(
-          await cubit.registrar(), 'Ingrese una cantidad válida mayor a 0');
+      expect(cubit.addDetalleProduccion(),
+          'Ingrese una cantidad válida mayor a 0');
+
+      expect(cubit.state.detProducciones, isEmpty);
     });
 
-    test('válido crea producción, refresca stock y limpia cantidad',
+    test('añade la línea con nombres y limpia la cantidad', () async {
+      final cubit = await crearCubit();
+      addTearDown(cubit.close);
+      await seleccionarLinea(cubit);
+
+      final error = cubit.addDetalleProduccion();
+
+      expect(error, isNull);
+      expect(cubit.state.detProducciones.single, {
+        'idaplique': 1,
+        'apliqueNombre': 'Flor',
+        'idcolor': 1,
+        'colorNombre': 'Rojo',
+        'hex': '#FF0000',
+        'cantidad': 3.0,
+      });
+      expect(cubit.state.cantidad, '');
+    });
+
+    test('mismo aplique+color suma la cantidad en vez de duplicar', () async {
+      final cubit = await crearCubit();
+      addTearDown(cubit.close);
+      await seleccionarLinea(cubit, cantidad: '3');
+      cubit.addDetalleProduccion();
+      cubit.onCantidadChanged('2');
+      cubit.addDetalleProduccion();
+
+      expect(cubit.state.detProducciones.length, 1);
+      expect(cubit.state.detProducciones.single['cantidad'], 5.0);
+    });
+
+    test('distinto color agrega otra línea', () async {
+      final cubit = await crearCubit();
+      addTearDown(cubit.close);
+      await seleccionarLinea(cubit, cantidad: '3');
+      cubit.addDetalleProduccion();
+      cubit.onColorChanged(colores[2]); // Azul
+      cubit.onCantidadChanged('1');
+      cubit.addDetalleProduccion();
+
+      expect(cubit.state.detProducciones.length, 2);
+    });
+  });
+
+  group('removeDetalleProduccion', () {
+    test('quita la línea del listado', () async {
+      final cubit = await crearCubit();
+      addTearDown(cubit.close);
+      await seleccionarLinea(cubit);
+      cubit.addDetalleProduccion();
+
+      cubit.removeDetalleProduccion(1, 1, 3.0);
+
+      expect(cubit.state.detProducciones, isEmpty);
+    });
+
+    test('con datos inexistentes no modifica el listado', () async {
+      final cubit = await crearCubit();
+      addTearDown(cubit.close);
+      await seleccionarLinea(cubit);
+      cubit.addDetalleProduccion();
+
+      cubit.removeDetalleProduccion(1, 1, 99.0);
+      cubit.removeDetalleProduccion(2, 1, 3.0);
+
+      expect(cubit.state.detProducciones.length, 1);
+    });
+  });
+
+  group('onFormSubmit', () {
+    test('con el listado vacío devuelve error y no llama al repositorio',
         () async {
       final cubit = await crearCubit();
       addTearDown(cubit.close);
-      await cubit.onSucursalChanged(1);
-      await cubit.onApliqueChanged(apliques[0]);
-      cubit.onColorChanged(colores[0]);
-      cubit.onCantidadChanged('3');
+
+      final error = await cubit.onFormSubmit();
+
+      expect(error, 'Añada al menos una línea al listado');
+      expect(repo.produccionesCreadas, isEmpty);
+    });
+
+    test('envía todas las líneas con la fecha, limpia el listado y refresca stock',
+        () async {
+      final cubit = await crearCubit();
+      addTearDown(cubit.close);
+      final fecha = DateTime(2024, 5, 10);
+      cubit.onFechaChanged(fecha);
+      await seleccionarLinea(cubit, cantidad: '3');
+      cubit.addDetalleProduccion();
+      cubit.onColorChanged(colores[2]); // Azul
+      cubit.onCantidadChanged('2');
+      cubit.addDetalleProduccion();
       const stockActualizado = [
         StockAplique(
             apliqueId: 1,
@@ -162,17 +249,19 @@ void main() {
       ];
       repo.stock = stockActualizado;
 
-      final error = await cubit.registrar();
+      final error = await cubit.onFormSubmit();
 
       expect(error, isNull);
       expect(repo.produccionesCreadas.single, {
         'sucursalId': 1,
-        'apliqueId': 1,
-        'colorId': 1,
-        'cantidad': 3.0,
+        'fecha': fecha,
+        'lineas': [
+          {'idaplique': 1, 'idcolor': 3, 'cantidad': 2.0},
+          {'idaplique': 1, 'idcolor': 1, 'cantidad': 3.0},
+        ],
       });
+      expect(cubit.state.detProducciones, isEmpty);
       expect(cubit.state.stock, stockActualizado);
-      expect(cubit.state.cantidad, '');
       expect(cubit.state.isSubmitting, false);
     });
 
@@ -180,17 +269,15 @@ void main() {
         () async {
       final cubit = await crearCubit();
       addTearDown(cubit.close);
-
-      await cubit.onSucursalChanged(1);
-      await cubit.onApliqueChanged(apliques[0]);
-      cubit.onColorChanged(colores[0]);
-      cubit.onCantidadChanged('3');
+      await seleccionarLinea(cubit);
+      cubit.addDetalleProduccion();
       repo.error = Exception('stock negativo');
 
-      final error = await cubit.registrar();
+      final error = await cubit.onFormSubmit();
 
       expect(error, 'stock negativo');
       expect(cubit.state.isSubmitting, false);
+      expect(cubit.state.detProducciones.length, 1);
     });
   });
 }

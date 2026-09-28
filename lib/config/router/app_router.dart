@@ -41,6 +41,20 @@ GoRouter createAppRouter() {
         path: '/venta-apliques/:idsucursal',
         builder: (context, state) {
           final idsucursal = _pathParamInt(state, 'idsucursal');
+          return BlocProvider(
+            create: (_) => VentasApliquesBloc(
+              ventasApliquesRepository: VentasApliquesRepositoryImpl(
+                  VentasApliquesDatasourceImpl()),
+              idsucursal: idsucursal,
+            ),
+            child: VentasApliquesScreen(idsucursal: idsucursal),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/venta-apliques/registro/:idsucursal',
+        builder: (context, state) {
+          final idsucursal = _pathParamInt(state, 'idsucursal');
           final apliquesRepo =
               ApliquesRepositoryImpl(ApliquesDatasourceImpl());
           final ventasApliquesRepo = VentasApliquesRepositoryImpl(
@@ -65,24 +79,66 @@ GoRouter createAppRouter() {
         },
       ),
       GoRoute(
-        path: '/fabricacion',
-        builder: (context, state) => BlocProvider(
-          create: (_) => ProduccionFormCubit(
-            apliquesRepository:
-                ApliquesRepositoryImpl(ApliquesDatasourceImpl()),
-          ),
-          child: ProduccionScreen(),
-        ),
+        path: '/venta-apliques/detalle/:idventa',
+        builder: (context, state) {
+          final idventa = _pathParamInt(state, 'idventa');
+          final fecha =
+              DateTime.tryParse(state.uri.queryParameters['fecha'] ?? '');
+          return BlocProvider(
+            create: (_) => DetalleVentaApliquesCubit(
+              ventasApliquesRepository: VentasApliquesRepositoryImpl(
+                  VentasApliquesDatasourceImpl()),
+              idventa: idventa,
+            ),
+            child: VentaApliquesDetalleScreen(idventa: idventa, fecha: fecha),
+          );
+        },
       ),
       GoRoute(
-        path: '/fabricacion/historial',
-        builder: (context, state) => BlocProvider(
-          create: (_) => ProduccionesHistorialCubit(
-            apliquesRepository:
-                ApliquesRepositoryImpl(ApliquesDatasourceImpl()),
-          ),
-          child: const ProduccionesHistorialScreen(),
-        ),
+        path: '/fabricacion',
+        builder: (context, state) => const FabricacionSucursalesScreen(),
+      ),
+      GoRoute(
+        path: '/fabricacion/:idsucursal',
+        builder: (context, state) {
+          final idsucursal = _pathParamInt(state, 'idsucursal');
+          return BlocProvider(
+            create: (_) => ProduccionesBloc(
+              apliquesRepository:
+                  ApliquesRepositoryImpl(ApliquesDatasourceImpl()),
+              idsucursal: idsucursal,
+            ),
+            child: ProduccionesScreen(idsucursal: idsucursal),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/fabricacion/detalle/:idproduccion',
+        builder: (context, state) {
+          final idproduccion = _pathParamInt(state, 'idproduccion');
+          return BlocProvider(
+            create: (_) => DetalleProduccionCubit(
+              apliquesRepository:
+                  ApliquesRepositoryImpl(ApliquesDatasourceImpl()),
+              idproduccion: idproduccion,
+            ),
+            child: ProduccionDetalleScreen(idproduccion: idproduccion),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/fabricacion/registro/:idsucursal',
+        builder: (context, state) {
+          final idsucursal = _pathParamInt(state, 'idsucursal');
+          return BlocProvider(
+            create: (_) => ProduccionFormCubit(
+              apliquesRepository:
+                  ApliquesRepositoryImpl(ApliquesDatasourceImpl()),
+              idsucursal: idsucursal,
+            ),
+            child: ProduccionScreen(),
+          );
+        },
       ),
       GoRoute(
         path: '/apliques',

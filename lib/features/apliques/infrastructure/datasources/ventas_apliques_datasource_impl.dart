@@ -1,5 +1,6 @@
 import 'package:textiles_app/config/supabase/supabase_config.dart';
 import '../../domain/domain.dart';
+import '../infrastructure.dart';
 
 class VentasApliquesDatasourceImpl implements VentasApliquesDatasource {
   final _db = SupabaseConfig.client;
@@ -59,5 +60,31 @@ class VentasApliquesDatasourceImpl implements VentasApliquesDatasource {
     }
 
     return idventa;
+  }
+
+  @override
+  Future<List<VentaAplique>> getVentasApliques(int idsucursal) async {
+    final list = await _db
+        .from(_tableVentas)
+        .select()
+        .eq('idsucursales', idsucursal)
+        .order('fecha', ascending: false)
+        .limit(10);
+    return list
+        .map<VentaAplique>((e) => VentaApliqueMapper.jsonToVentaAplique(e))
+        .toList();
+  }
+
+  @override
+  Future<List<DetalleVentaAplique>> getDetalleVentasApliques(
+      int idventa) async {
+    final list = await _db
+        .from(_tableDetalle)
+        .select()
+        .eq('idventa', idventa)
+        .order('id');
+    return list
+        .map<DetalleVentaAplique>((e) => VentaApliqueMapper.jsonToDetalle(e))
+        .toList();
   }
 }

@@ -1,3 +1,6 @@
+import '../entities/detalle_venta_aplique.dart';
+import '../entities/venta_aplique.dart';
+
 abstract class VentasApliquesDatasource {
   Future<int> createVentaAplique({
     required int idsucursales,
@@ -6,4 +9,6 @@ abstract class VentasApliquesDatasource {
     required double descuento,
     required List<Map<String, dynamic>> detalles,
   });
+  Future<List<VentaAplique>> getVentasApliques(int idsucursal);
+  Future<List<DetalleVentaAplique>> getDetalleVentasApliques(int idventa);
 }

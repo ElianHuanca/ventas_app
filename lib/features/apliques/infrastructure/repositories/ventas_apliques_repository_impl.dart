@@ -21,4 +21,14 @@ class VentasApliquesRepositoryImpl extends VentasApliquesRepository {
       detalles: detalles,
     );
   }
+
+  @override
+  Future<List<VentaAplique>> getVentasApliques(int idsucursal) {
+    return datasource.getVentasApliques(idsucursal);
+  }
+
+  @override
+  Future<List<DetalleVentaAplique>> getDetalleVentasApliques(int idventa) {
+    return datasource.getDetalleVentasApliques(idventa);
+  }
 }

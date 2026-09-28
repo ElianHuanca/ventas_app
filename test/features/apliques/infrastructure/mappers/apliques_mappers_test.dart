@@ -148,4 +148,24 @@ void main() {
       expect(p.fecha, '12345');
     });
   });
+
+  group('ProduccionMapper.jsonToCabecera', () {
+    test('mapea una fila de producciones', () {
+      final cab = ProduccionMapper.jsonToCabecera({
+        'id': 3,
+        'fecha': '2024-05-10',
+        'sucursal_id': 1,
+      });
+      expect(cab.id, 3);
+      expect(cab.fecha, DateTime(2024, 5, 10));
+    });
+
+    test('fecha inválida o faltante usa la fecha actual', () {
+      final cab = ProduccionMapper.jsonToCabecera({'id': 1, 'fecha': null});
+      final hoy = DateTime.now();
+      expect(cab.fecha.year, hoy.year);
+      expect(cab.fecha.month, hoy.month);
+      expect(cab.fecha.day, hoy.day);
+    });
+  });
 }

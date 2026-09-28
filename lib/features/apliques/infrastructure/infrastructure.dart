@@ -7,4 +7,5 @@ export 'repositories/apliques_repository_impl.dart';
 
 //VENTASAPLIQUES
 export 'datasources/ventas_apliques_datasource_impl.dart';
+export 'mappers/venta_aplique_mapper.dart';
 export 'repositories/ventas_apliques_repository_impl.dart';

@@ -12,7 +12,8 @@ class VentasDatasourceImpl extends VentasDatasource {
         .from(_table)
         .select()
         .eq('idsucursales', idsucursal)
-        .order('fecha', ascending: false);
+        .order('fecha', ascending: false)
+        .limit(10);
     return list.map((e) => VentaMapper.jsonToEntity(e)).toList();
   }
 

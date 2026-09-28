@@ -1,13 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:textiles_app/features/apliques/domain/domain.dart';
-import 'package:textiles_app/features/apliques/presentation/bloc/producciones_historial_cubit.dart';
+import 'package:textiles_app/features/apliques/presentation/bloc/detalle_produccion_cubit.dart';
 
 import '../../../../helpers/fake_repositories.dart';
 
 void main() {
   late FakeApliquesRepository repo;
 
-  const producciones = [
+  const lineas = [
     Produccion(
       id: 1,
       fecha: '2024-01-01',
@@ -19,21 +19,23 @@ void main() {
   ];
 
   setUp(() {
-    repo = FakeApliquesRepository(producciones: producciones);
+    repo = FakeApliquesRepository(detalleProduccion: lineas);
   });
 
-  Future<ProduccionesHistorialCubit> crearCubit() async {
-    final cubit = ProduccionesHistorialCubit(apliquesRepository: repo);
+  Future<DetalleProduccionCubit> crearCubit() async {
+    final cubit =
+        DetalleProduccionCubit(apliquesRepository: repo, idproduccion: 7);
     await pumpEventQueue();
     return cubit;
   }
 
-  test('carga las producciones al crearse', () async {
+  test('carga el detalle de la producción al crearse', () async {
     final cubit = await crearCubit();
     addTearDown(cubit.close);
 
     expect(cubit.state.isLoading, false);
-    expect(cubit.state.producciones, producciones);
+    expect(cubit.state.lineas, lineas);
+    expect(repo.lastGetDetalleProduccionId, 7);
   });
 
   test('error del repositorio deja isLoading en false y lista vacía',
@@ -43,6 +45,6 @@ void main() {
     addTearDown(cubit.close);
 
     expect(cubit.state.isLoading, false);
-    expect(cubit.state.producciones, isEmpty);
+    expect(cubit.state.lineas, isEmpty);
   });
 }
