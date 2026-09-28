@@ -69,3 +69,72 @@ ORDER BY id;
 -- ---------------------------------------------------------------------
 GRANT SELECT ON top_telas_web  TO anon;
 GRANT SELECT ON sucursales_web TO anon;
+
+-- ---------------------------------------------------------------------
+-- Catálogo completo de telas (todas las activas, no solo el top 6)
+--
+-- A diferencia de top_telas_web, una tela SIN precio cargado también se
+-- publica: es escaparate, y la card muestra "Precio a consultar". Los
+-- precios en 0 siguen saliendo como NULL por modalidad.
+-- Nunca expone precxcompra (margen) ni montos vendidos.
+--
+-- `colores` sale como jsonb: [{"nombre": "...", "hex": "..."}, ...],
+-- solo vínculos y colores activos, ordenado alfabético sin mayúsculas.
+-- `foto` es la primera foto activa (tela_fotos); NULL si no tiene.
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE VIEW catalogo_telas_web AS
+SELECT
+  t.id,
+  t.nombre,
+  t.slug,
+  t.descripcion,
+  t.ancho,
+  NULLIF(t.precxmen,   0) AS precio_metro,
+  NULLIF(t.precxmay,   0) AS precio_mayor,
+  NULLIF(t.precxrollo, 0) AS precio_rollo,
+  foto.url AS foto,
+  COALESCE(cols.colores, '[]'::jsonb) AS colores
+FROM telas t
+LEFT JOIN LATERAL (
+  SELECT f.url
+  FROM tela_fotos f
+  WHERE f.idtela = t.id AND f.activo
+  ORDER BY f.id
+  LIMIT 1
+) foto ON TRUE
+LEFT JOIN LATERAL (
+  SELECT jsonb_agg(jsonb_build_object('nombre', c.nombre, 'hex', c.hex)
+                   ORDER BY lower(c.nombre)) AS colores
+  FROM tela_colores tc
+  JOIN colores c ON c.id = tc.idcolor AND c.activo
+  WHERE tc.idtela = t.id AND tc.activo
+) cols ON TRUE
+WHERE t.activo
+ORDER BY lower(t.nombre);
+
+-- ---------------------------------------------------------------------
+-- Catálogo de apliques (todos los activos). No tienen precio de lista
+-- (el precio se define en cada venta), así que la web ofrece consultar
+-- por WhatsApp. Nunca expone costo_fabricacion (margen).
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE VIEW catalogo_apliques_web AS
+SELECT
+  a.id,
+  a.nombre,
+  a.tamanio,
+  a.ancho_cm,
+  a.alto_cm,
+  COALESCE(cols.colores, '[]'::jsonb) AS colores
+FROM apliques a
+LEFT JOIN LATERAL (
+  SELECT jsonb_agg(jsonb_build_object('nombre', c.nombre, 'hex', c.hex)
+                   ORDER BY lower(c.nombre)) AS colores
+  FROM aplique_colores ac
+  JOIN colores c ON c.id = ac.idcolor AND c.activo
+  WHERE ac.idaplique = a.id AND ac.activo
+) cols ON TRUE
+WHERE a.activo
+ORDER BY lower(a.nombre);
+
+GRANT SELECT ON catalogo_telas_web    TO anon;
+GRANT SELECT ON catalogo_apliques_web TO anon;

@@ -179,6 +179,7 @@ class FakeApliquesRepository implements ApliquesRepository {
   int? lastGetStockSucursalId;
   int? lastGetColoresApliqueId;
   int? lastGetProduccionesSucursalId;
+  int getProduccionesCalls = 0;
   int? lastGetDetalleProduccionId;
   final List<List<dynamic>> setColorApliqueCalls = [];
   final List<Map<String, dynamic>> produccionesCreadas = [];
@@ -255,6 +256,7 @@ class FakeApliquesRepository implements ApliquesRepository {
   @override
   Future<List<ProduccionCabecera>> getProducciones(int sucursalId) async {
     _throwIfError();
+    getProduccionesCalls++;
     lastGetProduccionesSucursalId = sucursalId;
     return producciones;
   }
