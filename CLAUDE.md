@@ -90,7 +90,7 @@ Features: `sucursales`, `telas`, `ventas`, `apliques`, `colores`, `dashboard`, `
 | `sucursales` | id, nombre, slug, direccion, latitud, longitud, activo |
 | `telas` | id, nombre, precxmen, precxmay, precxrollo, precxcompra, categoria_id, slug, descripcion, ancho, activo |
 | `ventas` | id, fecha, total, ganancias, descuento, idsucursales — **solo telas** |
-| `ventas_apliques` | id, fecha, total, ganancias, descuento, idsucursales — **solo apliques** (migración 10) |
+| `ventas_apliques` | id, fecha, total, ganancias, descuento, idsucursales — **solo apliques** (migración 10). **Una por sucursal+día** (como en el PHP `textiles`): cada registro se suma a la venta del día |
 | `detalle_ventas` | id, nombre, precio, cantidad, total, ganancias, idtelas, idventa |
 | `categorias` | id, nombre, slug, activo — seed: `Telas`, `Apliques` |
 | `colores` | id, nombre, hex, activo |
@@ -117,14 +117,14 @@ Todo lo que antes era "leer → sumar en Dart → escribir" en varias llamadas H
 
 | Datasource | RPC | Qué hace en una transacción |
 |---|---|---|
-| `VentasApliquesDatasourceImpl.createVentaAplique` | `crear_venta_apliques` | cabecera + líneas + descuento de stock; **falla entera** si alguna línea no tiene stock (o no está en inventario activo) |
+| `VentasApliquesDatasourceImpl.createVentaAplique` | `crear_venta_apliques` | **venta del día** de la sucursal (la crea o le suma total/ganancias/descuento) + líneas acumuladas por `(aplique, color, precio)` + descuento de stock; **falla entera** si alguna línea no tiene stock (o no está en inventario activo) |
 | `ApliquesDatasourceImpl.createProduccion` | `registrar_produccion` | cabecera del día + líneas acumuladas + suma al stock |
 | `DetalleVentasDatasourceImpl.createDetalleVenta` | `registrar_detalle_venta` | upsert por `(idventa, idtelas, precio)` sumando cantidad/total/ganancias |
 | `VentasDatasourceImpl.actualizarVenta` | `incrementar_venta` | suma deltas a la venta |
 
 `VentasDatasourceImpl.createVenta` choca con el UNIQUE `(idsucursales, día)` si otro dispositivo creó la venta del día entre medio: atrapa el `23505` y devuelve la existente.
 
-Restricciones en la DB (no solo en la UI): `inventario.stock >= 0`, cantidades `> 0`, precios/costos `>= 0`, y UNIQUE de una venta de telas por sucursal+día, una producción por sucursal+fecha, una línea por `(idventa, idtelas, precio)` y por `(idproduccion, idaplique, idcolor)`.
+Restricciones en la DB (no solo en la UI): `inventario.stock >= 0`, cantidades `> 0`, precios/costos `>= 0`, y UNIQUE de una venta de telas y una de apliques por sucursal+día, una producción por sucursal+fecha, una línea por `(idventa, idtelas, precio)`, por `(idventa, idapliques, idcolor, precio)` y por `(idproduccion, idaplique, idcolor)`.
 
 ### Convención importante: fabricación (`producciones` / `detalle_produccion`)
 
