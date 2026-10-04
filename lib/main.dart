@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:textiles_app/config/config.dart';
+import 'package:textiles_app/features/auth/auth.dart';
 import 'package:textiles_app/features/shared/widgets/menu_index_cubit.dart';
 import 'package:textiles_app/features/sucursales/infrastructure/infrastructure.dart';
 import 'package:textiles_app/features/sucursales/presentation/bloc/bloc.dart';
@@ -19,6 +20,7 @@ void main() async {
   runApp(
     MultiBlocProvider(
       providers: [
+        RepositoryProvider<AuthRepository>(create: (_) => AuthRepositoryImpl()),
         BlocProvider(create: (_) => MenuIndexCubit()),
         BlocProvider(
           create: (_) => SucursalesBloc(
@@ -46,7 +48,8 @@ class _MyAppState extends State<MyApp> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _router ??= createAppRouter();
+    _router ??=
+        createAppRouter(authRepository: context.read<AuthRepository>());
   }
 
   @override

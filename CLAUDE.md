@@ -164,6 +164,7 @@ Ambas con `GRANT SELECT ... TO anon`. Si se cambia una columna que estas vistas 
 
 | Path | Screen |
 |---|---|
+| `/login` | LoginScreen (sin sesión todas las rutas redirigen acá) |
 | `/` | SucursalesScreen (ventas de telas) |
 | `/venta-apliques` | VentaApliquesSucursalesScreen (elegir sucursal) |
 | `/venta-apliques/:idsucursal` | VentaApliquesScreen (form con stock por color) |
@@ -200,6 +201,14 @@ Ambas con `GRANT SELECT ... TO anon`. Si se cambia una columna que estas vistas 
 - Rango default: primer día del mes actual → hoy; el selector usa `showDateRangePicker`
 - Usa las RPC `top_productos(desde, hasta)`, `resumen_ventas(desde, hasta)` (telas) y `resumen_ventas_apliques(desde, hasta)` (apliques, migración 10) porque el cliente de Supabase no permite `GROUP BY`/`SUM` directo. Son `LANGUAGE sql STABLE` y comparan `fecha` como texto ISO8601. El dashboard muestra las tarjetas de resumen de telas y de apliques por separado.
 
+## Login (Supabase Auth)
+
+- Feature `lib/features/auth/`: `AuthRepository` (impl sobre `supabase.auth`), `LoginFormCubit`, `LoginScreen`.
+- El router (`createAppRouter(authRepository:)`) redirige a `/login` si no hay sesión y vuelve a `/` al entrar (`redireccionPorSesion` + `SesionListenable` como `refreshListenable`). La sesión queda guardada en el dispositivo; "Cerrar sesión" está al pie del menú lateral.
+- **No hay registro desde la app**: las cuentas se crean en el dashboard de Supabase (Authentication → Users) y el sign-up público está desactivado. Modelo actual: **logueado = acceso total** (sin roles).
+- ⏳ `supabase/pendientes/20261004000000_solo_usuarios_logueados.sql` cierra tablas y RPC a `anon` (las vistas `*_web` siguen públicas). **Aplicarlo solo cuando todos los celulares tengan la versión con login** — antes rompe cualquier app sin login (incluidas Android e iOS si no lo tienen).
+- Local: crear un usuario con `curl http://127.0.0.1:54321/auth/v1/admin/users` y la secret key local (`npx supabase status`), con `"email_confirm": true`.
+
 ## Supabase
 
 - Credenciales e init en `lib/config/supabase/supabase_config.dart`; `SupabaseConfig.client` es el cliente compartido por todos los datasources.
@@ -215,7 +224,7 @@ flutter pub get          # instalar dependencias
 flutter run              # correr en debug
 flutter build apk        # build Android APK
 flutter analyze          # lint check
-flutter test             # 192 tests unitarios/de widget (fakes en test/helpers/)
+flutter test             # 204 tests unitarios/de widget (fakes en test/helpers/)
 flutter clean            # limpiar build
 ```
 

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:textiles_app/features/apliques/apliques.dart';
 import 'package:textiles_app/features/apliques/infrastructure/infrastructure.dart';
 import 'package:textiles_app/features/apliques/presentation/bloc/bloc.dart';
+import 'package:textiles_app/features/auth/auth.dart';
 import 'package:textiles_app/features/colores/colores.dart';
 import 'package:textiles_app/features/colores/infrastructure/infrastructure.dart';
 import 'package:textiles_app/features/colores/presentation/bloc/bloc.dart';
@@ -25,10 +26,23 @@ int _pathParamInt(GoRouterState state, String key, {int fallback = 0}) {
   return int.tryParse(value) ?? fallback;
 }
 
-GoRouter createAppRouter() {
+GoRouter createAppRouter({required AuthRepository authRepository}) {
   return GoRouter(
     initialLocation: '/',
+    // Sin sesión todo va a /login; al entrar o salir se re-evalúa solo
+    refreshListenable: SesionListenable(authRepository.cambiosDeSesion),
+    redirect: (context, state) => redireccionPorSesion(
+      haySesion: authRepository.haySesion,
+      ubicacion: state.matchedLocation,
+    ),
     routes: [
+      GoRoute(
+        path: rutaLogin,
+        builder: (context, state) => BlocProvider(
+          create: (_) => LoginFormCubit(authRepository: authRepository),
+          child: const LoginScreen(),
+        ),
+      ),
       GoRoute(
         path: '/',
         builder: (context, state) => const SucursalesScreen(false),
