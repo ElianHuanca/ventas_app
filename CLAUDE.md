@@ -249,6 +249,15 @@ npx supabase@latest stop
 - `mailpit` se excluye porque su puerto 54324 chocó en esta máquina.
 - Android: `http://` habilitado solo en `android/app/src/debug/AndroidManifest.xml`.
 
+## Firma del APK
+
+Release **y** debug se firman con una clave propia (desde 2026-10-04): `F:\Elian\claves\huantex-release.jks` (alias `huantex`, cert `CN=Huantex`, SHA-256 `48e1da98…7bfb`). Las contraseñas están en `android/key.properties` (ignorado por git, igual que `*.jks`). `android/app/build.gradle.kts` las lee; si falta `key.properties` firma con la clave de debug de la PC y avisa — ese APK **no** se puede instalar encima de la app oficial.
+
+- ⚠️ **Si se pierde el `.jks` o su contraseña, ningún celular podrá actualizar** sin desinstalar. Respaldar ambos fuera de esta PC.
+- Para compilar en otra PC: copiar el `.jks` y `key.properties` (ajustando `storeFile`).
+- Verificar un APK: `apksigner verify --print-certs app-release.apk` (en `<sdk>/build-tools/<versión>/`).
+- Error `INSTALL_FAILED_UPDATE_INCOMPATIBLE` / `signatures do not match` = el celular tiene una app firmada con otra clave → desinstalar una vez (`adb uninstall com.example.textiles_app`; los datos viven en Supabase).
+
 ## Notas Windows / Android
 
 Si aparece `this and base files have different roots` en Gradle (común cuando el proyecto está en `F:`/`D:` y el pub cache en `C:`):
