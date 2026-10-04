@@ -16,54 +16,25 @@ class DetalleVentasDatasourceImpl extends DetalleVentasDatasource {
   @override
   Future<List<DetalleVenta>> createDetalleVenta(
       List<Map<String, dynamic>> detalleVentasLike, int idventas) async {
-    final results = <DetalleVenta>[];
-
-    for (final item in detalleVentasLike) {
-      // Upsert manual: busca por idventa + idtelas + precio.
-      // Si existe, suma cantidad/total/ganancias; si no, inserta.
-      final existing = await _db
-          .from(_table)
-          .select()
-          .eq('idventa', idventas)
-          .eq('idtelas', item['idtelas'])
-          .eq('precio', item['precio'])
-          .maybeSingle();
-
-      Map<String, dynamic> row;
-      if (existing != null) {
-        final id = existing['id'];
-        final nuevaCantidad = (existing['cantidad'] as num).toDouble() +
-            (item['cantidad'] as num).toDouble();
-        final nuevaTotal = ((existing['total'] as num?) ?? 0).toDouble() +
-            (item['total'] as num).toDouble();
-        final nuevaGanancias =
-            ((existing['ganancias'] as num?) ?? 0).toDouble() +
-                (item['ganancias'] as num).toDouble();
-        row = await _db
-            .from(_table)
-            .update({
-              'cantidad': nuevaCantidad,
-              'total': nuevaTotal,
-              'ganancias': nuevaGanancias,
-            })
-            .eq('id', id)
-            .select()
-            .single();
-      } else {
-        row = await _db.from(_table).insert({
-          'nombre': item['nombre'],
-          'precio': item['precio'],
-          'cantidad': item['cantidad'],
-          'total': item['total'],
-          'ganancias': item['ganancias'],
-          'idtelas': item['idtelas'],
-          'idventa': idventas,
-        }).select().single();
-      }
-
-      results.add(DetalleVentaMapper.jsonToEntity(row));
-    }
-    return results;
+    // Upsert atómico en la DB (RPC registrar_detalle_venta) por
+    // idventa + idtelas + precio (UNIQUE): si la línea existe suma
+    // cantidad/total/ganancias; si no, inserta.
+    final rows = await _db.rpc('registrar_detalle_venta', params: {
+      'p_idventa': idventas,
+      'p_detalles': detalleVentasLike
+          .map((item) => {
+                'idtelas': item['idtelas'],
+                'nombre': item['nombre'],
+                'precio': item['precio'],
+                'cantidad': item['cantidad'],
+                'total': item['total'],
+                'ganancias': item['ganancias'],
+              })
+          .toList(),
+    }) as List;
+    return rows
+        .map((e) => DetalleVentaMapper.jsonToEntity(e as Map<String, dynamic>))
+        .toList();
   }
 
   @override

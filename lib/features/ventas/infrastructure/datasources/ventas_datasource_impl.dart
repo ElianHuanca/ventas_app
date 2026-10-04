@@ -1,3 +1,4 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:textiles_app/config/supabase/supabase_config.dart';
 import 'package:textiles_app/features/ventas/domain/domain.dart';
 import 'package:textiles_app/features/ventas/infrastructure/infrastructure.dart';
@@ -44,14 +45,23 @@ class VentasDatasourceImpl extends VentasDatasource {
 
   @override
   Future<Venta> createVenta(int idsucursales, DateTime fecha) async {
-    final row = await _db.from(_table).insert({
-      'fecha': fecha.toIso8601String(),
-      'total': 0,
-      'ganancias': 0,
-      'descuento': 0,
-      'idsucursales': idsucursales,
-    }).select().single();
-    return VentaMapper.jsonToEntity(row);
+    try {
+      final row = await _db.from(_table).insert({
+        'fecha': fecha.toIso8601String(),
+        'total': 0,
+        'ganancias': 0,
+        'descuento': 0,
+        'idsucursales': idsucursales,
+      }).select().single();
+      return VentaMapper.jsonToEntity(row);
+    } on PostgrestException catch (e) {
+      // UNIQUE (idsucursales, día): otro dispositivo creó la venta del día
+      // entre nuestro getVentaByFecha y este insert → se reutiliza esa.
+      if (e.code != '23505') rethrow;
+      final existente = await getVentaByFecha(idsucursales, fecha);
+      if (existente == null) rethrow;
+      return existente;
+    }
   }
 
   @override
@@ -63,24 +73,19 @@ class VentasDatasourceImpl extends VentasDatasource {
   Future<Venta> actualizarVenta(Map<String, dynamic> ventaLike, int id) async {
     // Mantiene la convención incremental: los campos numéricos llegan como
     // DELTAS y se suman al valor actual; `fecha` se asigna directamente.
-    final delta = Map<String, dynamic>.from(ventaLike)..remove('id');
-
-    final current =
-        await _db.from(_table).select().eq('id', id).single();
-
-    final update = <String, dynamic>{};
-    delta.forEach((key, value) {
-      if (key == 'fecha') {
-        update[key] = value;
-      } else {
-        final actual = (current[key] as num?)?.toDouble() ?? 0.0;
-        final sumando = (value as num?)?.toDouble() ?? 0.0;
-        update[key] = actual + sumando;
-      }
+    // La suma la hace la DB en un solo UPDATE (RPC incrementar_venta), así
+    // dos dispositivos vendiendo a la vez no pisan el total del otro.
+    final row = await _db.rpc('incrementar_venta', params: {
+      'p_id': id,
+      'p_total': ventaLike['total'] ?? 0,
+      'p_ganancias': ventaLike['ganancias'] ?? 0,
+      'p_descuento': ventaLike['descuento'] ?? 0,
+      'p_fecha': ventaLike['fecha'],
     });
-
-    final row =
-        await _db.from(_table).update(update).eq('id', id).select().single();
-    return VentaMapper.jsonToEntity(row);
+    // Sin fila, PostgREST devuelve el compuesto con todos los campos en null
+    if (row == null || row['id'] == null) {
+      throw Exception('Venta no encontrada');
+    }
+    return VentaMapper.jsonToEntity(row as Map<String, dynamic>);
   }
 }

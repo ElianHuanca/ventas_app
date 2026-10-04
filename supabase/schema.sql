@@ -1,4 +1,10 @@
 -- =====================================================================
+-- ⚠️ OBSOLETO — NO APLICAR. Referencia histórica.
+-- Ya no describe producción (le faltan apliques, fabricación,
+-- tela_sucursales; resumen_ventas usa la columna `origen`, que no existe).
+-- La fuente de verdad es supabase/migrations/ (empieza por el dump
+-- 20260925000000_prod_schema.sql). Ver CLAUDE.md.
+-- =====================================================================
 -- Textiles App — Esquema PostgreSQL para Supabase
 -- Equivalente al esquema SQLite de lib/features/database/database_helper.dart (v3)
 --

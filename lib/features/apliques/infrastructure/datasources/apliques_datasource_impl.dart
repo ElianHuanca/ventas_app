@@ -158,74 +158,32 @@ class ApliquesDatasourceImpl implements ApliquesDatasource {
         .eq('color_id', colorId);
   }
 
-  // Sin transacción multi-tabla vía supabase-dart: se hace secuencial,
-  // igual que el flujo de ventas. Orden: cabecera → detalles → stock.
-  //
-  // producciones es la cabecera (una por sucursal+día, igual que
-  // getVentaByFecha) y detalle_produccion las líneas aplique+color+cantidad,
-  // con upsert por (idproduccion, idaplique, idcolor) igual que
-  // detalle_ventas: si ya se fabricó ese aplique+color ese día, se suma la
-  // cantidad en vez de crear una línea duplicada.
+  // Una sola transacción (RPC registrar_produccion): cabecera del día (una
+  // por sucursal+fecha, UNIQUE en la DB), líneas acumuladas por
+  // (idproduccion, idaplique, idcolor) y suma al stock de inventario (crea o
+  // reactiva la fila). Si ya se fabricó ese aplique+color ese día, se suma
+  // la cantidad en vez de crear una línea duplicada.
   @override
   Future<void> createProduccion({
     required int sucursalId,
     required DateTime fecha,
     required List<Map<String, dynamic>> lineas,
   }) async {
-    final idproduccion = await _getOrCreateProduccion(sucursalId, fecha);
+    final fechaStr = '${fecha.year.toString().padLeft(4, '0')}-'
+        '${fecha.month.toString().padLeft(2, '0')}-'
+        '${fecha.day.toString().padLeft(2, '0')}';
 
-    for (final linea in lineas) {
-      final apliqueId = linea['idaplique'] as int;
-      final colorId = linea['idcolor'] as int;
-      final cantidad = (linea['cantidad'] as num).toDouble();
-
-      final lineaExistente = await _db
-          .from(_tableDetalleProduccion)
-          .select('id, cantidad')
-          .eq('idproduccion', idproduccion)
-          .eq('idaplique', apliqueId)
-          .eq('idcolor', colorId)
-          .maybeSingle();
-
-      if (lineaExistente == null) {
-        await _db.from(_tableDetalleProduccion).insert({
-          'idproduccion': idproduccion,
-          'idaplique': apliqueId,
-          'idcolor': colorId,
-          'cantidad': cantidad,
-        });
-      } else {
-        final cantidadActual = (lineaExistente['cantidad'] as num).toDouble();
-        await _db
-            .from(_tableDetalleProduccion)
-            .update({'cantidad': cantidadActual + cantidad})
-            .eq('id', lineaExistente['id']);
-      }
-
-      final stockRow = await _db
-          .from(_tableInventario)
-          .select('stock')
-          .eq('sucursal_id', sucursalId)
-          .eq('aplique_id', apliqueId)
-          .eq('color_id', colorId)
-          .maybeSingle();
-      if (stockRow == null) {
-        await _db.from(_tableInventario).insert({
-          'sucursal_id': sucursalId,
-          'aplique_id': apliqueId,
-          'color_id': colorId,
-          'stock': cantidad,
-        });
-      } else {
-        final stockActual = (stockRow['stock'] as num?)?.toDouble() ?? 0;
-        await _db
-            .from(_tableInventario)
-            .update({'stock': stockActual + cantidad, 'activo': true})
-            .eq('sucursal_id', sucursalId)
-            .eq('aplique_id', apliqueId)
-            .eq('color_id', colorId);
-      }
-    }
+    await _db.rpc('registrar_produccion', params: {
+      'p_sucursal_id': sucursalId,
+      'p_fecha': fechaStr,
+      'p_lineas': lineas
+          .map((linea) => {
+                'idaplique': linea['idaplique'],
+                'idcolor': linea['idcolor'],
+                'cantidad': linea['cantidad'],
+              })
+          .toList(),
+    });
   }
 
   @override
@@ -252,29 +210,5 @@ class ApliquesDatasourceImpl implements ApliquesDatasource {
     return list
         .map<Produccion>((e) => ProduccionMapper.jsonToEntity(e))
         .toList();
-  }
-
-  /// Cabecera de producción del día [fecha] para esa sucursal (una por
-  /// sucursal+día, igual que getVentaByFecha): la reutiliza si ya existe,
-  /// si no la crea.
-  Future<int> _getOrCreateProduccion(int sucursalId, DateTime fecha) async {
-    final fechaStr = '${fecha.year.toString().padLeft(4, '0')}-'
-        '${fecha.month.toString().padLeft(2, '0')}-'
-        '${fecha.day.toString().padLeft(2, '0')}';
-
-    final existente = await _db
-        .from(_tableProducciones)
-        .select('id')
-        .eq('sucursal_id', sucursalId)
-        .eq('fecha', fechaStr)
-        .maybeSingle();
-    if (existente != null) return existente['id'] as int;
-
-    final row = await _db
-        .from(_tableProducciones)
-        .insert({'sucursal_id': sucursalId, 'fecha': fechaStr})
-        .select('id')
-        .single();
-    return row['id'] as int;
   }
 }

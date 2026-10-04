@@ -42,12 +42,13 @@ Una sola DB Postgres en Supabase alimenta estas aplicaciones:
 
 En disco son carpetas hermanas (`F:\Elian\ventas_app`, `F:\Elian\ventas_app_android`, `F:\Elian\sitio`); el vault de notas está en `F:\Elian\notas`.
 
-**Este repo es el dueño del esquema.** `supabase/` es la fuente de verdad para las otras dos apps:
+**Este repo es el dueño del esquema.** `supabase/` es la fuente de verdad para las otras apps:
 
-- **`supabase/schema.sql`** — tablas, índices, RLS, seed de telas y las funciones RPC del dashboard.
-- **`supabase/landing.sql`** — las vistas públicas que consume la web (`sitio`). Se aplica **después** de `schema.sql`.
+- **`supabase/migrations/`** — la fuente de verdad. `20260925000000_prod_schema.sql` es el dump de producción; cada cambio posterior es un archivo nuevo `<timestamp>_*.sql` (ver el runbook en el vault).
+- **`supabase/landing.sql`** — las vistas públicas que consume la web (`sitio`). Es `CREATE OR REPLACE`, re-aplicable. Las vistas `catalogo_*_web` también están copiadas en `migrations/20261003000000_vistas_catalogo_web.sql`: si se cambian, actualizar ambos.
+- ⚠️ **`supabase/schema.sql` está obsoleto** (no describe producción; re-aplicarlo rompe cosas). Solo referencia histórica. Lo mismo los `.sql` sueltos de `supabase/` (ya aplicados, no re-ejecutables).
 
-Al cambiar el esquema: editar el archivo y volver a aplicarlo en el SQL Editor de Supabase. **Antes de renombrar o borrar una columna, revisar si `sitio` o `ventas_app_android` la usan.**
+Al cambiar el esquema: migración nueva → `npx supabase@latest db reset` en local → anotarla en el registro de migraciones del vault → aplicarla en el SQL Editor. **Antes de renombrar o borrar una columna, revisar si `sitio`, `ventas_app_android` o `ventas_app_ios` la usan.**
 
 ### ⚠️ Tablas compartidas: cuidado al tocarlas
 
@@ -108,15 +109,30 @@ Las tablas nuevas (`categorias`, `colores`, `tela_colores`, `tela_fotos`) y las 
 
 ### Convención importante: `actualizarVenta`
 
-`VentasDatasourceImpl.actualizarVenta` mantiene la convención **incremental**: lee el valor actual y le suma el delta (`total = total + delta`), excepto `fecha` que se asigna directa. Siempre pasar **deltas** (no valores absolutos) desde los BLoCs.
+`VentasDatasourceImpl.actualizarVenta` mantiene la convención **incremental**: suma el delta al valor actual (`total = total + delta`), excepto `fecha` que se asigna directa. Siempre pasar **deltas** (no valores absolutos) desde los BLoCs. La suma la hace la DB en un solo `UPDATE` (RPC `incrementar_venta`) para que dos dispositivos no se pisen.
+
+### Escrituras multi-tabla → RPC transaccionales
+
+Todo lo que antes era "leer → sumar en Dart → escribir" en varias llamadas HTTP ahora es una RPC (migración `20261003000100_integridad_stock_y_ventas.sql`). **No volver al patrón leer-y-escribir desde el cliente**: con dos dispositivos pierde unidades.
+
+| Datasource | RPC | Qué hace en una transacción |
+|---|---|---|
+| `VentasApliquesDatasourceImpl.createVentaAplique` | `crear_venta_apliques` | cabecera + líneas + descuento de stock; **falla entera** si alguna línea no tiene stock (o no está en inventario activo) |
+| `ApliquesDatasourceImpl.createProduccion` | `registrar_produccion` | cabecera del día + líneas acumuladas + suma al stock |
+| `DetalleVentasDatasourceImpl.createDetalleVenta` | `registrar_detalle_venta` | upsert por `(idventa, idtelas, precio)` sumando cantidad/total/ganancias |
+| `VentasDatasourceImpl.actualizarVenta` | `incrementar_venta` | suma deltas a la venta |
+
+`VentasDatasourceImpl.createVenta` choca con el UNIQUE `(idsucursales, día)` si otro dispositivo creó la venta del día entre medio: atrapa el `23505` y devuelve la existente.
+
+Restricciones en la DB (no solo en la UI): `inventario.stock >= 0`, cantidades `> 0`, precios/costos `>= 0`, y UNIQUE de una venta de telas por sucursal+día, una producción por sucursal+fecha, una línea por `(idventa, idtelas, precio)` y por `(idproduccion, idaplique, idcolor)`.
 
 ### Convención importante: fabricación (`producciones` / `detalle_produccion`)
 
-`ApliquesDatasourceImpl.createProduccion` sigue el mismo patrón cabecera+detalle que ventas:
+`ApliquesDatasourceImpl.createProduccion` (RPC `registrar_produccion`) sigue el mismo patrón cabecera+detalle que ventas:
 
-1. Busca la `producción` (cabecera) de esa sucursal con `fecha = hoy`; si no existe, la crea (equivalente a `getVentaByFecha` + `createVenta`).
-2. Hace **upsert** en `detalle_produccion` por `(idproduccion, idaplique, idcolor)`: si ya se fabricó ese aplique+color hoy, suma la cantidad a la línea existente; si no, inserta una línea nueva (igual que `createDetalleVenta` con `idventa+idtelas+precio`).
-3. Suma la cantidad al `stock` de `inventario` (crea la fila si no existe).
+1. Usa la `producción` (cabecera) de esa sucursal con `fecha = hoy`; si no existe, la crea.
+2. **Upsert** en `detalle_produccion` por `(idproduccion, idaplique, idcolor)`: si ya se fabricó ese aplique+color hoy, suma la cantidad a la línea existente; si no, inserta una línea nueva.
+3. Suma la cantidad al `stock` de `inventario` (crea o reactiva la fila).
 
 Por esto la pantalla de Fabricación (`/fabricacion`) registra cada aplique+color al toque (sin carrito): la agrupación por día ya la resuelve el datasource, no la UI.
 
@@ -133,7 +149,7 @@ Ambas con `GRANT SELECT ... TO anon`. Si se cambia una columna que estas vistas 
 
 - `lib/main.dart` — entry point, init de Supabase + BLoC providers
 - `lib/config/supabase/supabase_config.dart` — credenciales e init del cliente
-- `supabase/schema.sql` — esquema PostgreSQL, RLS, seed y RPC
+- `supabase/migrations/` — esquema PostgreSQL, RLS y RPC (fuente de verdad; `schema.sql` está obsoleto)
 - `supabase/landing.sql` — vistas públicas de la landing
 - `lib/config/router/app_router.dart` — todas las rutas (GoRouter + BLoC providers por ruta)
 - `lib/config/theme/app_theme.dart` — tema Material 3
@@ -187,7 +203,8 @@ Ambas con `GRANT SELECT ... TO anon`. Si se cambia una columna que estas vistas 
 ## Supabase
 
 - Credenciales e init en `lib/config/supabase/supabase_config.dart`; `SupabaseConfig.client` es el cliente compartido por todos los datasources.
-- Las tablas tienen RLS habilitado con **políticas abiertas** (app de un solo usuario, sin login). Si se agrega Supabase Auth, restringir las políticas en `supabase/schema.sql`. **Toda tabla nueva necesita su política `acceso_total_*`** — sin política, PostgREST devuelve `[]` silenciosamente (pasó con `colores`, `inventario`, `apliques`, etc.; se corrigió en `supabase/rls_faltantes.sql`).
+- Las tablas tienen RLS habilitado con **políticas abiertas** (app de un solo usuario, sin login). Si se agrega Supabase Auth, restringir las políticas con una migración nueva. ⚠️ La clave publishable va en cada APK: hoy cualquiera que la extraiga puede leer y escribir (riesgo abierto, ver `rls-abierta-a-anon` en el vault).
+- **`anon` no puede hacer `DELETE` físico** salvo en `ventas` y `detalle_ventas` (las apps borran ventas/líneas), ni `TRUNCATE` en nada. Las vistas `*_web` son solo `SELECT`. Si una feature nueva necesita borrar físicamente, requiere migración con `GRANT DELETE`. **Toda tabla nueva necesita su política `acceso_total_*`** — sin política, PostgREST devuelve `[]` silenciosamente (pasó con `colores`, `inventario`, `apliques`, etc.; se corrigió en `supabase/rls_faltantes.sql`).
 - **Baja lógica en todo:** ningún proceso elimina filas físicamente; se setea `activo = false` (`telas`, `sucursales`, `colores`, `apliques`, `inventario`, `tela_colores`, `aplique_colores`, `tela_sucursales`). Los listados filtran `activo = true`.
 - **Colores por producto:** `tela_colores` (telas) y `aplique_colores` (apliques, migración `supabase/aplique_colores.sql`). Los selectores de color de Fabricación y de la disponibilidad por sucursal solo ofrecen los colores vinculados al aplique.
 
@@ -198,7 +215,7 @@ flutter pub get          # instalar dependencias
 flutter run              # correr en debug
 flutter build apk        # build Android APK
 flutter analyze          # lint check
-flutter test             # 163 tests unitarios/de widget (fakes en test/helpers/)
+flutter test             # 192 tests unitarios/de widget (fakes en test/helpers/)
 flutter clean            # limpiar build
 ```
 
