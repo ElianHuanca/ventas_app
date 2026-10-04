@@ -1,17 +1,12 @@
 -- =====================================================================
--- ⏳ PENDIENTE — NO APLICAR TODAVÍA
+-- Aplicada en producción el 2026-10-04, con todos los celulares ya en la
+-- versión con login.
 --
 -- Cierra la base a quien no inició sesión (rol anon). Solo usuarios de
 -- Supabase Auth (rol authenticated) leen y escriben tablas y RPC.
 -- La web (sitio) NO se rompe: las vistas *_web siguen con SELECT para anon
 -- (corren con permisos del owner, no dependen de las tablas base).
---
--- ORDEN OBLIGATORIO:
---   1. Publicar las apps CON login (Flutter; Android e iOS también, si se
---      usan) y confirmar que TODOS los celulares actualizaron.
---   2. Recién ahí: mover este archivo a supabase/migrations/, anotarlo en el
---      registro de migraciones y aplicarlo.
--- Aplicado antes, cualquier app sin login deja de funcionar al instante.
+-- Desde acá, una app sin login no funciona contra esta base.
 --
 -- Modelo: "logueado = acceso total" (las cuentas las crea el dueño desde el
 -- dashboard; el registro público está desactivado). Si más adelante hay

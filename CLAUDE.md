@@ -206,14 +206,15 @@ Ambas con `GRANT SELECT ... TO anon`. Si se cambia una columna que estas vistas 
 - Feature `lib/features/auth/`: `AuthRepository` (impl sobre `supabase.auth`), `LoginFormCubit`, `LoginScreen`.
 - El router (`createAppRouter(authRepository:)`) redirige a `/login` si no hay sesión y vuelve a `/` al entrar (`redireccionPorSesion` + `SesionListenable` como `refreshListenable`). La sesión queda guardada en el dispositivo; "Cerrar sesión" está al pie del menú lateral.
 - **No hay registro desde la app**: las cuentas se crean en el dashboard de Supabase (Authentication → Users) y el sign-up público está desactivado. Modelo actual: **logueado = acceso total** (sin roles).
-- ⏳ `supabase/pendientes/20261004000000_solo_usuarios_logueados.sql` cierra tablas y RPC a `anon` (las vistas `*_web` siguen públicas). **Aplicarlo solo cuando todos los celulares tengan la versión con login** — antes rompe cualquier app sin login (incluidas Android e iOS si no lo tienen).
+- **La base exige login** desde el 2026-10-04 (`migrations/20261004000000_solo_usuarios_logueados.sql`): `anon` no lee ni escribe tablas ni RPC; solo las vistas `*_web` siguen públicas. Una versión vieja de la app (sin login) ya no funciona contra producción.
 - Local: crear un usuario con `curl http://127.0.0.1:54321/auth/v1/admin/users` y la secret key local (`npx supabase status`), con `"email_confirm": true`.
 
 ## Supabase
 
 - Credenciales e init en `lib/config/supabase/supabase_config.dart`; `SupabaseConfig.client` es el cliente compartido por todos los datasources.
-- Las tablas tienen RLS habilitado con **políticas abiertas** (app de un solo usuario, sin login). Si se agrega Supabase Auth, restringir las políticas con una migración nueva. ⚠️ La clave publishable va en cada APK: hoy cualquiera que la extraiga puede leer y escribir (riesgo abierto, ver `rls-abierta-a-anon` en el vault).
-- **`anon` no puede hacer `DELETE` físico** salvo en `ventas` y `detalle_ventas` (las apps borran ventas/líneas), ni `TRUNCATE` en nada. Las vistas `*_web` son solo `SELECT`. Si una feature nueva necesita borrar físicamente, requiere migración con `GRANT DELETE`. **Toda tabla nueva necesita su política `acceso_total_*`** — sin política, PostgREST devuelve `[]` silenciosamente (pasó con `colores`, `inventario`, `apliques`, etc.; se corrigió en `supabase/rls_faltantes.sql`).
+- RLS habilitado en todas las tablas con políticas **`solo_logueados_*`** (`FOR ALL TO authenticated USING (true)`): cualquier usuario logueado tiene acceso total (sin roles). `anon` no tiene permisos sobre tablas, secuencias ni funciones; solo `SELECT` en las vistas `*_web` (la web).
+- **Toda tabla nueva necesita su política `solo_logueados_*`** — sin política, PostgREST devuelve `[]` silenciosamente (pasó con `colores`, `inventario`, `apliques`, etc.). Y como el default ya no le da nada a `anon`, una RPC o vista pública nueva necesita su `GRANT` explícito.
+- **Sin `DELETE` físico** salvo en `ventas` y `detalle_ventas` (las apps borran ventas/líneas), ni `TRUNCATE` en nada. Si una feature nueva necesita borrar físicamente, requiere migración con `GRANT DELETE ... TO authenticated`.
 - **Baja lógica en todo:** ningún proceso elimina filas físicamente; se setea `activo = false` (`telas`, `sucursales`, `colores`, `apliques`, `inventario`, `tela_colores`, `aplique_colores`, `tela_sucursales`). Los listados filtran `activo = true`.
 - **Colores por producto:** `tela_colores` (telas) y `aplique_colores` (apliques, migración `supabase/aplique_colores.sql`). Los selectores de color de Fabricación y de la disponibilidad por sucursal solo ofrecen los colores vinculados al aplique.
 
