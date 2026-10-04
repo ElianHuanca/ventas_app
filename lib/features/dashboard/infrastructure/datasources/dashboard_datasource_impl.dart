@@ -9,7 +9,7 @@ class DashboardDatasourceImpl extends DashboardDatasource {
     required DateTime desde,
     required DateTime hasta,
   }) async {
-    final hastaFin = DateTime(hasta.year, hasta.month, hasta.day, 23, 59, 59);
+    final hastaFin = _finDelDia(hasta);
 
     final rows = await _db.rpc('top_productos', params: {
       'desde': desde.toIso8601String(),
@@ -41,7 +41,7 @@ class DashboardDatasourceImpl extends DashboardDatasource {
 
   Future<ResumenVentas> _resumen(String rpc,
       {required DateTime desde, required DateTime hasta}) async {
-    final hastaFin = DateTime(hasta.year, hasta.month, hasta.day, 23, 59, 59);
+    final hastaFin = _finDelDia(hasta);
 
     final result = await _db.rpc(rpc, params: {
       'desde': desde.toIso8601String(),
@@ -56,4 +56,10 @@ class DashboardDatasourceImpl extends DashboardDatasource {
       descuento: (row['descuento'] as num?)?.toDouble() ?? 0.0,
     );
   }
+
+  /// Último instante del día. `fecha` se guarda con fracción de segundo
+  /// ("…T23:59:59.500"), y las RPC comparan como texto: con 23:59:59 a secas
+  /// una venta en el último segundo del día quedaba fuera del rango.
+  static DateTime _finDelDia(DateTime d) =>
+      DateTime(d.year, d.month, d.day, 23, 59, 59, 999, 999);
 }
