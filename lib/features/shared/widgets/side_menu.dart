@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:textiles_app/features/auth/domain/repositories/auth_repository.dart';
 import 'package:textiles_app/features/shared/widgets/menu_index_cubit.dart';
 
 class SideMenu extends StatelessWidget {
@@ -60,6 +61,20 @@ class SideMenu extends StatelessWidget {
             icon: Icon(Icons.palette_rounded), label: Text('Colores')),
         const NavigationDrawerDestination(
             icon: Icon(Icons.bar_chart_rounded), label: Text('Dashboard')),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 28, vertical: 8),
+          child: Divider(),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: ListTile(
+            leading: const Icon(Icons.logout_rounded),
+            title: const Text('Cerrar sesión'),
+            subtitle: Text(context.read<AuthRepository>().email ?? ''),
+            // El router manda a /login al detectar que no hay sesión
+            onTap: () => context.read<AuthRepository>().cerrarSesion(),
+          ),
+        ),
       ],
     );
   }

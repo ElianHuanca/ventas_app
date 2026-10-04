@@ -164,6 +164,7 @@ Ambas con `GRANT SELECT ... TO anon`. Si se cambia una columna que estas vistas 
 
 | Path | Screen |
 |---|---|
+| `/login` | LoginScreen (sin sesión todas las rutas redirigen acá) |
 | `/` | SucursalesScreen (ventas de telas) |
 | `/venta-apliques` | VentaApliquesSucursalesScreen (elegir sucursal) |
 | `/venta-apliques/:idsucursal` | VentaApliquesScreen (form con stock por color) |
@@ -200,6 +201,14 @@ Ambas con `GRANT SELECT ... TO anon`. Si se cambia una columna que estas vistas 
 - Rango default: primer día del mes actual → hoy; el selector usa `showDateRangePicker`
 - Usa las RPC `top_productos(desde, hasta)`, `resumen_ventas(desde, hasta)` (telas) y `resumen_ventas_apliques(desde, hasta)` (apliques, migración 10) porque el cliente de Supabase no permite `GROUP BY`/`SUM` directo. Son `LANGUAGE sql STABLE` y comparan `fecha` como texto ISO8601. El dashboard muestra las tarjetas de resumen de telas y de apliques por separado.
 
+## Login (Supabase Auth)
+
+- Feature `lib/features/auth/`: `AuthRepository` (impl sobre `supabase.auth`), `LoginFormCubit`, `LoginScreen`.
+- El router (`createAppRouter(authRepository:)`) redirige a `/login` si no hay sesión y vuelve a `/` al entrar (`redireccionPorSesion` + `SesionListenable` como `refreshListenable`). La sesión queda guardada en el dispositivo; "Cerrar sesión" está al pie del menú lateral.
+- **No hay registro desde la app**: las cuentas se crean en el dashboard de Supabase (Authentication → Users) y el sign-up público está desactivado. Modelo actual: **logueado = acceso total** (sin roles).
+- ⏳ `supabase/pendientes/20261004000000_solo_usuarios_logueados.sql` cierra tablas y RPC a `anon` (las vistas `*_web` siguen públicas). **Aplicarlo solo cuando todos los celulares tengan la versión con login** — antes rompe cualquier app sin login (incluidas Android e iOS si no lo tienen).
+- Local: crear un usuario con `curl http://127.0.0.1:54321/auth/v1/admin/users` y la secret key local (`npx supabase status`), con `"email_confirm": true`.
+
 ## Supabase
 
 - Credenciales e init en `lib/config/supabase/supabase_config.dart`; `SupabaseConfig.client` es el cliente compartido por todos los datasources.
@@ -215,7 +224,7 @@ flutter pub get          # instalar dependencias
 flutter run              # correr en debug
 flutter build apk        # build Android APK
 flutter analyze          # lint check
-flutter test             # 192 tests unitarios/de widget (fakes en test/helpers/)
+flutter test             # 204 tests unitarios/de widget (fakes en test/helpers/)
 flutter clean            # limpiar build
 ```
 
@@ -239,6 +248,15 @@ npx supabase@latest stop
 - El `link` a producción necesita IPv4 vía pooler: si `db dump` da `DbConfigIpv6Error`, repetir `npx supabase@latest link --project-ref tacgylhmwqkfhdkpcvkr`.
 - `mailpit` se excluye porque su puerto 54324 chocó en esta máquina.
 - Android: `http://` habilitado solo en `android/app/src/debug/AndroidManifest.xml`.
+
+## Firma del APK
+
+Release **y** debug se firman con una clave propia (desde 2026-10-04): `F:\Elian\claves\huantex-release.jks` (alias `huantex`, cert `CN=Huantex`, SHA-256 `48e1da98…7bfb`). Las contraseñas están en `android/key.properties` (ignorado por git, igual que `*.jks`). `android/app/build.gradle.kts` las lee; si falta `key.properties` firma con la clave de debug de la PC y avisa — ese APK **no** se puede instalar encima de la app oficial.
+
+- ⚠️ **Si se pierde el `.jks` o su contraseña, ningún celular podrá actualizar** sin desinstalar. Respaldar ambos fuera de esta PC.
+- Para compilar en otra PC: copiar el `.jks` y `key.properties` (ajustando `storeFile`).
+- Verificar un APK: `apksigner verify --print-certs app-release.apk` (en `<sdk>/build-tools/<versión>/`).
+- Error `INSTALL_FAILED_UPDATE_INCOMPATIBLE` / `signatures do not match` = el celular tiene una app firmada con otra clave → desinstalar una vez (`adb uninstall com.example.textiles_app`; los datos viven en Supabase).
 
 ## Notas Windows / Android
 

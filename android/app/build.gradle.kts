@@ -1,8 +1,23 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// Clave de firma propia (android/key.properties, fuera de git). Sin ella cada
+// PC firma con su propia clave de debug y los celulares rechazan la
+// actualización ("signatures do not match"). Ver CLAUDE.md → Firma del APK.
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = Properties()
+val tieneClaveRelease = keystorePropertiesFile.exists()
+if (tieneClaveRelease) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+} else {
+    logger.warn("⚠️ android/key.properties no existe: se firma con la clave de debug de esta PC. Los celulares con la app oficial NO podrán actualizar con este APK.")
 }
 
 android {
@@ -30,11 +45,27 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (tieneClaveRelease) {
+            create("release") {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+            }
+        }
+    }
+
     buildTypes {
+        // Debug también se firma con la clave propia: así `flutter run` se
+        // instala encima de la app oficial sin desinstalarla.
+        val firma = if (tieneClaveRelease) signingConfigs.getByName("release")
+                    else signingConfigs.getByName("debug")
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = firma
+        }
+        debug {
+            signingConfig = firma
         }
     }
 }
