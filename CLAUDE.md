@@ -117,7 +117,7 @@ Todo lo que antes era "leer → sumar en Dart → escribir" en varias llamadas H
 
 | Datasource | RPC | Qué hace en una transacción |
 |---|---|---|
-| `VentasApliquesDatasourceImpl.createVentaAplique` | `crear_venta_apliques` | **venta del día** de la sucursal (la crea o le suma total/ganancias/descuento) + líneas acumuladas por `(aplique, color, precio)` + descuento de stock; **falla entera** si alguna línea no tiene stock (o no está en inventario activo) |
+| `VentasApliquesDatasourceImpl.createVentaAplique` | `crear_venta_apliques` | **venta del día** de la sucursal (la crea o le suma total/ganancias/descuento) + líneas acumuladas por `(aplique, color, precio)` + descuento de stock; **falla entera** si alguna línea no tiene stock (o no está en inventario activo) o su color no está vinculado al aplique (`aplique_colores` activo) |
 | `ApliquesDatasourceImpl.createProduccion` | `registrar_produccion` | cabecera del día + líneas acumuladas + suma al stock |
 | `DetalleVentasDatasourceImpl.createDetalleVenta` | `registrar_detalle_venta` | upsert por `(idventa, idtelas, precio)` sumando cantidad/total/ganancias |
 | `VentasDatasourceImpl.actualizarVenta` | `incrementar_venta` | suma deltas a la venta |
@@ -217,7 +217,7 @@ Ambas con `GRANT SELECT ... TO anon`. Si se cambia una columna que estas vistas 
 - **Toda tabla nueva necesita su política `solo_logueados_*`** — sin política, PostgREST devuelve `[]` silenciosamente (pasó con `colores`, `inventario`, `apliques`, etc.). Y como el default ya no le da nada a `anon`, una RPC o vista pública nueva necesita su `GRANT` explícito.
 - **Sin `DELETE` físico** salvo en `ventas` y `detalle_ventas` (las apps borran ventas/líneas), ni `TRUNCATE` en nada. Si una feature nueva necesita borrar físicamente, requiere migración con `GRANT DELETE ... TO authenticated`.
 - **Baja lógica en todo:** ningún proceso elimina filas físicamente; se setea `activo = false` (`telas`, `sucursales`, `colores`, `apliques`, `inventario`, `tela_colores`, `aplique_colores`, `tela_sucursales`). Los listados filtran `activo = true`.
-- **Colores por producto:** `tela_colores` (telas) y `aplique_colores` (apliques, migración `supabase/aplique_colores.sql`). Los selectores de color de Fabricación, de la **venta de apliques** y de la disponibilidad por sucursal solo ofrecen los colores vinculados al aplique: deshabilitar un color en `/aplique-colores/:idaplique` lo saca de la venta aunque tenga stock (`ApliquesDatasourceImpl.getStock` filtra el inventario por `aplique_colores` activos). La RPC `crear_venta_apliques` **no** lo valida: una app vieja o el port iOS todavía podrían venderlo.
+- **Colores por producto:** `tela_colores` (telas) y `aplique_colores` (apliques, migración `supabase/aplique_colores.sql`). Los selectores de color de Fabricación, de la **venta de apliques** y de la disponibilidad por sucursal solo ofrecen los colores vinculados al aplique: deshabilitar un color en `/aplique-colores/:idaplique` lo saca de la venta aunque tenga stock (`ApliquesDatasourceImpl.getStock` filtra el inventario por `aplique_colores` activos). La base también lo exige (migración `20261007000000_venta_apliques_colores_vinculados.sql`): `crear_venta_apliques` rechaza la venta entera con `Color no habilitado para el aplique` (HINT `color_no_vinculado`), así que ni una app vieja ni el port iOS pueden venderlo.
 
 ## Comandos
 
