@@ -40,15 +40,40 @@ class ApliquesDatasourceImpl implements ApliquesDatasource {
     return ApliqueMapper.jsonToEntity(row);
   }
 
+  /// Stock de la sucursal, solo de los colores vinculados a cada aplique.
+  /// Lo usan la venta de apliques y Fabricación.
   @override
   Future<List<StockAplique>> getStock(int sucursalId) async {
-    final list = await _db
-        .from(_tableInventario)
-        .select('aplique_id, color_id, stock, colores(nombre, hex)')
-        .eq('sucursal_id', sucursalId)
-        .eq('activo', true);
-    return list
+    final resultados = await Future.wait([
+      _db
+          .from(_tableInventario)
+          .select('aplique_id, color_id, stock, colores(nombre, hex)')
+          .eq('sucursal_id', sucursalId)
+          .eq('activo', true),
+      // inventario no tiene FK a aplique_colores: no se puede embeber
+      _db
+          .from(_tableApliqueColores)
+          .select('idaplique, idcolor')
+          .eq('activo', true),
+    ]);
+    return soloColoresVinculados(resultados[0], resultados[1])
         .map<StockAplique>((e) => StockApliqueMapper.jsonToEntity(e))
+        .toList();
+  }
+
+  /// Deja las filas de [inventario] cuyo color sigue vinculado al aplique en
+  /// [vinculos] (`aplique_colores` activos). Deshabilitar un color en la
+  /// pantalla Colores del aplique lo saca de la venta aunque tenga stock,
+  /// igual que de Fabricación.
+  static List<Map<String, dynamic>> soloColoresVinculados(
+    List<Map<String, dynamic>> inventario,
+    List<Map<String, dynamic>> vinculos,
+  ) {
+    final vinculados = {
+      for (final v in vinculos) (v['idaplique'], v['idcolor']),
+    };
+    return inventario
+        .where((e) => vinculados.contains((e['aplique_id'], e['color_id'])))
         .toList();
   }
 
