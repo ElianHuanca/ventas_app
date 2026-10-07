@@ -8,10 +8,22 @@ class DashboardDatasourceImpl extends DashboardDatasource {
   Future<List<TopProducto>> getTopProductos({
     required DateTime desde,
     required DateTime hasta,
-  }) async {
+  }) =>
+      _top('top_productos', desde: desde, hasta: hasta);
+
+  @override
+  Future<List<TopProducto>> getTopApliques({
+    required DateTime desde,
+    required DateTime hasta,
+  }) =>
+      _top('top_apliques', desde: desde, hasta: hasta);
+
+  /// `top_productos` (telas) y `top_apliques` devuelven las mismas columnas.
+  Future<List<TopProducto>> _top(String rpc,
+      {required DateTime desde, required DateTime hasta}) async {
     final hastaFin = _finDelDia(hasta);
 
-    final rows = await _db.rpc('top_productos', params: {
+    final rows = await _db.rpc(rpc, params: {
       'desde': desde.toIso8601String(),
       'hasta': hastaFin.toIso8601String(),
     }) as List;
@@ -20,7 +32,7 @@ class DashboardDatasourceImpl extends DashboardDatasource {
         .map((row) => TopProducto(
               nombre: row['nombre'] as String? ?? 'Sin nombre',
               totalVendido: (row['total_vendido'] as num?)?.toDouble() ?? 0.0,
-              totalCantidad: (row['total_cantidad'] as num?)?.toInt() ?? 0,
+              totalCantidad: (row['total_cantidad'] as num?)?.toDouble() ?? 0.0,
             ))
         .toList();
   }

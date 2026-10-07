@@ -1,5 +1,6 @@
 import 'package:textiles_app/features/apliques/domain/domain.dart';
 import 'package:textiles_app/features/colores/domain/domain.dart';
+import 'package:textiles_app/features/dashboard/domain/domain.dart';
 import 'package:textiles_app/features/sucursales/domain/domain.dart';
 import 'package:textiles_app/features/telas/domain/domain.dart';
 import 'package:textiles_app/features/ventas/domain/domain.dart';
@@ -461,5 +462,52 @@ class FakeColoresRepository implements ColoresRepository {
     _throwIfError();
     eliminado = id;
     return deleteResult;
+  }
+}
+
+class FakeDashboardRepository implements DashboardRepository {
+  List<TopProducto> topTelas;
+  List<TopProducto> topApliques;
+  ResumenVentas resumenTelas;
+  ResumenVentas resumenApliques;
+
+  FakeDashboardRepository({
+    this.topTelas = const [],
+    this.topApliques = const [],
+    this.resumenTelas =
+        const ResumenVentas(total: 0, ganancias: 0, descuento: 0),
+    this.resumenApliques =
+        const ResumenVentas(total: 0, ganancias: 0, descuento: 0),
+  });
+
+  /// Rangos (desde, hasta) recibidos por cada llamada.
+  final List<List<DateTime>> rangos = [];
+
+  @override
+  Future<List<TopProducto>> getTopProductos(
+      {required DateTime desde, required DateTime hasta}) async {
+    rangos.add([desde, hasta]);
+    return topTelas;
+  }
+
+  @override
+  Future<List<TopProducto>> getTopApliques(
+      {required DateTime desde, required DateTime hasta}) async {
+    rangos.add([desde, hasta]);
+    return topApliques;
+  }
+
+  @override
+  Future<ResumenVentas> getResumenVentas(
+      {required DateTime desde, required DateTime hasta}) async {
+    rangos.add([desde, hasta]);
+    return resumenTelas;
+  }
+
+  @override
+  Future<ResumenVentas> getResumenVentasApliques(
+      {required DateTime desde, required DateTime hasta}) async {
+    rangos.add([desde, hasta]);
+    return resumenApliques;
   }
 }

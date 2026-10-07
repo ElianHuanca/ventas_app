@@ -7,6 +7,11 @@ abstract class DashboardRepository {
     required DateTime hasta,
   });
 
+  Future<List<TopProducto>> getTopApliques({
+    required DateTime desde,
+    required DateTime hasta,
+  });
+
   Future<ResumenVentas> getResumenVentas({
     required DateTime desde,
     required DateTime hasta,
