@@ -1,0 +1,179 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:textiles_app/config/config.dart';
+import 'package:textiles_app/main.dart';
+
+/// Usuario que los tests crean (si no existe) en el Supabase local.
+const emailPrueba = String.fromEnvironment('IT_EMAIL',
+    defaultValue: 'integracion@example.com');
+const passwordPrueba = String.fromEnvironment('IT_PASSWORD',
+    defaultValue: 'integracion-local-123');
+
+const snackOk = 'Realizado correctamente';
+
+/// Inicializa Supabase **solo si apunta a la base local** y deja listo el
+/// usuario de prueba. Los tests escriben datos reales: contra producción
+/// cortan acá, antes de abrir ninguna conexión.
+Future<void> prepararBaseLocal() async {
+  if (!SupabaseConfig.isLocal) {
+    throw StateError(
+      'Los tests de integración escriben en la base y solo corren contra el '
+      'Supabase local. Correr con --dart-define-from-file=env/local.json '
+      '(URL actual: ${SupabaseConfig.url}).',
+    );
+  }
+  await SupabaseConfig.init();
+  await _asegurarUsuarioDePrueba();
+  await cerrarSesionDirecto();
+}
+
+Future<void> _asegurarUsuarioDePrueba() async {
+  final auth = SupabaseConfig.client.auth;
+  try {
+    await auth.signInWithPassword(email: emailPrueba, password: passwordPrueba);
+  } on AuthException {
+    // Primera corrida contra esta base (o después de un `db reset`). El
+    // registro público solo está habilitado en el Supabase local (config.toml).
+    await auth.signUp(email: emailPrueba, password: passwordPrueba);
+  }
+}
+
+Future<void> iniciarSesionDirecto() => SupabaseConfig.client.auth
+    .signInWithPassword(email: emailPrueba, password: passwordPrueba);
+
+Future<void> cerrarSesionDirecto() => SupabaseConfig.client.auth.signOut();
+
+/// Sufijo para que cada corrida cree nombres nuevos: la base no permite
+/// borrar físicamente sucursales ni telas, así que los datos de prueba quedan
+/// (se limpian con `npx supabase@latest db reset`).
+/// En base 36 (8 caracteres) para que los nombres no sean mucho más largos
+/// que los reales.
+String sufijoUnico() =>
+    DateTime.now().millisecondsSinceEpoch.toRadixString(36);
+
+Future<void> montarApp(WidgetTester tester) async {
+  await tester.pumpWidget(const HuantexApp());
+  await tester.pumpAndSettle();
+}
+
+/// Bombea frames (en tiempo real) hasta que aparezca [finder]. Hace falta
+/// porque las respuestas de Supabase no son frames: `pumpAndSettle` puede
+/// volver antes de que lleguen.
+Future<void> esperarHasta(
+  WidgetTester tester,
+  Finder finder, {
+  Duration timeout = const Duration(seconds: 20),
+}) async {
+  final limite = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(limite)) {
+    await tester.pump(const Duration(milliseconds: 100));
+    if (finder.evaluate().isNotEmpty) return;
+  }
+  final enPantalla = find
+      .byType(Text)
+      .evaluate()
+      .map((e) => (e.widget as Text).data)
+      .whereType<String>()
+      .join(' | ');
+  throw TestFailure('No apareció a tiempo: $finder\nEn pantalla: $enPantalla');
+}
+
+/// Desplaza la pantalla actual hasta [finder] (las grillas y listas son
+/// perezosas: lo que está fuera de vista no existe todavía) y lo toca.
+Future<void> tocar(WidgetTester tester, Finder finder) async {
+  await tester.scrollUntilVisible(finder, 200,
+      scrollable: find.byType(Scrollable).first);
+  await tester.pumpAndSettle();
+  await tester.tap(finder);
+  await tester.pumpAndSettle();
+}
+
+/// En el celular el teclado queda abierto después de `enterText` y puede
+/// tapar el botón que sigue.
+Future<void> ocultarTeclado(WidgetTester tester) async {
+  FocusManager.instance.primaryFocus?.unfocus();
+  await tester.pumpAndSettle();
+}
+
+/// Enfoca el campo, escribe y cierra el teclado. Volver a escribir en un campo
+/// sin enfocarlo antes (después de `ocultarTeclado`) se pierde en silencio:
+/// la conexión con el teclado ya está cerrada.
+Future<void> escribir(WidgetTester tester, Finder finder, String texto) async {
+  await tester.tap(finder);
+  await tester.pumpAndSettle();
+  await tester.enterText(finder, texto);
+  await ocultarTeclado(tester);
+}
+
+/// Abre el menú lateral. Espera a que termine cualquier transición: durante
+/// ella conviven dos pantallas y la que sale (p. ej. /login) no tiene menú.
+Future<void> abrirMenu(WidgetTester tester) async {
+  await tester.pumpAndSettle();
+  tester
+      .stateList<ScaffoldState>(find.byType(Scaffold))
+      .firstWhere((s) => s.hasDrawer)
+      .openDrawer();
+  await tester.pumpAndSettle();
+}
+
+Future<void> irDesdeMenu(WidgetTester tester, String opcion) async {
+  await abrirMenu(tester);
+  await tester.tap(find.descendant(
+      of: find.byType(NavigationDrawer), matching: find.text(opcion)));
+  await tester.pumpAndSettle();
+}
+
+/// Las tarjetas de las grillas (`ItemDashboard`) muestran el título en
+/// mayúsculas.
+Finder tarjeta(String titulo) => find.text(titulo.toUpperCase());
+
+/// Un `Text` con ese contenido, sin contar los campos de texto que lo tengan
+/// escrito (`find.text` también encuentra `EditableText`).
+Finder textoFijo(String texto) =>
+    find.byWidgetPredicate((w) => w is Text && w.data == texto);
+
+Finder campo(String etiqueta) =>
+    find.widgetWithText(TextFormField, etiqueta);
+
+/// Opción de un `DropdownMenu` abierto cuyo texto contiene [texto] (las de
+/// color dicen "Rojo (stock: 5.0)").
+Finder opcionDeMenu(String texto) => find.ancestor(
+    of: find.textContaining(texto), matching: find.byType(MenuItemButton));
+
+/// Abre el [menu] y elige la opción que contiene [texto].
+Future<void> elegir(WidgetTester tester, Finder menu, String texto) async {
+  await tester.tap(menu);
+  await tester.pumpAndSettle();
+  final opcion = opcionDeMenu(texto).last;
+  await tester.ensureVisible(opcion);
+  await tester.pumpAndSettle();
+  await tester.tap(opcion);
+  await tester.pumpAndSettle();
+}
+
+/// Lista vertical de la pantalla (las grillas y `ListView` de `Screen1`, la
+/// lista de cada pestaña del dashboard; no el `TabBarView`, que es horizontal).
+Finder get listaVertical => find.byWidgetPredicate(
+    (w) => w is Scrollable && w.axisDirection == AxisDirection.down);
+
+/// Botón "atrás" de la `AppBar` de la pantalla de arriba.
+Future<void> volver(WidgetTester tester) async {
+  await tester.tap(find.byType(BackButton).last);
+  await tester.pumpAndSettle();
+}
+
+/// Espera a que la base refleje un cambio que la UI guarda sin avisar
+/// (p. ej. los switches de colores y disponibilidad).
+Future<void> esperarQue(
+  Future<bool> Function() condicion, {
+  String descripcion = 'condición en la base',
+  Duration timeout = const Duration(seconds: 15),
+}) async {
+  final limite = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(limite)) {
+    if (await condicion()) return;
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+  }
+  throw TestFailure('No se cumplió a tiempo: $descripcion');
+}
