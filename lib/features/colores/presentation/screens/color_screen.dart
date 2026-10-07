@@ -16,6 +16,10 @@ class ColorScreen extends StatelessWidget {
         final color = state.colores.where((e) => e.id == id).firstOrNull ??
             const ColorItem(id: 0, nombre: '');
         return BlocProvider(
+          // El primer frame llega con la lista vacía (id 0): la key recrea el
+          // formulario cuando aparece el color, aunque no se haya llegado a
+          // dibujar el loader (si no, editar crearía un duplicado)
+          key: ValueKey(color.id),
           create: (ctx) => ColorFormCubit(
             onCreateCallback: ctx.read<ColoresBloc>().createColor,
             onUpdateCallback: ctx.read<ColoresBloc>().updateColor,

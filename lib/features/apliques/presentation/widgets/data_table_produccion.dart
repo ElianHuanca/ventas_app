@@ -37,8 +37,12 @@ class DataTableProduccion extends StatelessWidget {
                 backgroundColor: colorFromHex('${data['hex']}'),
               ),
               const SizedBox(width: 6),
-              Text('${data['colorNombre']}',
-                  style: const TextStyle(fontSize: 12, color: Colors.black)),
+              // Nombres largos: cortar con … en vez de desbordar la celda
+              Flexible(
+                child: Text('${data['colorNombre']}',
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 12, color: Colors.black)),
+              ),
             ],
           )),
           _cell('${data['cantidad']} uds'),
