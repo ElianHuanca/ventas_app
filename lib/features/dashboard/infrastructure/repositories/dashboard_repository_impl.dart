@@ -12,6 +12,13 @@ class DashboardRepositoryImpl extends DashboardRepository {
       datasource.getTopProductos(desde: desde, hasta: hasta);
 
   @override
+  Future<List<TopProducto>> getTopApliques({
+    required DateTime desde,
+    required DateTime hasta,
+  }) =>
+      datasource.getTopApliques(desde: desde, hasta: hasta);
+
+  @override
   Future<ResumenVentas> getResumenVentas({
     required DateTime desde,
     required DateTime hasta,

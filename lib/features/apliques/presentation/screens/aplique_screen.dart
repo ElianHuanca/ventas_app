@@ -18,6 +18,10 @@ class ApliqueScreen extends StatelessWidget {
             .firstOrNull ??
             Aplique.empty();
         return BlocProvider(
+          // El primer frame llega con la lista vacía (id 0): la key recrea el
+          // formulario cuando aparece el aplique, aunque no se haya llegado a
+          // dibujar el loader (si no, editar crearía un duplicado)
+          key: ValueKey(aplique.id),
           create: (ctx) => ApliqueFormCubit(
             onCreateCallback: ctx.read<ApliquesBloc>().createAplique,
             onUpdateCallback: ctx.read<ApliquesBloc>().updateAplique,

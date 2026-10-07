@@ -1,7 +1,8 @@
 class TopProducto {
   final String nombre;
   final double totalVendido;
-  final int totalCantidad;
+  // Metros en telas, unidades en apliques
+  final double totalCantidad;
 
   const TopProducto({
     required this.nombre,

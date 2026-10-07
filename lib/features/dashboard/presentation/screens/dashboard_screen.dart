@@ -4,46 +4,105 @@ import 'package:textiles_app/features/dashboard/domain/domain.dart';
 import 'package:textiles_app/features/shared/shared.dart';
 import '../bloc/dashboard_cubit.dart';
 
+/// Una pestaña por línea de negocio (Telas | Apliques) con el período
+/// compartido arriba. Ambas se cargan juntas en el cubit.
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<DashboardCubit, DashboardState>(
-      builder: (context, state) {
-        return Screen1(
-          backRoute: false,
-          title: 'Dashboard',
-          isGridview: false,
-          widget: [
-            _RangoFechas(state: state),
-            const SizedBox(height: 12),
-            if (!state.isLoading && state.resumen != null) ...[
-              const _ResumenTitulo('Telas'),
-              _ResumenCards(resumen: state.resumen!),
-              if (state.resumenApliques != null) ...[
-                const SizedBox(height: 12),
-                const _ResumenTitulo('Apliques'),
-                _ResumenCards(resumen: state.resumenApliques!),
-              ],
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        drawer: const SideMenu(),
+        appBar: AppBar(
+          title: Text('Dashboard',
+              style: Theme.of(context).textTheme.titleSmall),
+          centerTitle: true,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(
+              bottom: Radius.circular(15),
+            ),
+          ),
+          bottom: const TabBar(
+            tabs: [
+              Tab(icon: Icon(Icons.checkroom_rounded), text: 'Telas'),
+              Tab(icon: Icon(Icons.auto_awesome_rounded), text: 'Apliques'),
             ],
-            const SizedBox(height: 12),
-            _ToggleVista(verPorCantidad: state.verPorCantidad),
-            const SizedBox(height: 12),
-            state.isLoading
-                ? const Padding(
-                    padding: EdgeInsets.only(top: 60),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                : _TopProductos(
-                    productos: state.verPorCantidad
-                        ? state.topProductosPorCantidad
-                        : state.topProductos,
-                    verPorCantidad: state.verPorCantidad,
+          ),
+        ),
+        body: BlocBuilder<DashboardCubit, DashboardState>(
+          builder: (context, state) {
+            return Column(
+              children: [
+                _RangoFechas(state: state),
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      _PestanaVentas(
+                        state: state,
+                        resumen: state.resumenTelas,
+                        productos: state.telasOrdenadas,
+                        plural: 'telas',
+                        unidad: 'mts',
+                      ),
+                      _PestanaVentas(
+                        state: state,
+                        resumen: state.resumenApliques,
+                        productos: state.apliquesOrdenados,
+                        plural: 'apliques',
+                        unidad: 'uds',
+                      ),
+                    ],
                   ),
-          ],
-        );
-      },
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _PestanaVentas extends StatelessWidget {
+  final DashboardState state;
+  final ResumenVentas? resumen;
+  final List<TopProducto> productos;
+  final String plural;
+  final String unidad;
+
+  const _PestanaVentas({
+    required this.state,
+    required this.resumen,
+    required this.productos,
+    required this.plural,
+    required this.unidad,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.only(top: 4, bottom: 16),
+      children: [
+        if (!state.isLoading && resumen != null) ...[
+          _ResumenCards(resumen: resumen!),
+          const SizedBox(height: 12),
+        ],
+        _ToggleVista(verPorCantidad: state.verPorCantidad),
+        const SizedBox(height: 12),
+        state.isLoading
+            ? const Padding(
+                padding: EdgeInsets.only(top: 60),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            : _TopProductos(
+                productos: productos,
+                verPorCantidad: state.verPorCantidad,
+                plural: plural,
+                unidad: unidad,
+              ),
+      ],
     );
   }
 }
@@ -117,27 +176,6 @@ class _RangoFechas extends StatelessWidget {
                   color: colorScheme.onPrimaryContainer),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ResumenTitulo extends StatelessWidget {
-  final String texto;
-  const _ResumenTitulo(this.texto);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-      child: Text(
-        texto,
-        style: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: Colors.black45,
-          letterSpacing: 0.5,
         ),
       ),
     );
@@ -317,24 +355,36 @@ class _ToggleVista extends StatelessWidget {
 class _TopProductos extends StatelessWidget {
   final List<TopProducto> productos;
   final bool verPorCantidad;
-  const _TopProductos({required this.productos, required this.verPorCantidad});
+  final String plural;
+  final String unidad;
+  const _TopProductos({
+    required this.productos,
+    required this.verPorCantidad,
+    required this.plural,
+    required this.unidad,
+  });
+
+  // 12 mts / 2.50 mts: los metros de tela pueden tener decimales
+  static String _cantidad(double c) =>
+      c == c.roundToDouble() ? c.toStringAsFixed(0) : c.toStringAsFixed(2);
 
   @override
   Widget build(BuildContext context) {
     if (productos.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.only(top: 60),
+      return Padding(
+        padding: const EdgeInsets.only(top: 60),
         child: Center(
           child: Text(
-            'Sin ventas en el período seleccionado',
-            style: TextStyle(color: Colors.black38, fontStyle: FontStyle.italic),
+            'Sin ventas de $plural en el período seleccionado',
+            style: const TextStyle(
+                color: Colors.black38, fontStyle: FontStyle.italic),
           ),
         ),
       );
     }
 
     final maxTotal = verPorCantidad
-        ? productos.first.totalCantidad.toDouble()
+        ? productos.first.totalCantidad
         : productos.first.totalVendido;
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -344,7 +394,7 @@ class _TopProductos extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Todos los productos por ${verPorCantidad ? 'cantidad vendida' : 'total vendido'} (${productos.length})',
+            '${productos.length} $plural por ${verPorCantidad ? 'cantidad vendida' : 'total vendido'}',
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
@@ -355,9 +405,7 @@ class _TopProductos extends StatelessWidget {
           ...productos.asMap().entries.map((entry) {
             final i = entry.key;
             final p = entry.value;
-            final valor = verPorCantidad
-                ? p.totalCantidad.toDouble()
-                : p.totalVendido;
+            final valor = verPorCantidad ? p.totalCantidad : p.totalVendido;
             final ratio = maxTotal > 0 ? valor / maxTotal : 0.0;
 
             return Container(
@@ -434,7 +482,7 @@ class _TopProductos extends StatelessWidget {
                   const SizedBox(width: 12),
                   Text(
                     verPorCantidad
-                        ? '${p.totalCantidad} uds'
+                        ? '${_cantidad(p.totalCantidad)} $unidad'
                         : '${p.totalVendido.toStringAsFixed(2)} Bs',
                     style: TextStyle(
                       fontSize: 13,

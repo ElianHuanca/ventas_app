@@ -17,8 +17,18 @@ void main() async {
   SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(statusBarColor: Colors.transparent));
 
-  runApp(
-    MultiBlocProvider(
+  runApp(const HuantexApp());
+}
+
+/// La app completa con sus providers globales, sin inicializar Supabase.
+/// Separada de `main()` para que los tests de integración (`integration_test/`)
+/// la monten varias veces con un único `SupabaseConfig.init()`.
+class HuantexApp extends StatelessWidget {
+  const HuantexApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiBlocProvider(
       providers: [
         RepositoryProvider<AuthRepository>(create: (_) => AuthRepositoryImpl()),
         BlocProvider(create: (_) => MenuIndexCubit()),
@@ -31,8 +41,8 @@ void main() async {
         ),
       ],
       child: const MyApp(),
-    ),
-  );
+    );
+  }
 }
 
 class MyApp extends StatefulWidget {

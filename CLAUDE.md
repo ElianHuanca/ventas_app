@@ -158,7 +158,7 @@ Ambas con `GRANT SELECT ... TO anon`. Si se cambia una columna que estas vistas 
 - `lib/features/apliques/infrastructure/datasources/apliques_datasource_impl.dart` — apliques, inventario, colores y producciones (fabricación sube stock)
 - `lib/features/apliques/infrastructure/datasources/ventas_apliques_datasource_impl.dart` — venta de apliques: insert en `ventas_apliques` + detalles + descuento de stock
 - `lib/features/sucursales/presentation/bloc/sucursal_disponibilidad_cubit.dart` — vinculación telas↔sucursal e inventario de apliques por sucursal
-- `lib/features/dashboard/infrastructure/datasources/dashboard_datasource_impl.dart` — llama a las RPC del dashboard (`top_productos`, `resumen_ventas`, `resumen_ventas_apliques`)
+- `lib/features/dashboard/infrastructure/datasources/dashboard_datasource_impl.dart` — llama a las RPC del dashboard (`top_productos`, `top_apliques`, `resumen_ventas`, `resumen_ventas_apliques`)
 
 ## Rutas registradas
 
@@ -197,9 +197,10 @@ Ambas con `GRANT SELECT ... TO anon`. Si se cambia una columna que estas vistas 
 ## Dashboard
 
 - Ruta: `/dashboard`
-- Muestra todos los productos ordenados por total vendido (DESC) en un rango de fechas
+- Dos pestañas, **Telas | Apliques**, con el período compartido arriba. Cada una: tarjetas de resumen (total, ganancias, descuentos) y el ranking completo por total vendido o por cantidad (metros en telas, unidades en apliques)
 - Rango default: primer día del mes actual → hoy; el selector usa `showDateRangePicker`
-- Usa las RPC `top_productos(desde, hasta)`, `resumen_ventas(desde, hasta)` (telas) y `resumen_ventas_apliques(desde, hasta)` (apliques, migración 10) porque el cliente de Supabase no permite `GROUP BY`/`SUM` directo. Son `LANGUAGE sql STABLE` y comparan `fecha` como texto ISO8601. El dashboard muestra las tarjetas de resumen de telas y de apliques por separado.
+- `DashboardCubit` carga las 4 RPC juntas (cambiar de pestaña no consulta): `top_productos` + `resumen_ventas` (telas), `top_apliques` + `resumen_ventas_apliques` (apliques). Existen porque el cliente de Supabase no permite `GROUP BY`/`SUM` directo. Son `LANGUAGE sql STABLE` y comparan `fecha` como texto ISO8601
+- `top_apliques` (migración `20261006000000_top_apliques.sql`) tiene las mismas columnas que `top_productos`; agrupa por `idapliques` con el nombre de la tabla `apliques` (no el `nombre` del detalle, que trae basura) y suma todos los colores
 
 ## Login (Supabase Auth)
 
@@ -216,7 +217,7 @@ Ambas con `GRANT SELECT ... TO anon`. Si se cambia una columna que estas vistas 
 - **Toda tabla nueva necesita su política `solo_logueados_*`** — sin política, PostgREST devuelve `[]` silenciosamente (pasó con `colores`, `inventario`, `apliques`, etc.). Y como el default ya no le da nada a `anon`, una RPC o vista pública nueva necesita su `GRANT` explícito.
 - **Sin `DELETE` físico** salvo en `ventas` y `detalle_ventas` (las apps borran ventas/líneas), ni `TRUNCATE` en nada. Si una feature nueva necesita borrar físicamente, requiere migración con `GRANT DELETE ... TO authenticated`.
 - **Baja lógica en todo:** ningún proceso elimina filas físicamente; se setea `activo = false` (`telas`, `sucursales`, `colores`, `apliques`, `inventario`, `tela_colores`, `aplique_colores`, `tela_sucursales`). Los listados filtran `activo = true`.
-- **Colores por producto:** `tela_colores` (telas) y `aplique_colores` (apliques, migración `supabase/aplique_colores.sql`). Los selectores de color de Fabricación y de la disponibilidad por sucursal solo ofrecen los colores vinculados al aplique.
+- **Colores por producto:** `tela_colores` (telas) y `aplique_colores` (apliques, migración `supabase/aplique_colores.sql`). Los selectores de color de Fabricación, de la **venta de apliques** y de la disponibilidad por sucursal solo ofrecen los colores vinculados al aplique: deshabilitar un color en `/aplique-colores/:idaplique` lo saca de la venta aunque tenga stock (`ApliquesDatasourceImpl.getStock` filtra el inventario por `aplique_colores` activos). La RPC `crear_venta_apliques` **no** lo valida: una app vieja o el port iOS todavía podrían venderlo.
 
 ## Comandos
 
@@ -225,11 +226,41 @@ flutter pub get          # instalar dependencias
 flutter run              # correr en debug
 flutter build apk        # build Android APK
 flutter analyze          # lint check
-flutter test             # 204 tests unitarios/de widget (fakes en test/helpers/)
+flutter test             # 215 tests unitarios/de widget (fakes en test/helpers/)
 flutter clean            # limpiar build
 ```
 
-Los tests cubren mappers, cubits de formularios, blocs de listas y utilidades con **fakes en memoria** (`test/helpers/fake_repositories.dart`) — nunca tocan Supabase real. Los datasources `*_impl` y las pantallas con router no se testean (requieren `Supabase.initialize()`).
+## Tests
+
+Están los tres tipos de Flutter:
+
+| Tipo | Dónde | Contra qué |
+|---|---|---|
+| Unitarios | `test/` (mappers, cubits, blocs, utilidades) | **fakes en memoria** (`test/helpers/fake_repositories.dart`), nunca Supabase |
+| De widget | `test/` (pantallas y widgets sueltos, sin router) | los mismos fakes |
+| De integración | `integration_test/app_test.dart` | la app completa (`HuantexApp`: router, login, datasources, RLS, RPC) contra el **Supabase local** |
+
+```bash
+npx supabase@latest start -x realtime,storage-api,imgproxy,edge-runtime,logflare,vector,supavisor,mailpit
+# Celular por USB (pantalla desbloqueada y encendida durante toda la corrida):
+adb reverse tcp:54321 tcp:54321
+flutter test integration_test -d <id del celular> --dart-define-from-file=env/local-usb.json
+# o emulador (10.0.2.2 llega a la PC sin adb reverse). Sin ventana aguanta mejor,
+# pero su pantalla se duerme y la app deja de dibujar: mantenerla despierta
+emulator -avd Medium_Phone_API_36.1 -no-window -no-audio -no-boot-anim -no-snapshot-save
+adb -s emulator-5554 shell svc power stayon true && adb -s emulator-5554 shell wm dismiss-keyguard
+flutter test integration_test -d emulator-5554 --dart-define-from-file=env/local-android.json
+```
+
+Un test que se queda quieto sin fallar (sin timeout de `esperarHasta`) casi siempre es la pantalla del dispositivo apagada: `adb shell dumpsys power | grep mWakefulness` dice `Asleep`.
+
+- **Solo corren contra la base local**: `prepararBaseLocal()` corta antes de conectarse si `SupabaseConfig.isLocal` es `false` (sin `--dart-define` apuntaría a producción).
+- Se crean su usuario (`integracion@example.com`) la primera vez, vía sign-up, que solo está habilitado en el `config.toml` local. Sobrevive hasta el próximo `db reset`.
+- Estructura: `app_test.dart` es el **único punto de entrada** (la app se compila e instala una vez) y llama a los flujos de `flujos/*.dart` (sin sufijo `_test` a propósito: si no, `flutter test` los correría como entradas sueltas). `datos.dart` crea los datos de cada test con los datasources reales.
+- Cubren (20 tests): login; sucursales (alta, renombrar, baja lógica, disponibilidad de telas → venta); telas (alta, precio/desactivar → no se ofrece, colores); colores (alta con hex normalizado, renombrar, baja, hex inválido); apliques (alta/edición/desactivar, deshabilitar un color lo saca de Fabricación y de la venta); fabricación (sube stock, acumula en el día, historial y detalle); venta de apliques (descuenta stock, bloquea sobre-stock, acumula en la venta del día, detalle); venta de telas (venta, acumula en el día, borrar línea descuenta el total); dashboard (pestañas Telas y Apliques). Cada uno verifica también las filas en la base.
+- Dejan filas con prefijo `IT ` en casi todas las tablas: la base no permite borrar físicamente. Se limpian con `npx supabase@latest db reset`.
+- La app de prueba se instala con el mismo `applicationId` que la oficial y la reemplaza en el celular. En Windows desktop (`-d windows`) no compila sin el toolchain C++ de Visual Studio.
+- Helpers en `integration_test/helpers.dart`. Las respuestas de Supabase no son frames, así que se espera con `esperarHasta` / `esperarQue` (no basta `pumpAndSettle`), se escribe con `escribir` (re-enfoca el campo; si no, el segundo `enterText` se pierde) y se eligen opciones de `DropdownMenu` con `elegir`.
 
 ## Entorno local (pruebas sin tocar producción)
 
