@@ -13,8 +13,7 @@ void apliquesTests() {
       expect(textoFijo(nombre), findsOneWidget);
     }
 
-    testWidgets('crea un aplique, lo modifica y lo desactiva',
-        (tester) async {
+    testWidgets('crea un aplique, lo modifica y lo desactiva', (tester) async {
       final nombre = Datos().nombre('Estrella');
       await iniciarSesionDirecto();
       await montarApp(tester);
