@@ -81,8 +81,7 @@ void sucursalesTests() {
       await tocar(tester, tarjeta(sucursal.nombre));
       await tocar(tester, find.text('Disponibilidad de telas'));
       await esperarHasta(tester, find.text('Disponibilidad de telas'));
-      await tocar(
-          tester, find.widgetWithText(SwitchListTile, ofrecida.nombre));
+      await tocar(tester, find.widgetWithText(SwitchListTile, ofrecida.nombre));
       await esperarQue(() async {
         final filas = await db
             .from('tela_sucursales')
