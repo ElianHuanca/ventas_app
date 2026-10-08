@@ -35,6 +35,38 @@ void dashboardTests() {
           findsOneWidget);
     });
 
+    testWidgets('cambiar el período muestra las ventas de esas fechas',
+        (tester) async {
+      final datos = Datos();
+      final sucursal = await datos.sucursal('Dashboard periodo');
+      // Los datos reales empiezan en 2025: en enero de 2020 solo hay
+      // ventas de prueba
+      final antigua = await datos.tela('Vendida en 2020');
+      final deHoy = await datos.tela('Vendida hoy');
+      await datos.venderTela(sucursal, antigua, 4, 20,
+          fecha: DateTime(2020, 1, 15, 10));
+      await datos.venderTela(sucursal, deHoy, 1, 20);
+      await iniciarSesionDirecto();
+      await montarApp(tester);
+
+      await irDesdeMenu(tester, 'Dashboard');
+      await esperarHasta(tester, find.text('Por cantidad'));
+      await tester.scrollUntilVisible(find.text(deHoy.nombre), 200,
+          scrollable: listaVertical.first);
+
+      await tester.tap(find.text('Período'));
+      await tester.pumpAndSettle();
+      await elegirRango(tester, DateTime(2020, 1, 1), DateTime(2020, 1, 31));
+      await esperarHasta(tester, find.text('01/01/2020  →  31/01/2020'));
+      // Cualquier tela de prueba de 2020 (se acumulan una por corrida)
+      await esperarHasta(tester, find.textContaining('IT Vendida en 2020'));
+      await tester.scrollUntilVisible(find.text(antigua.nombre), 200,
+          scrollable: listaVertical.first);
+      await tester.drag(listaVertical.first, const Offset(0, -5000));
+      await tester.pumpAndSettle();
+      expect(find.text(deHoy.nombre), findsNothing);
+    });
+
     testWidgets('la pestaña Apliques muestra los apliques vendidos',
         (tester) async {
       final datos = Datos();

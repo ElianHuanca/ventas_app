@@ -94,6 +94,97 @@ void ventaTelasTests() {
       expect(tarjeta(changeFormatDate(DateTime.now())), findsOneWidget);
     });
 
+    testWidgets(
+        'una línea quitada del carrito no se registra y el descuento queda '
+        'en la venta', (tester) async {
+      final datos = Datos();
+      final sucursal = await datos.sucursal('Carrito telas');
+      final lino = await datos.tela('Lino');
+      final seda = await datos.tela('Seda');
+      await iniciarSesionDirecto();
+      await montarApp(tester);
+
+      await abrirVentas(tester, sucursal);
+      await tester.tap(find.byIcon(Icons.add));
+      await esperarHasta(tester, find.byType(DropdownMenu<Tela>));
+      for (final (tela, cantidad, precio) in [
+        (lino, '2', '25'),
+        (seda, '1', '30'),
+      ]) {
+        await elegir(tester, find.byType(DropdownMenu<Tela>), tela.nombre);
+        await escribir(tester, campo('Precio'), precio);
+        await escribir(tester, campo('Cantidad'), cantidad);
+        await tocar(tester, find.text('Añadir'));
+      }
+      expect(find.text('80.0 Bs'), findsOneWidget);
+
+      // La última línea añadida (la seda) queda arriba
+      await tocar(tester, find.byIcon(Icons.delete_forever_rounded).first);
+      expect(find.text('50.0 Bs'), findsOneWidget);
+      // Solo en la tabla: el DropdownMenu arma un Text oculto por opción
+      expect(
+          find.descendant(
+              of: find.byType(DataTable), matching: textoFijo(seda.nombre)),
+          findsNothing);
+      await escribir(tester, campo('Descuento'), '5');
+      await tocar(tester, find.text('Guardar'));
+      await esperarHasta(tester, find.text(snackOk));
+
+      // El total no se verifica acá: telas lo guarda bruto y apliques neto
+      final venta = await db
+          .from('ventas')
+          .select('id, descuento')
+          .eq('idsucursales', sucursal.id)
+          .single();
+      expect(numero(venta['descuento']), 5);
+      final detalles = await db
+          .from('detalle_ventas')
+          .select('idtelas, cantidad')
+          .eq('idventa', venta['id']);
+      expect(detalles, hasLength(1));
+      expect(detalles.single['idtelas'], lino.id);
+      expect(numero(detalles.single['cantidad']), 2);
+    });
+
+    testWidgets('registra una venta con fecha anterior en la venta de ese día',
+        (tester) async {
+      final datos = Datos();
+      final sucursal = await datos.sucursal('Fecha anterior');
+      final tela = await datos.tela('Gabardina');
+      final hace3 = DateTime.now().subtract(const Duration(days: 3));
+      final fecha = DateTime(hace3.year, hace3.month, hace3.day);
+      await iniciarSesionDirecto();
+      await montarApp(tester);
+
+      await abrirVentas(tester, sucursal);
+      await tester.tap(find.byIcon(Icons.add));
+      await esperarHasta(tester, find.byType(DropdownMenu<Tela>));
+      await tester.tap(find.byIcon(Icons.calendar_today));
+      await tester.pumpAndSettle();
+      await elegirFecha(tester, fecha);
+      expect(
+          find.text('${fecha.day.toString().padLeft(2, '0')}/'
+              '${fecha.month.toString().padLeft(2, '0')}/${fecha.year}'),
+          findsOneWidget);
+      await elegir(tester, find.byType(DropdownMenu<Tela>), tela.nombre);
+      await escribir(tester, campo('Precio'), '20');
+      await escribir(tester, campo('Cantidad'), '2');
+      await tocar(tester, find.text('Añadir'));
+      await tocar(tester, find.text('Guardar'));
+      await esperarHasta(tester, find.text(snackOk));
+      await esperarHasta(tester, tarjeta(changeFormatDate(fecha)));
+      expect(tarjeta(changeFormatDate(DateTime.now())), findsNothing);
+
+      final ventas = await db
+          .from('ventas')
+          .select('fecha, total')
+          .eq('idsucursales', sucursal.id);
+      expect(ventas, hasLength(1));
+      expect(ventas.single['fecha'] as String,
+          startsWith(fecha.toIso8601String().substring(0, 10)));
+      expect(numero(ventas.single['total']), 40);
+    });
+
     testWidgets('el detalle permite borrar una línea y descuenta el total',
         (tester) async {
       final datos = Datos();
@@ -117,10 +208,8 @@ void ventaTelasTests() {
 
       final idventa = (await ventasDe(sucursal)).single['id'];
       await esperarQue(() async {
-        final filas = await db
-            .from('detalle_ventas')
-            .select('id')
-            .eq('idventa', idventa);
+        final filas =
+            await db.from('detalle_ventas').select('id').eq('idventa', idventa);
         return filas.length == 1;
       }, descripcion: 'queda una sola línea');
       await esperarHasta(tester, find.byIcon(Icons.delete_forever_rounded));
