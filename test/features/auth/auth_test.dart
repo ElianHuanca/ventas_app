@@ -1,47 +1,9 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:textiles_app/features/auth/auth.dart';
 
-/// Fake en memoria: acepta solo [emailOk]/[passwordOk].
-class FakeAuthRepository implements AuthRepository {
-  static const emailOk = 'dueno@huantex.com';
-  static const passwordOk = 'secreta';
-
-  final _cambios = StreamController<bool>.broadcast();
-  String? _email;
-  bool sinConexion = false;
-  int intentos = 0;
-
-  @override
-  bool get haySesion => _email != null;
-
-  @override
-  String? get email => _email;
-
-  @override
-  Stream<bool> get cambiosDeSesion => _cambios.stream;
-
-  @override
-  Future<void> iniciarSesion(
-      {required String email, required String password}) async {
-    intentos++;
-    if (sinConexion) throw const AuthFallo('Sin conexión');
-    if (email != emailOk || password != passwordOk) {
-      throw const AuthFallo('Email o contraseña incorrectos');
-    }
-    _email = email;
-    _cambios.add(true);
-  }
-
-  @override
-  Future<void> cerrarSesion() async {
-    _email = null;
-    _cambios.add(false);
-  }
-}
+import '../../helpers/fake_repositories.dart';
 
 void main() {
   group('redireccionPorSesion', () {
