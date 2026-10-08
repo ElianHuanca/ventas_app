@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:textiles_app/features/ventas/domain/domain.dart';
-import 'dialogoDeAlerta.dart';
+import 'DialogoDeAlerta.dart';
 
 DataTable dataTableWidget(
   List<String> header,
