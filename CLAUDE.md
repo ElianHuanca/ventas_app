@@ -167,9 +167,13 @@ Ambas con `GRANT SELECT ... TO anon`. Si se cambia una columna que estas vistas 
 | `/login` | LoginScreen (sin sesión todas las rutas redirigen acá) |
 | `/` | SucursalesScreen (ventas de telas) |
 | `/venta-apliques` | VentaApliquesSucursalesScreen (elegir sucursal) |
-| `/venta-apliques/:idsucursal` | VentaApliquesScreen (form con stock por color) |
-| `/fabricacion` | ProduccionScreen (registrar producción → sube stock; una fila por aplique+color+sucursal+día, se acumula si ya hay una de hoy) |
-| `/fabricacion/historial` | ProduccionesHistorialScreen (listado de producciones recientes) |
+| `/venta-apliques/:idsucursal` | VentasApliquesScreen (ventas de la sucursal, una por día) |
+| `/venta-apliques/registro/:idsucursal` | VentaApliquesScreen (form con stock por color) |
+| `/venta-apliques/detalle/:idventa?fecha=` | VentaApliquesDetalleScreen (líneas de la venta del día) |
+| `/fabricacion` | FabricacionSucursalesScreen (elegir sucursal) |
+| `/fabricacion/:idsucursal` | ProduccionesScreen (producciones de la sucursal, una por día) |
+| `/fabricacion/registro/:idsucursal` | ProduccionScreen (registrar producción → sube stock; una fila por aplique+color+sucursal+día, se acumula si ya hay una de ese día) |
+| `/fabricacion/detalle/:idproduccion` | ProduccionDetalleScreen (líneas de la producción) |
 | `/sucursales` | SucursalesScreen (gestión) |
 | `/sucursal/:idsucursal` | SucursalScreen (form + botón a disponibilidad) |
 | `/sucursal-disponibilidad/:idsucursal` | SucursalDisponibilidadScreen (qué telas se venden en la sucursal) |
@@ -226,7 +230,7 @@ flutter pub get          # instalar dependencias
 flutter run              # correr en debug
 flutter build apk        # build Android APK
 flutter analyze          # lint check
-flutter test             # 215 tests unitarios/de widget (fakes en test/helpers/)
+flutter test             # 461 tests unitarios/de widget + 9 omitidos (fakes en test/helpers/)
 flutter clean            # limpiar build
 ```
 
@@ -237,8 +241,12 @@ Están los tres tipos de Flutter:
 | Tipo | Dónde | Contra qué |
 |---|---|---|
 | Unitarios | `test/` (mappers, cubits, blocs, utilidades) | **fakes en memoria** (`test/helpers/fake_repositories.dart`), nunca Supabase |
-| De widget | `test/` (pantallas y widgets sueltos, sin router) | los mismos fakes |
+| De widget | `test/` (todas las pantallas y widgets compartidos; la navegación se verifica con un `GoRouter` de rutas stub) | los mismos fakes |
 | De integración | `integration_test/app_test.dart` | la app completa (`HuantexApp`: router, login, datasources, RLS, RPC) contra el **Supabase local** |
+
+Cada flujo (login, sucursales y su disponibilidad, telas, colores, apliques, fabricación, venta de apliques, venta de telas, dashboard, menú) tiene los tres tipos. Los tests de `test/` siguen la estructura de `lib/` (los de `features/shared/` van sueltos en `test/features/shared/`). Los fakes no se pisan entre tests: si uno necesita otro comportamiento, se hace una subclase local en ese archivo.
+
+**Tests omitidos = bugs conocidos.** Los `skip: true` describen el comportamiento correcto y llevan un comentario `// bug: archivo:línea — qué pasa`. Al arreglar el bug, quitar el `skip` (el test tiene que pasar).
 
 ```bash
 npx supabase@latest start -x realtime,storage-api,imgproxy,edge-runtime,logflare,vector,supavisor,mailpit
@@ -257,10 +265,11 @@ Un test que se queda quieto sin fallar (sin timeout de `esperarHasta`) casi siem
 - **Solo corren contra la base local**: `prepararBaseLocal()` corta antes de conectarse si `SupabaseConfig.isLocal` es `false` (sin `--dart-define` apuntaría a producción).
 - Se crean su usuario (`integracion@example.com`) la primera vez, vía sign-up, que solo está habilitado en el `config.toml` local. Sobrevive hasta el próximo `db reset`.
 - Estructura: `app_test.dart` es el **único punto de entrada** (la app se compila e instala una vez) y llama a los flujos de `flujos/*.dart` (sin sufijo `_test` a propósito: si no, `flutter test` los correría como entradas sueltas). `datos.dart` crea los datos de cada test con los datasources reales.
-- Cubren (20 tests): login; sucursales (alta, renombrar, baja lógica, disponibilidad de telas → venta); telas (alta, precio/desactivar → no se ofrece, colores); colores (alta con hex normalizado, renombrar, baja, hex inválido); apliques (alta/edición/desactivar, deshabilitar un color lo saca de Fabricación y de la venta); fabricación (sube stock, acumula en el día, historial y detalle); venta de apliques (descuenta stock, bloquea sobre-stock, acumula en la venta del día, detalle); venta de telas (venta, acumula en el día, borrar línea descuenta el total); dashboard (pestañas Telas y Apliques). Cada uno verifica también las filas en la base.
+- Cubren (25 tests): login; sucursales (alta, renombrar, baja lógica, disponibilidad de telas → venta); telas (alta, precio/desactivar → no se ofrece, colores); colores (alta con hex normalizado, renombrar, baja, hex inválido); apliques (alta/edición/desactivar, deshabilitar un color lo saca de Fabricación y de la venta); fabricación (sube stock, acumula en el día, historial y detalle, fecha anterior, línea quitada no se registra); venta de apliques (descuenta stock, bloquea sobre-stock, acumula en la venta del día, detalle, línea quitada no descuenta stock, descuento); venta de telas (venta, acumula en el día, borrar línea descuenta el total, línea quitada del carrito, descuento, fecha anterior); dashboard (pestañas Telas y Apliques, cambio de período). Cada uno verifica también las filas en la base.
 - Dejan filas con prefijo `IT ` en casi todas las tablas: la base no permite borrar físicamente. Se limpian con `npx supabase@latest db reset`.
 - La app de prueba se instala con el mismo `applicationId` que la oficial y la reemplaza en el celular. En Windows desktop (`-d windows`) no compila sin el toolchain C++ de Visual Studio.
-- Helpers en `integration_test/helpers.dart`. Las respuestas de Supabase no son frames, así que se espera con `esperarHasta` / `esperarQue` (no basta `pumpAndSettle`), se escribe con `escribir` (re-enfoca el campo; si no, el segundo `enterText` se pierde) y se eligen opciones de `DropdownMenu` con `elegir`.
+- Helpers en `integration_test/helpers.dart`. Las respuestas de Supabase no son frames, así que se espera con `esperarHasta` / `esperarQue` (no basta `pumpAndSettle`), se escribe con `escribir` (re-enfoca el campo; si no, el segundo `enterText` se pierde) y se eligen opciones de `DropdownMenu` con `elegir`. Fechas con `elegirFecha` / `elegirRango` (modo texto del selector, en el idioma del dispositivo). Para tocar un ítem de una lista recién recargada (al volver de un formulario), `tocarHasta`: el toque que cae mientras está el loader se pierde.
+- `DropdownMenu` arma un `Text` oculto por cada opción: para verificar que algo ya no está en pantalla, buscarlo dentro de su contenedor (p. ej. el `DataTable`), no en toda la pantalla.
 
 ## Entorno local (pruebas sin tocar producción)
 

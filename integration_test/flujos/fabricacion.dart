@@ -66,5 +66,65 @@ void fabricacionTests() {
           tester, find.text('${aplique.nombre} (${color.nombre})'));
       expect(find.text('10.0 uds'), findsOneWidget);
     });
+
+    testWidgets(
+        'con fecha anterior registra la producción de ese día, sin las líneas '
+        'quitadas', (tester) async {
+      final datos = Datos();
+      final sucursal = await datos.sucursal('Fabricacion fecha');
+      final aplique = await datos.aplique('Sol');
+      final rojo = await datos.color('Rojo', hex: 'C0392B');
+      final azul = await datos.color('Azul', hex: '2980B9');
+      await datos.vincularColor(aplique, rojo);
+      await datos.vincularColor(aplique, azul);
+      final antes = DateTime.now().subtract(const Duration(days: 1));
+      final ayer = DateTime(antes.year, antes.month, antes.day);
+      await iniciarSesionDirecto();
+      await montarApp(tester);
+
+      await irDesdeMenu(tester, 'Fabricación');
+      await tocar(tester, tarjeta(sucursal.nombre));
+      await esperarHasta(tester, find.byIcon(Icons.add));
+      await tester.tap(find.byIcon(Icons.add));
+      await esperarHasta(tester, find.byType(DropdownMenu<Aplique>));
+      await tester.tap(find.byIcon(Icons.calendar_today));
+      await tester.pumpAndSettle();
+      await elegirFecha(tester, ayer);
+
+      await elegir(tester, find.byType(DropdownMenu<Aplique>), aplique.nombre);
+      await elegir(tester, find.byType(DropdownMenu<ColorItem>), rojo.nombre);
+      await escribir(tester, campo('Cantidad fabricada'), '3');
+      await tocar(tester, find.text('Añadir'));
+      await elegir(tester, find.byType(DropdownMenu<ColorItem>), azul.nombre);
+      await escribir(tester, campo('Cantidad fabricada'), '5');
+      await tocar(tester, find.text('Añadir'));
+      // La última línea añadida (la azul) queda arriba
+      await tocar(tester, find.byIcon(Icons.delete_forever_rounded).first);
+      expect(find.text('5.0 uds'), findsNothing);
+      expect(find.text('3.0 uds'), findsOneWidget);
+      await tocar(tester, find.text('Guardar'));
+
+      await esperarQue(() async => await stockDe(sucursal, aplique, rojo) == 3,
+          descripcion: 'stock 3 del rojo');
+      expect(await stockDe(sucursal, aplique, azul), 0);
+      final producciones = await db
+          .from('producciones')
+          .select('id, fecha')
+          .eq('sucursal_id', sucursal.id);
+      expect(producciones, hasLength(1));
+      expect(producciones.single['fecha'],
+          ayer.toIso8601String().substring(0, 10));
+      final lineas = await db
+          .from('detalle_produccion')
+          .select('idcolor, cantidad')
+          .eq('idproduccion', producciones.single['id']);
+      expect(lineas, hasLength(1));
+      expect(lineas.single['idcolor'], rojo.id);
+
+      // El historial la muestra en su fecha, no en la de hoy
+      await volver(tester);
+      await esperarHasta(tester, tarjeta(changeFormatDate(ayer)));
+      expect(tarjeta(changeFormatDate(DateTime.now())), findsNothing);
+    });
   });
 }

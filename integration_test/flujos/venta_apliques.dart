@@ -101,6 +101,50 @@ void ventaApliquesTests() {
     });
 
     testWidgets(
+        'una línea quitada del carrito no se vende ni descuenta su stock, y '
+        'el descuento queda en la venta', (tester) async {
+      await preparar(stock: 10);
+      final verde = await datos.color('Verde', hex: '27AE60');
+      await datos.vincularColor(aplique, verde);
+      await datos.fabricar(sucursal, aplique, verde, 10);
+      await iniciarSesionDirecto();
+      await montarApp(tester);
+
+      await abrirRegistro(tester);
+      await agregarLinea(tester, '2', '12');
+      await elegir(tester, find.byType(DropdownMenu<Aplique>), aplique.nombre);
+      await elegir(
+          tester, find.byType(DropdownMenu<StockAplique>), verde.nombre);
+      await escribir(tester, campo('Cantidad'), '4');
+      await escribir(tester, campo('Precio'), '12');
+      await tocar(tester, find.text('Añadir'));
+      expect(find.text('72.0 Bs'), findsWidgets);
+
+      // La última línea añadida (la verde) queda arriba
+      await tocar(tester, find.byIcon(Icons.delete_forever_rounded).first);
+      expect(find.text('24.0 Bs'), findsWidgets);
+      await escribir(tester, campo('Descuento'), '4');
+      expect(find.text('20.0 Bs'), findsOneWidget); // total a pagar
+      await guardarConfirmando(tester);
+
+      expect(await stockDe(sucursal, aplique, color), 8);
+      expect(await stockDe(sucursal, aplique, verde), 10);
+      final venta = await db
+          .from('ventas_apliques')
+          .select('id, descuento')
+          .eq('idsucursales', sucursal.id)
+          .single();
+      expect(numero(venta['descuento']), 4);
+      final lineas = await db
+          .from('detalle_ventas_apliques')
+          .select('idcolor, cantidad')
+          .eq('idventa', venta['id']);
+      expect(lineas, hasLength(1));
+      expect(lineas.single['idcolor'], color.id);
+      expect(numero(lineas.single['cantidad']), 2);
+    });
+
+    testWidgets(
         'una segunda venta el mismo día se suma a la venta del día y el '
         'detalle la muestra', (tester) async {
       await preparar(stock: 10);

@@ -30,26 +30,27 @@ void coloresTests() {
       final id = creado.single['id'];
 
       await esperarHasta(tester, find.byIcon(Icons.add));
-      await tester.scrollUntilVisible(find.text(nombre), 200,
-          scrollable: listaVertical.first);
-      await tester.tap(find.text(nombre));
-      await esperarHasta(tester, find.text('Editar Color'));
+      await tocarHasta(tester, find.text(nombre), find.text('Editar Color'));
       await escribir(tester, campo('Nombre'), renombrado);
       await tocar(tester, find.text('Modificar'));
       await esperarHasta(tester, find.text(snackOk));
-      var fila =
-          await db.from('colores').select('nombre, activo').eq('id', id).single();
+      var fila = await db
+          .from('colores')
+          .select('nombre, activo')
+          .eq('id', id)
+          .single();
       expect(fila['nombre'], renombrado);
 
       await esperarHasta(tester, find.byIcon(Icons.add));
-      await tester.scrollUntilVisible(find.text(renombrado), 200,
-          scrollable: listaVertical.first);
-      await tester.tap(find.text(renombrado));
-      await esperarHasta(tester, find.text('Editar Color'));
+      await tocarHasta(
+          tester, find.text(renombrado), find.text('Editar Color'));
       await tocar(tester, find.text('Eliminar'));
       await esperarHasta(tester, find.text(snackOk));
-      fila =
-          await db.from('colores').select('nombre, activo').eq('id', id).single();
+      fila = await db
+          .from('colores')
+          .select('nombre, activo')
+          .eq('id', id)
+          .single();
       expect(fila['activo'], isFalse, reason: 'baja lógica, no se borra');
     });
 

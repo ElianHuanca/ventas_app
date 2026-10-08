@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:textiles_app/features/apliques/domain/domain.dart';
+import 'package:textiles_app/features/auth/auth.dart';
 import 'package:textiles_app/features/colores/domain/domain.dart';
 import 'package:textiles_app/features/dashboard/domain/domain.dart';
 import 'package:textiles_app/features/sucursales/domain/domain.dart';
@@ -13,9 +16,20 @@ class FakeVentasRepository implements VentasRepository {
   /// Respuesta configurable de getVentaByFecha (null = no existe venta).
   Venta? ventaByFecha;
 
+  /// Respuesta de getVentas.
+  List<Venta> ventas;
+
+  /// Respuesta de getVenta (null = una venta en 0 con el id pedido).
+  Venta? venta;
+
+  FakeVentasRepository({this.ventas = const [], this.venta});
+
   int nextVentaId = 10;
   int createVentaCalls = 0;
   int createVentaAhoraCalls = 0;
+  int getVentasCalls = 0;
+  int? lastGetVentasSucursalId;
+  final List<int> ventasEliminadas = [];
   List<Map<String, dynamic>> actualizaciones = [];
   List<int> idsActualizados = [];
   Object? error;
@@ -44,33 +58,53 @@ class FakeVentasRepository implements VentasRepository {
     );
   }
 
+  /// Como la RPC `incrementar_venta`: suma los deltas a [venta] (o a una
+  /// venta en 0) y asigna `fecha` directo.
   @override
   Future<Venta> actualizarVenta(Map<String, dynamic> ventaLike, int id) async {
     _throwIfError();
     actualizaciones.add(Map<String, dynamic>.from(ventaLike));
     idsActualizados.add(id);
-    return Venta(
+    final actual = venta ??
+        Venta(
+            id: id,
+            fecha: DateTime(2024),
+            total: 0,
+            ganancias: 0,
+            descuento: 0,
+            idsucursales: 1);
+    double delta(String campo) => (ventaLike[campo] as num?)?.toDouble() ?? 0;
+    return venta = Venta(
       id: id,
       fecha: DateTime.tryParse(ventaLike['fecha']?.toString() ?? '') ??
-          DateTime(2024),
-      total: (ventaLike['total'] as num?)?.toDouble() ?? 0,
-      ganancias: (ventaLike['ganancias'] as num?)?.toDouble() ?? 0,
-      descuento: (ventaLike['descuento'] as num?)?.toDouble() ?? 0,
-      idsucursales: 1,
+          actual.fecha,
+      total: actual.total + delta('total'),
+      ganancias: actual.ganancias + delta('ganancias'),
+      descuento: actual.descuento + delta('descuento'),
+      idsucursales: actual.idsucursales,
     );
   }
 
   @override
-  Future<List<Venta>> getVentas(int idsucursal) async => [];
+  Future<List<Venta>> getVentas(int idsucursal) async {
+    _throwIfError();
+    getVentasCalls++;
+    lastGetVentasSucursalId = idsucursal;
+    return ventas;
+  }
 
   @override
-  Future<Venta> getVenta(int id) async => Venta(
-      id: id,
-      fecha: DateTime(2024),
-      total: 0,
-      ganancias: 0,
-      descuento: 0,
-      idsucursales: 1);
+  Future<Venta> getVenta(int id) async {
+    _throwIfError();
+    return venta ??
+        Venta(
+            id: id,
+            fecha: DateTime(2024),
+            total: 0,
+            ganancias: 0,
+            descuento: 0,
+            idsucursales: 1);
+  }
 
   @override
   Future<Venta> createVentaAhora(int idsucursales) async {
@@ -79,12 +113,23 @@ class FakeVentasRepository implements VentasRepository {
   }
 
   @override
-  Future<void> deleteVenta(int id) async {}
+  Future<void> deleteVenta(int id) async {
+    _throwIfError();
+    ventasEliminadas.add(id);
+  }
 }
 
 class FakeDetalleVentasRepository implements DetalleVentasRepository {
+  /// Respuesta de getDetalleVenta; deleteDetalleVenta devuelve la línea de
+  /// acá con ese id (como la fila borrada que devuelve Supabase).
+  List<DetalleVenta> detalles;
+
+  FakeDetalleVentasRepository({this.detalles = const []});
+
   final List<List<Map<String, dynamic>>> detallesCreados = [];
   final List<int> idsVentaUsados = [];
+  final List<int> detallesEliminados = [];
+  int? lastGetDetalleIdventa;
   Object? error;
 
   @override
@@ -99,11 +144,19 @@ class FakeDetalleVentasRepository implements DetalleVentasRepository {
   }
 
   @override
-  Future<List<DetalleVenta>> getDetalleVenta(int idVenta) async => [];
+  Future<List<DetalleVenta>> getDetalleVenta(int idVenta) async {
+    if (error != null) throw error!;
+    lastGetDetalleIdventa = idVenta;
+    return detalles;
+  }
 
   @override
-  Future<DetalleVenta> deleteDetalleVenta(int id) async =>
-      DetalleVenta(id: id, precio: 0, cantidad: 0, idtelas: 0);
+  Future<DetalleVenta> deleteDetalleVenta(int id) async {
+    if (error != null) throw error!;
+    detallesEliminados.add(id);
+    return detalles.firstWhere((d) => d.id == id,
+        orElse: () => DetalleVenta(id: id, precio: 0, cantidad: 0, idtelas: 0));
+  }
 }
 
 class FakeVentasApliquesRepository implements VentasApliquesRepository {
@@ -509,5 +562,43 @@ class FakeDashboardRepository implements DashboardRepository {
       {required DateTime desde, required DateTime hasta}) async {
     rangos.add([desde, hasta]);
     return resumenApliques;
+  }
+}
+
+/// Fake en memoria: acepta solo [emailOk]/[passwordOk].
+class FakeAuthRepository implements AuthRepository {
+  static const emailOk = 'dueno@huantex.com';
+  static const passwordOk = 'secreta';
+
+  final _cambios = StreamController<bool>.broadcast();
+  String? _email;
+  bool sinConexion = false;
+  int intentos = 0;
+
+  @override
+  bool get haySesion => _email != null;
+
+  @override
+  String? get email => _email;
+
+  @override
+  Stream<bool> get cambiosDeSesion => _cambios.stream;
+
+  @override
+  Future<void> iniciarSesion(
+      {required String email, required String password}) async {
+    intentos++;
+    if (sinConexion) throw const AuthFallo('Sin conexión');
+    if (email != emailOk || password != passwordOk) {
+      throw const AuthFallo('Email o contraseña incorrectos');
+    }
+    _email = email;
+    _cambios.add(true);
+  }
+
+  @override
+  Future<void> cerrarSesion() async {
+    _email = null;
+    _cambios.add(false);
   }
 }

@@ -86,12 +86,13 @@ class Datos {
     );
   }
 
-  /// Venta de telas de hoy con una línea (sin tocar los totales de la
-  /// cabecera: alcanza para el ranking del dashboard).
+  /// Venta de telas (de hoy, salvo otra [fecha]) con una línea, sin tocar los
+  /// totales de la cabecera: alcanza para el ranking del dashboard.
   Future<void> venderTela(
-      Sucursal sucursal, Tela tela, num cantidad, num precio) async {
-    final venta =
-        await VentasDatasourceImpl().createVenta(sucursal.id, DateTime.now());
+      Sucursal sucursal, Tela tela, num cantidad, num precio,
+      {DateTime? fecha}) async {
+    final venta = await VentasDatasourceImpl()
+        .createVenta(sucursal.id, fecha ?? DateTime.now());
     await DetalleVentasDatasourceImpl().createDetalleVenta([
       {
         'idtelas': tela.id,
@@ -105,7 +106,8 @@ class Datos {
   }
 }
 
-Future<double> stockDe(Sucursal sucursal, Aplique aplique, ColorItem color) async {
+Future<double> stockDe(
+    Sucursal sucursal, Aplique aplique, ColorItem color) async {
   final fila = await db
       .from('inventario')
       .select('stock')

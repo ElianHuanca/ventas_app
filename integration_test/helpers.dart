@@ -5,8 +5,8 @@ import 'package:textiles_app/config/config.dart';
 import 'package:textiles_app/main.dart';
 
 /// Usuario que los tests crean (si no existe) en el Supabase local.
-const emailPrueba = String.fromEnvironment('IT_EMAIL',
-    defaultValue: 'integracion@example.com');
+const emailPrueba =
+    String.fromEnvironment('IT_EMAIL', defaultValue: 'integracion@example.com');
 const passwordPrueba = String.fromEnvironment('IT_PASSWORD',
     defaultValue: 'integracion-local-123');
 
@@ -49,8 +49,7 @@ Future<void> cerrarSesionDirecto() => SupabaseConfig.client.auth.signOut();
 /// (se limpian con `npx supabase@latest db reset`).
 /// En base 36 (8 caracteres) para que los nombres no sean mucho más largos
 /// que los reales.
-String sufijoUnico() =>
-    DateTime.now().millisecondsSinceEpoch.toRadixString(36);
+String sufijoUnico() => DateTime.now().millisecondsSinceEpoch.toRadixString(36);
 
 Future<void> montarApp(WidgetTester tester) async {
   await tester.pumpWidget(const HuantexApp());
@@ -87,6 +86,24 @@ Future<void> tocar(WidgetTester tester, Finder finder) async {
   await tester.pumpAndSettle();
   await tester.tap(finder);
   await tester.pumpAndSettle();
+}
+
+/// Toca [finder] en la lista hasta que aparezca [destino]. Al volver de un
+/// formulario la lista se recarga (pasa por el loader) y un toque que cae en
+/// ese momento se pierde sin error.
+Future<void> tocarHasta(
+    WidgetTester tester, Finder finder, Finder destino) async {
+  for (var intento = 1;; intento++) {
+    await tester.scrollUntilVisible(finder, 200,
+        scrollable: listaVertical.first);
+    await tester.tap(finder);
+    try {
+      await esperarHasta(tester, destino, timeout: const Duration(seconds: 5));
+      return;
+    } on TestFailure {
+      if (intento == 3) rethrow;
+    }
+  }
 }
 
 /// En el celular el teclado queda abierto después de `enterText` y puede
@@ -133,8 +150,7 @@ Finder tarjeta(String titulo) => find.text(titulo.toUpperCase());
 Finder textoFijo(String texto) =>
     find.byWidgetPredicate((w) => w is Text && w.data == texto);
 
-Finder campo(String etiqueta) =>
-    find.widgetWithText(TextFormField, etiqueta);
+Finder campo(String etiqueta) => find.widgetWithText(TextFormField, etiqueta);
 
 /// Opción de un `DropdownMenu` abierto cuyo texto contiene [texto] (las de
 /// color dicen "Rojo (stock: 5.0)").
@@ -149,6 +165,42 @@ Future<void> elegir(WidgetTester tester, Finder menu, String texto) async {
   await tester.ensureVisible(opcion);
   await tester.pumpAndSettle();
   await tester.tap(opcion);
+  await tester.pumpAndSettle();
+}
+
+/// Campos de texto del selector de fecha abierto (uno; dos en el de rango).
+Finder get _camposDelSelector =>
+    find.descendant(of: find.byType(Dialog), matching: find.byType(TextField));
+
+/// Pasa el selector de fecha abierto al modo texto (más estable que tocar el
+/// día en el calendario, que depende del mes visible) y devuelve los textos
+/// del idioma en que quedó la app: sin `locale` explícito sigue al del
+/// dispositivo, que puede estar en inglés.
+Future<MaterialLocalizations> _selectorEnModoTexto(WidgetTester tester) async {
+  await tester.tap(find.byIcon(Icons.edit_outlined));
+  await tester.pumpAndSettle();
+  return MaterialLocalizations.of(tester.element(_camposDelSelector.first));
+}
+
+/// En un `showDatePicker` abierto, escribe [fecha] y acepta.
+Future<void> elegirFecha(WidgetTester tester, DateTime fecha) async {
+  final textos = await _selectorEnModoTexto(tester);
+  await tester.enterText(_camposDelSelector, textos.formatCompactDate(fecha));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(textos.okButtonLabel));
+  await tester.pumpAndSettle();
+}
+
+/// En un `showDateRangePicker` abierto, escribe el rango y acepta.
+Future<void> elegirRango(
+    WidgetTester tester, DateTime desde, DateTime hasta) async {
+  final textos = await _selectorEnModoTexto(tester);
+  await tester.enterText(
+      _camposDelSelector.first, textos.formatCompactDate(desde));
+  await tester.enterText(
+      _camposDelSelector.last, textos.formatCompactDate(hasta));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(textos.okButtonLabel));
   await tester.pumpAndSettle();
 }
 
