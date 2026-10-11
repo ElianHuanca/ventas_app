@@ -22,7 +22,11 @@ void main() {
   ];
   const stock = [
     StockAplique(
-        apliqueId: 1, colorId: 1, colorNombre: 'Rojo', hex: '#FF0000', stock: 7),
+        apliqueId: 1,
+        colorId: 1,
+        colorNombre: 'Rojo',
+        hex: '#FF0000',
+        stock: 7),
   ];
 
   setUp(() {
@@ -109,8 +113,8 @@ void main() {
     // El listado se limpia y se muestra el snackbar de éxito
     expect(cubit.state.detProducciones, isEmpty);
     expect(find.text('3.0 uds'), findsNothing);
-    expect(find.text('Producción registrada, stock actualizado'),
-        findsOneWidget);
+    expect(
+        find.text('Producción registrada, stock actualizado'), findsOneWidget);
   });
 
   testWidgets('Añadir sin selección muestra error y no agrega línea',
@@ -141,5 +145,105 @@ void main() {
     // La key reinicia la selección visible: queda vacío (muestra el hint)
     expect(textoDropdownColor(tester), '');
     expect(find.text('Seleccione un Color'), findsOneWidget);
+  });
+
+  testWidgets('al elegir el color muestra el stock actual de la sucursal',
+      (tester) async {
+    await montar(tester);
+    expect(find.textContaining('Stock actual'), findsNothing);
+
+    await seleccionarAplique(tester, 'Flor');
+    await seleccionarColor(tester, 'Rojo (stock: 7.0)');
+
+    expect(find.text('Stock actual en esta sucursal: 7.0 uds'), findsOneWidget);
+  });
+
+  testWidgets('Añadir limpia la cantidad para cargar la siguiente línea',
+      (tester) async {
+    await montar(tester);
+    await seleccionarAplique(tester, 'Flor');
+    await seleccionarColor(tester, 'Rojo (stock: 7.0)');
+    await tester.enterText(find.byType(TextFormField), '3');
+
+    await tester.tap(find.text('Añadir'));
+    await tester.pumpAndSettle();
+
+    final campo = tester.widget<TextFormField>(find.byType(TextFormField));
+    expect(campo.controller!.text, isEmpty);
+    expect(cubit.state.cantidad, isEmpty);
+  });
+
+  testWidgets(
+      'tocar Fecha abre el calendario y la producción se registra en el día '
+      'elegido', (tester) async {
+    await montar(tester);
+    cubit.onFechaChanged(DateTime(2024, 3, 5));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('05/03/2024'));
+    await tester.pumpAndSettle();
+    expect(find.byType(DatePickerDialog), findsOneWidget);
+    await tester.tap(find.text('20'));
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DatePickerDialog), findsNothing);
+    expect(find.text('20/03/2024'), findsOneWidget);
+
+    await seleccionarAplique(tester, 'Flor');
+    await seleccionarColor(tester, 'Rojo (stock: 7.0)');
+    await tester.enterText(find.byType(TextFormField), '2');
+    await tester.tap(find.text('Añadir'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(repo.produccionesCreadas.single['fecha'], DateTime(2024, 3, 20));
+  });
+
+  testWidgets('cancelar el calendario conserva la fecha', (tester) async {
+    await montar(tester);
+    cubit.onFechaChanged(DateTime(2024, 3, 5));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('05/03/2024'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('20'));
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('05/03/2024'), findsOneWidget);
+    expect(cubit.state.fecha, DateTime(2024, 3, 5));
+  });
+
+  testWidgets('Guardar sin líneas avisa y no registra nada', (tester) async {
+    await montar(tester);
+
+    await tester.tap(find.text('Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Añada al menos una línea al listado'), findsOneWidget);
+    expect(repo.produccionesCreadas, isEmpty);
+  });
+
+  testWidgets(
+      'si falla el registro muestra el error y conserva las líneas para '
+      'reintentar', (tester) async {
+    await montar(tester);
+    await seleccionarAplique(tester, 'Flor');
+    await seleccionarColor(tester, 'Rojo (stock: 7.0)');
+    await tester.enterText(find.byType(TextFormField), '3');
+    await tester.tap(find.text('Añadir'));
+    await tester.pumpAndSettle();
+
+    repo.error = Exception('Sin conexión');
+    await tester.tap(find.text('Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sin conexión'), findsOneWidget);
+    expect(find.text('Producción registrada, stock actualizado'), findsNothing);
+    expect(find.text('3.0 uds'), findsOneWidget);
+    expect(cubit.state.detProducciones, hasLength(1));
+    expect(cubit.state.isSubmitting, isFalse);
   });
 }

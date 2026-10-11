@@ -120,5 +120,47 @@ void apliquesTests() {
       await tester.tap(opcionDeMenu(rojo.nombre).last);
       await tester.pumpAndSettle();
     });
+
+    testWidgets('habilitar un color desde la UI lo ofrece en Fabricación',
+        (tester) async {
+      final datos = Datos();
+      final sucursal = await datos.sucursal('Color nuevo');
+      final aplique = await datos.aplique('Hoja');
+      final verde = await datos.color('Verde', hex: '27AE60');
+      await iniciarSesionDirecto();
+      await montarApp(tester);
+
+      // Gestión: Apliques → Colores → encender Verde (sin fila previa)
+      await irDesdeMenu(tester, 'Apliques');
+      await buscarAplique(tester, aplique.nombre);
+      await tester.tap(find.text('Colores'));
+      final interruptor = find.widgetWithText(SwitchListTile, verde.nombre);
+      await esperarHasta(tester, interruptor);
+      expect(tester.widget<SwitchListTile>(interruptor).value, isFalse);
+      await tocar(tester, interruptor);
+      await esperarQue(() async {
+        final filas = await db
+            .from('aplique_colores')
+            .select('activo')
+            .eq('idaplique', aplique.id)
+            .eq('idcolor', verde.id);
+        return filas.length == 1 && filas.single['activo'] == true;
+      }, descripcion: 'Verde vinculado al aplique');
+      await volver(tester);
+
+      // Fabricación ya lo ofrece y registra con ese color
+      await irDesdeMenu(tester, 'Fabricación');
+      await tocar(tester, tarjeta(sucursal.nombre));
+      await esperarHasta(tester, find.byIcon(Icons.add));
+      await tester.tap(find.byIcon(Icons.add));
+      await esperarHasta(tester, find.byType(DropdownMenu<Aplique>));
+      await elegir(tester, find.byType(DropdownMenu<Aplique>), aplique.nombre);
+      await elegir(tester, find.byType(DropdownMenu<ColorItem>), verde.nombre);
+      await escribir(tester, campo('Cantidad fabricada'), '2');
+      await tocar(tester, find.text('Añadir'));
+      await tocar(tester, find.text('Guardar'));
+      await esperarQue(() async => await stockDe(sucursal, aplique, verde) == 2,
+          descripcion: 'stock 2 del verde');
+    });
   });
 }
