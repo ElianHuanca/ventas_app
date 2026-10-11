@@ -50,6 +50,10 @@ class Datos {
   Future<void> vincularColor(Aplique aplique, ColorItem color) =>
       ApliquesDatasourceImpl().setColorAplique(aplique.id, color.id, true);
 
+  /// Habilita [tela] en la venta de [sucursal] (tela_sucursales activo).
+  Future<void> ofrecerTela(Sucursal sucursal, Tela tela) =>
+      SucursalesDatasourceImpl().setTelaSucursal(tela.id, sucursal.id, true);
+
   /// Fabricación de hoy: crea o suma el stock de inventario.
   Future<void> fabricar(
           Sucursal sucursal, Aplique aplique, ColorItem color, num cantidad) =>

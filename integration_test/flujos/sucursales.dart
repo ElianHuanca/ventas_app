@@ -106,5 +106,82 @@ void sucursalesTests() {
       await tester.tap(opcionDeMenu(ofrecida.nombre).last);
       await tester.pumpAndSettle();
     });
+
+    testWidgets(
+        'quitar una tela de la sucursal la saca de la venta; sin ninguna '
+        'activa vuelve a ofrecer todo el catálogo', (tester) async {
+      final datos = Datos();
+      final sucursal = await datos.sucursal('Quitar tela');
+      final queda = await datos.tela('Queda');
+      final quitada = await datos.tela('Quitada');
+      await datos.ofrecerTela(sucursal, queda);
+      await datos.ofrecerTela(sucursal, quitada);
+      await iniciarSesionDirecto();
+      await montarApp(tester);
+
+      Future<bool?> ofrecida(Tela tela) async {
+        final filas = await db
+            .from('tela_sucursales')
+            .select('activo')
+            .eq('idsucursal', sucursal.id)
+            .eq('idtela', tela.id);
+        return filas.isEmpty ? null : filas.single['activo'] as bool;
+      }
+
+      Future<void> quitarDeLaSucursal(Tela tela) async {
+        await irDesdeMenu(tester, 'Sucursales');
+        await tocar(tester, tarjeta(sucursal.nombre));
+        await tocar(tester, find.text('Disponibilidad de telas'));
+        final interruptor = find.widgetWithText(SwitchListTile, tela.nombre);
+        await esperarHasta(tester, interruptor);
+        expect(tester.widget<SwitchListTile>(interruptor).value, isTrue);
+        await tocar(tester, interruptor);
+        await esperarQue(() async => await ofrecida(tela) == false,
+            descripcion: '${tela.nombre} quitada (activo = false)');
+        await volver(tester);
+        await volver(tester);
+      }
+
+      /// Abre el selector de telas del registro de venta de la sucursal.
+      Future<void> abrirSelectorDeVenta() async {
+        await irDesdeMenu(tester, 'Venta telas');
+        await tocar(tester, tarjeta(sucursal.nombre));
+        await esperarHasta(tester, find.text('Ventas'));
+        await tester.tap(find.byIcon(Icons.add));
+        await esperarHasta(tester, find.byType(DropdownMenu<Tela>));
+        await tester.tap(find.byType(DropdownMenu<Tela>));
+        await tester.pumpAndSettle();
+      }
+
+      /// Cierra el selector eligiendo [tela] y vuelve al inicio.
+      Future<void> cerrarSelectorDeVenta(Tela tela) async {
+        await tester.tap(opcionDeMenu(tela.nombre).last);
+        await tester.pumpAndSettle();
+        await volver(tester);
+        await volver(tester);
+      }
+
+      await quitarDeLaSucursal(quitada);
+      expect(await ofrecida(queda), isTrue, reason: 'la otra no se toca');
+      await abrirSelectorDeVenta();
+      expect(opcionDeMenu(queda.nombre), findsWidgets);
+      expect(opcionDeMenu(quitada.nombre), findsNothing);
+      await cerrarSelectorDeVenta(queda);
+
+      // Sin vínculos activos rige la regla de transición: todo el catálogo
+      await quitarDeLaSucursal(queda);
+      await abrirSelectorDeVenta();
+      expect(opcionDeMenu(queda.nombre), findsWidgets);
+      expect(opcionDeMenu(quitada.nombre), findsWidgets);
+      await tester.tap(opcionDeMenu(quitada.nombre).last);
+      await tester.pumpAndSettle();
+
+      final filas = await db
+          .from('tela_sucursales')
+          .select('activo')
+          .eq('idsucursal', sucursal.id);
+      expect(filas, hasLength(2), reason: 'baja lógica, no se borran');
+      expect(filas.every((f) => f['activo'] == false), isTrue);
+    });
   });
 }
