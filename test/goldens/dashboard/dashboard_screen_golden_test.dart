@@ -2,10 +2,7 @@
 library;
 
 import 'dart:async';
-import 'dart:io';
 
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:textiles_app/features/dashboard/domain/domain.dart';
@@ -48,38 +45,7 @@ class _RepoLento extends FakeDashboardRepository {
   }
 }
 
-/// La Roboto del SDK no trae la flecha "→" del período (en el celular la
-/// dibuja la fuente de respaldo del sistema) y flutter_tester no busca otra
-/// fuente: saldría un cuadrado vacío. Se carga Arial de Windows como respaldo
-/// (las capturas son de Windows); si no está, la flecha queda como cuadrado.
-Future<List<String>> _cargarRespaldoDeFlecha() async {
-  final windows = Platform.environment['WINDIR'] ?? r'C:\Windows';
-  final arial = File('$windows/Fonts/arial.ttf');
-  if (!arial.existsSync()) return const [];
-  final fuente = FontLoader('RespaldoFlecha')
-    ..addFont(Future.value(ByteData.sublistView(arial.readAsBytesSync())));
-  await fuente.load();
-  return const ['RespaldoFlecha'];
-}
-
-/// [pantalla] con la fuente de respaldo en el texto del tema: solo cambia
-/// los glifos que Roboto no tiene.
-Widget _conRespaldo(Widget pantalla, List<String> respaldo) => Builder(
-      builder: (context) {
-        final tema = Theme.of(context);
-        return Theme(
-          data: tema.copyWith(
-            textTheme: tema.textTheme.apply(fontFamilyFallback: respaldo),
-          ),
-          child: pantalla,
-        );
-      },
-    );
-
 void main() {
-  late List<String> respaldo;
-  setUpAll(() async => respaldo = await _cargarRespaldoDeFlecha());
-
   // Las RPC devuelven los rankings ordenados por total vendido
   const topTelas = [
     TopProducto(nombre: 'Lino', totalVendido: 4280.5, totalCantidad: 214.5),
@@ -125,7 +91,7 @@ void main() {
       tester,
       BlocProvider.value(
         value: cubit,
-        child: _conRespaldo(const DashboardScreen(), respaldo),
+        child: const DashboardScreen(),
       ),
       asentar: asentar,
     );
@@ -181,9 +147,13 @@ void main() {
     // es un punto); el tiempo es falso, así que la captura es fija.
     await tester.pump(const Duration(milliseconds: 400));
 
-    await compararCaptura('dashboard_cargando');
-
-    lento.espera.complete();
+    // Se libera la carga aunque la captura falle (con un Bloc, su close()
+    // esperaría el handler pendiente y el test se colgaría).
+    try {
+      await compararCaptura('dashboard_cargando');
+    } finally {
+      lento.espera.complete();
+    }
     await tester.pumpAndSettle();
   });
 }

@@ -66,9 +66,13 @@ void main() {
     // En el instante 0 el arco del spinner mide 0: se avanza un tramo fijo
     await tester.pump(const Duration(milliseconds: 400));
 
-    await compararCaptura('producciones_screen_cargando');
-
-    repo.carga.complete(const []);
+    // Se libera la carga aunque la captura falle: si no, el close() del
+    // bloc espera ese handler y el test se cuelga hasta el timeout.
+    try {
+      await compararCaptura('producciones_screen_cargando');
+    } finally {
+      repo.carga.complete(const []);
+    }
     await tester.pumpAndSettle();
   });
 }

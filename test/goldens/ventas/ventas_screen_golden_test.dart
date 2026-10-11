@@ -71,21 +71,20 @@ void main() {
     await compararCaptura('ventas_vacia');
   });
 
-  testWidgets('cargando: el spinner sobre el fondo de la app', (tester) async {
+  testWidgets('cargando', (tester) async {
+    // El loader no pinta fondo (bug en full_screen_loader_golden_test.dart)
     final repo = _RepoConCargaPendiente();
     await montar(tester, repo, asentar: false);
     // En el primer frame el spinner es un punto: se avanza a un instante fijo
     await tester.pump(const Duration(milliseconds: 400));
 
-    await compararCaptura('ventas_cargando');
-
-    repo.carga.complete(ventas);
+    // Se libera la carga aunque la captura falle: si no, el close() del
+    // bloc espera ese handler y el test se cuelga hasta el timeout.
+    try {
+      await compararCaptura('ventas_cargando');
+    } finally {
+      repo.carga.complete(ventas);
+    }
     await tester.pumpAndSettle();
-  },
-      // bug: full_screen_loader.dart:9 (usado en ventas_screen.dart:24) — el
-      // loader no tiene Scaffold ni Material: no pinta fondo y la captura
-      // sale transparente; en el celular se ve el spinner sobre negro cada
-      // vez que la lista carga o recarga. (testWidgets solo acepta skip
-      // bool.)
-      skip: true);
+  });
 }

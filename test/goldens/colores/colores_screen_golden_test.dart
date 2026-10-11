@@ -66,8 +66,12 @@ void main() {
     // tiempo fijo de su animación (el reloj del test es determinístico).
     await tester.pump(const Duration(milliseconds: 400));
 
-    await compararCaptura('colores_cargando');
-
-    lento.carga.complete(colores);
+    // Se libera la carga aunque la captura falle: si no, el close() del
+    // bloc espera ese handler y el test se cuelga hasta el timeout.
+    try {
+      await compararCaptura('colores_cargando');
+    } finally {
+      lento.carga.complete(colores);
+    }
   });
 }

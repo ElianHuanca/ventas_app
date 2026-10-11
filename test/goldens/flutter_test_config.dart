@@ -10,6 +10,9 @@
 // sistemas operativos, así que en otro SO hay que regenerarlas
 // (`flutter test test/goldens --update-goldens`) o excluirlas
 // (`flutter test --exclude-tags golden`).
+//
+// Las sombras quedan apagadas (flutter_test las desactiva porque no siempre se
+// dibujan igual): lo que tiene elevación, como el FAB, sale con contorno.
 import 'dart:async';
 import 'dart:io';
 
@@ -27,7 +30,8 @@ Future<void> _cargarFuentes() async {
     '${_raizDeFlutter()}/bin/cache/artifacts/material_fonts',
   );
   if (!carpeta.existsSync()) {
-    throw StateError('No se encontraron las fuentes del SDK en ${carpeta.path}');
+    throw StateError(
+        'No se encontraron las fuentes del SDK en ${carpeta.path}');
   }
   // En Windows los archivos están en minúsculas y en otros SO no: se buscan
   // sin distinguir mayúsculas.
@@ -55,6 +59,19 @@ Future<void> _cargarFuentes() async {
   final iconos = FontLoader('MaterialIcons')
     ..addFont(Future.value(leer('materialicons-regular.otf')));
   await iconos.load();
+
+  // La Roboto del SDK no trae algunos símbolos (p. ej. la flecha "→" del
+  // período del dashboard): en el celular los dibuja la fuente de respaldo del
+  // sistema, pero flutter_tester no busca otra y saldría un cuadrado vacío.
+  // golden_helpers.dart usa Arial de Windows como respaldo.
+  final arial = File(
+    '${Platform.environment['WINDIR'] ?? r'C:\Windows'}/Fonts/arial.ttf',
+  );
+  if (arial.existsSync()) {
+    final respaldo = FontLoader('Arial')
+      ..addFont(Future.value(ByteData.sublistView(arial.readAsBytesSync())));
+    await respaldo.load();
+  }
 }
 
 /// FLUTTER_ROOT si el tool la exporta; si no, se deduce del flutter_tester

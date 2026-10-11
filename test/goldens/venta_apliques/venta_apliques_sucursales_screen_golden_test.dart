@@ -64,9 +64,13 @@ void main() {
     // es un punto); el tiempo es falso, así que la captura es fija.
     await tester.pump(const Duration(milliseconds: 400));
 
-    await compararCaptura('venta_apliques_sucursales_cargando');
-
-    lento.carga.complete(sucursales);
+    // Se libera la carga aunque la captura falle: si no, el close() del
+    // bloc espera ese handler y el test se cuelga hasta el timeout.
+    try {
+      await compararCaptura('venta_apliques_sucursales_cargando');
+    } finally {
+      lento.carga.complete(sucursales);
+    }
     await tester.pumpAndSettle();
   });
 }

@@ -51,23 +51,33 @@ Future<void> montarParaCaptura(
   }
 }
 
+/// Fuente para los glifos que Roboto no tiene (la carga flutter_test_config).
+const _respaldo = ['Arial'];
+
 /// AppTheme con Roboto en los estilos que no la heredan de la tipografía
-/// (título del AppBar y FilledButton). En el celular toman la fuente del
-/// sistema, que es Roboto; en flutter_tester saldrían con la de prueba.
+/// (título del AppBar y FilledButton): en el celular toman la fuente del
+/// sistema, que es Roboto; en flutter_tester saldrían con la de prueba. Y con
+/// [_respaldo] para los símbolos que faltan en Roboto.
 ThemeData _temaDeCaptura() {
   final tema = AppTheme().getTheme();
   final boton = tema.filledButtonTheme.style;
   return tema.copyWith(
+    textTheme: tema.textTheme.apply(fontFamilyFallback: _respaldo),
+    primaryTextTheme:
+        tema.primaryTextTheme.apply(fontFamilyFallback: _respaldo),
     appBarTheme: tema.appBarTheme.copyWith(
-      titleTextStyle:
-          tema.appBarTheme.titleTextStyle?.copyWith(fontFamily: 'Roboto'),
+      titleTextStyle: tema.appBarTheme.titleTextStyle?.copyWith(
+        fontFamily: 'Roboto',
+        fontFamilyFallback: _respaldo,
+      ),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: boton?.copyWith(
         textStyle: WidgetStateProperty.resolveWith(
-          (estados) => boton.textStyle
-              ?.resolve(estados)
-              ?.copyWith(fontFamily: 'Roboto'),
+          (estados) => boton.textStyle?.resolve(estados)?.copyWith(
+                fontFamily: 'Roboto',
+                fontFamilyFallback: _respaldo,
+              ),
         ),
       ),
     ),

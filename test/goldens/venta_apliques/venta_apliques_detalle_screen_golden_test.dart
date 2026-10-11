@@ -92,9 +92,13 @@ void main() {
     // es un punto); el tiempo es falso, así que la captura es fija.
     await tester.pump(const Duration(milliseconds: 400));
 
-    await compararCaptura('venta_apliques_detalle_cargando');
-
-    lento.carga.complete(lineas);
+    // Se libera la carga aunque la captura falle (con un Bloc, su close()
+    // esperaría el handler pendiente y el test se colgaría).
+    try {
+      await compararCaptura('venta_apliques_detalle_cargando');
+    } finally {
+      lento.carga.complete(lineas);
+    }
     await tester.pumpAndSettle();
   });
 }
