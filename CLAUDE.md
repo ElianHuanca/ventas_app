@@ -296,7 +296,7 @@ adb -s emulator-5554 shell svc power stayon true && adb -s emulator-5554 shell w
 flutter test integration_test -d emulator-5554 --dart-define-from-file=env/local-android.json
 ```
 
-Un test que se queda quieto sin fallar (sin timeout de `esperarHasta`) casi siempre es la pantalla del dispositivo apagada: `adb shell dumpsys power | grep mWakefulness` dice `Asleep`.
+Un test que se queda quieto sin fallar (sin timeout de `esperarHasta`) casi siempre es la pantalla del dispositivo apagada (`adb shell dumpsys power | grep mWakefulness` dice `Asleep`) o la app de prueba en segundo plano: si otra app pasa al frente (o se toca Inicio), Android la congela. `adb shell dumpsys activity activities | grep topResumedActivity` lo muestra; se trae de vuelta (y el test sigue) con `adb shell monkey -p com.example.textiles_app -c android.intent.category.LAUNCHER 1`.
 
 - **Solo corren contra la base local**: `prepararBaseLocal()` corta antes de conectarse si `SupabaseConfig.isLocal` es `false` (sin `--dart-define` apuntaría a producción).
 - Se crean su usuario (`integracion@example.com`) la primera vez, vía sign-up, que solo está habilitado en el `config.toml` local. Sobrevive hasta el próximo `db reset`.
