@@ -4,4 +4,7 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Solo profile: permite http:// para el Supabase local en los
+         macro-benchmarks (benchmark/macro/, env/local-usb.json). -->
+    <application android:usesCleartextTraffic="true"/>
 </manifest>
