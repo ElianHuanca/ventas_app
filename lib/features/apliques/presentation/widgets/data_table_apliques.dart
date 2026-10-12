@@ -40,6 +40,7 @@ class DataTableApliques extends StatelessWidget {
             _cell('${data['total']}Bs'),
             DataCell(
               IconButton(
+                tooltip: 'Quitar línea',
                 padding: EdgeInsets.zero,
                 onPressed: () => onTap(
                   data['idapliques'] as int,

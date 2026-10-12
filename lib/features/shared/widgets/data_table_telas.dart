@@ -63,14 +63,10 @@ List<DataRow> _rows(
       _cell(''),
       const DataCell(Text('Total',
           style: TextStyle(
-              fontSize: 12,
-              color: Colors.black,
-              fontWeight: FontWeight.bold))),
+              fontSize: 12, color: Colors.black, fontWeight: FontWeight.bold))),
       DataCell(Text('$total Bs',
           style: const TextStyle(
-              fontSize: 12,
-              color: Colors.black,
-              fontWeight: FontWeight.bold))),
+              fontSize: 12, color: Colors.black, fontWeight: FontWeight.bold))),
       _cell(''),
     ]),
   ];
@@ -79,10 +75,11 @@ List<DataRow> _rows(
 DataCell _cell(String texto) => DataCell(
     Text(texto, style: const TextStyle(fontSize: 12, color: Colors.black)));
 
-DataCell _cellButton(
-        void Function(int, double, double) onTap, int idtelas, double cantidad, double precio) =>
+DataCell _cellButton(void Function(int, double, double) onTap, int idtelas,
+        double cantidad, double precio) =>
     DataCell(
       IconButton(
+        tooltip: 'Quitar línea',
         padding: EdgeInsets.zero,
         onPressed: () => onTap(idtelas, cantidad, precio),
         iconSize: 20,

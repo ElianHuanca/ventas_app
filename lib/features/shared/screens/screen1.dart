@@ -9,6 +9,9 @@ class Screen1 extends StatelessWidget {
   final FloatingActionButton? floatingActionButton;
   final bool backRoute;
   final Function? onTap;
+
+  /// Lo que lee TalkBack (y el tooltip) del botón "+" de [onTap].
+  final String tooltipAgregar;
   const Screen1(
       {required this.widget,
       super.key,
@@ -16,18 +19,21 @@ class Screen1 extends StatelessWidget {
       required this.isGridview,
       this.floatingActionButton,
       required this.backRoute,
-      this.onTap});
+      this.onTap,
+      this.tooltipAgregar = 'Agregar'});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
+      // Tocar fuera solo cierra el teclado: no es un control para TalkBack
+      excludeFromSemantics: true,
       child: Scaffold(
           drawer: backRoute ? null : const SideMenu(),
           appBar: AppBar(
             leading: backRoute
                 ? BackButton(
-                    onPressed: () {                                         
+                    onPressed: () {
                       context.pop();
                     },
                   )
@@ -42,7 +48,9 @@ class Screen1 extends StatelessWidget {
             actions: [
               onTap != null
                   ? IconButton(
-                      onPressed: () => onTap!(), icon: const Icon(Icons.add))
+                      tooltip: tooltipAgregar,
+                      onPressed: () => onTap!(),
+                      icon: const Icon(Icons.add))
                   : const SizedBox(),
             ],
           ),

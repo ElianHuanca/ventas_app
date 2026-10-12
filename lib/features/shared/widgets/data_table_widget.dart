@@ -84,6 +84,7 @@ DataCell _cellBold(String texto) => DataCell(Text(texto,
 DataCell _cellButton(void Function(int) onTap, int id, BuildContext context) =>
     DataCell(
       IconButton(
+        tooltip: 'Eliminar línea',
         padding: EdgeInsets.zero,
         onPressed: () => dialogoDeAlerta(context, () => onTap(id)),
         iconSize: 20,

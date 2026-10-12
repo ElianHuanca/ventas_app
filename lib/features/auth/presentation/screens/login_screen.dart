@@ -11,6 +11,8 @@ class LoginScreen extends StatelessWidget {
 
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
+      // Tocar fuera solo cierra el teclado: no es un control para TalkBack
+      excludeFromSemantics: true,
       child: Scaffold(
         body: SafeArea(
           child: Center(

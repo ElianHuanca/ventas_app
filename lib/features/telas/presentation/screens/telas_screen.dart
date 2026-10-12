@@ -36,6 +36,7 @@ class _TelasScreenState extends State<TelasScreen> {
                 widget: _buildBody(context, state),
                 title: 'Telas',
                 isGridview: false,
+                tooltipAgregar: 'Agregar tela',
                 onTap: () async {
                   await context.push('/tela/0');
                   if (context.mounted) {

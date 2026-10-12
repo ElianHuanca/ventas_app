@@ -30,6 +30,7 @@ class ProduccionesScreen extends StatelessWidget {
                 isGridview: true,
                 backRoute: true,
                 onTap: () => _onCreateProduccion(context),
+                tooltipAgregar: 'Registrar producción',
               );
       },
     );

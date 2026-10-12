@@ -75,6 +75,10 @@ class DetVenta extends StatelessWidget {
                         child: DropdownMenu<Tela>(
                           width: MediaQuery.of(context).size.width * 0.93,
                           hintText: 'Seleccione una Tela',
+                          trailingIcon: const Icon(Icons.arrow_drop_down,
+                              semanticLabel: 'Abrir lista de telas'),
+                          selectedTrailingIcon: const Icon(Icons.arrow_drop_up,
+                              semanticLabel: 'Cerrar lista de telas'),
                           // En escritorio se puede escribir: un texto que no es
                           // ninguna tela llega como null y limpia la selección
                           // (agregar sin tela queda bloqueado por idtelas == 0)
