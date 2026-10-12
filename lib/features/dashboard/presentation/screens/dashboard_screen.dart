@@ -220,29 +220,34 @@ class _ResumenCards extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          _Card(
-            label: 'Total',
-            valor: '${resumen.total.toStringAsFixed(2)} Bs',
-            icon: Icons.attach_money_rounded,
-            color: colorScheme.primary,
-          ),
-          const SizedBox(width: 10),
-          _Card(
-            label: 'Ganancias',
-            valor: '${resumen.ganancias.toStringAsFixed(2)} Bs',
-            icon: Icons.trending_up_rounded,
-            color: const Color(0xFF2E7D32),
-          ),
-          const SizedBox(width: 10),
-          _Card(
-            label: 'Descuentos',
-            valor: '${resumen.descuento.toStringAsFixed(2)} Bs',
-            icon: Icons.discount_rounded,
-            color: const Color(0xFFE65100),
-          ),
-        ],
+      // Las tres del mismo alto: en un celular chico el FittedBox achica los
+      // montos largos y, centradas, quedaban desparejas
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _Card(
+              label: 'Total',
+              valor: '${resumen.total.toStringAsFixed(2)} Bs',
+              icon: Icons.attach_money_rounded,
+              color: colorScheme.primary,
+            ),
+            const SizedBox(width: 10),
+            _Card(
+              label: 'Ganancias',
+              valor: '${resumen.ganancias.toStringAsFixed(2)} Bs',
+              icon: Icons.trending_up_rounded,
+              color: const Color(0xFF2E7D32),
+            ),
+            const SizedBox(width: 10),
+            _Card(
+              label: 'Descuentos',
+              valor: '${resumen.descuento.toStringAsFixed(2)} Bs',
+              icon: Icons.discount_rounded,
+              color: const Color(0xFFE65100),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -294,6 +299,9 @@ class _Card extends StatelessWidget {
               fit: BoxFit.scaleDown,
               child: Text(
                 valor,
+                // Una línea también al medir el alto (IntrinsicHeight): el
+                // FittedBox lo achica en vez de partirlo
+                maxLines: 1,
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,

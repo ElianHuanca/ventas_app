@@ -85,27 +85,36 @@ class ColorScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              // Wrap: en un celular chico con letra grande "Eliminar" baja a
+              // otra línea en vez de desbordar. IntrinsicWidth porque
+              // MaterialButtonWidget ocupa todo el ancho que le den.
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 15,
+                runSpacing: 15,
                 children: [
-                  MaterialButtonWidget(
-                    onTap: () async {
-                      final value =
-                          await cubit.onSubmit(isUpdate: form.id != 0);
-                      if (context.mounted) showSnackbarBool(context, value);
-                    },
-                    texto: form.id == 0 ? 'Guardar' : 'Modificar',
-                  ),
-                  if (form.id != 0) ...[
-                    const SizedBox(width: 15),
-                    MaterialButtonWidget(
+                  IntrinsicWidth(
+                    child: MaterialButtonWidget(
                       onTap: () async {
-                        final value = await cubit.onDelete();
+                        final value =
+                            await cubit.onSubmit(isUpdate: form.id != 0);
                         if (context.mounted) showSnackbarBool(context, value);
                       },
-                      texto: 'Eliminar',
+                      texto: form.id == 0 ? 'Guardar' : 'Modificar',
                     ),
-                  ],
+                  ),
+                  if (form.id != 0)
+                    IntrinsicWidth(
+                      child: MaterialButtonWidget(
+                        onTap: () async {
+                          final value = await cubit.onDelete();
+                          if (context.mounted) {
+                            showSnackbarBool(context, value);
+                          }
+                        },
+                        texto: 'Eliminar',
+                      ),
+                    ),
                 ],
               ),
             ],

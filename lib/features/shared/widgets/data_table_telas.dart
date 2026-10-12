@@ -1,5 +1,6 @@
 // ignore_for_file: must_be_immutable
 import 'package:flutter/material.dart';
+import 'tabla_desplazable.dart';
 
 class DataTableMapTelas extends StatelessWidget {
   final List<Map<String, dynamic>> listbody;
@@ -17,10 +18,12 @@ class DataTableMapTelas extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DataTable(
-      columns: _columns(context, listheader),
-      columnSpacing: 8,
-      rows: _rows(listbody, total, onTap),
+    return TablaDesplazable(
+      child: DataTable(
+        columns: _columns(context, listheader),
+        columnSpacing: 8,
+        rows: _rows(listbody, total, onTap),
+      ),
     );
   }
 }
