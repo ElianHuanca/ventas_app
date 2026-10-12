@@ -56,6 +56,24 @@ void main() {
       expect(() => ApliqueMapper.jsonToEntity({'nombre': 'X'}),
           throwsA(isA<TypeError>()));
     });
+
+    test('mapea ancho_cm y alto_cm (int o NUMERIC) a double', () {
+      final aplique = ApliqueMapper.jsonToEntity({
+        'id': 1,
+        'nombre': 'Flor',
+        'ancho_cm': 4,
+        'alto_cm': 5.5,
+      });
+      expect(aplique.anchoCm, 4.0);
+      expect(aplique.anchoCm, isA<double>());
+      expect(aplique.altoCm, 5.5);
+    });
+
+    test('sin medidas (null o faltantes) quedan null, no 0', () {
+      final aplique = ApliqueMapper.jsonToEntity({'id': 1, 'ancho_cm': null});
+      expect(aplique.anchoCm, isNull);
+      expect(aplique.altoCm, isNull);
+    });
   });
 
   group('StockApliqueMapper', () {
@@ -83,6 +101,17 @@ void main() {
       expect(stock.colorNombre, '');
       expect(stock.hex, '');
       expect(stock.stock, 3.5);
+    });
+
+    test('color con nombre o hex null en el join los deja vacíos', () {
+      final stock = StockApliqueMapper.jsonToEntity({
+        'aplique_id': 1,
+        'color_id': 2,
+        'stock': 1,
+        'colores': {'nombre': null, 'hex': null},
+      });
+      expect(stock.colorNombre, '');
+      expect(stock.hex, '');
     });
 
     test('stock faltante o null es 0', () {
@@ -129,6 +158,25 @@ void main() {
       expect(p.colorNombre, '');
       expect(p.hex, '');
       expect(p.cantidad, 0);
+    });
+
+    test('joins presentes con fecha, nombre o hex null dejan strings vacíos',
+        () {
+      final p = ProduccionMapper.jsonToEntity({
+        'id': 1,
+        'cantidad': 2,
+        'producciones': {
+          'fecha': null,
+          'sucursales': {'nombre': null},
+        },
+        'apliques': {'nombre': null},
+        'colores': {'nombre': null, 'hex': null},
+      });
+      expect(p.fecha, '');
+      expect(p.sucursalNombre, '');
+      expect(p.apliqueNombre, '');
+      expect(p.colorNombre, '');
+      expect(p.hex, '');
     });
 
     test('sucursal null dentro de producciones deja el nombre vacío', () {

@@ -42,6 +42,17 @@ void main() {
       expect(t.disponible, false);
     });
 
+    test('un vínculo con activo null no cuenta como disponible', () {
+      final t = TelaSucursalMapper.jsonToEntity({
+        'id': 7,
+        'nombre': 'Algodón',
+        'tela_sucursales': [
+          {'activo': null},
+        ],
+      });
+      expect(t.disponible, false);
+    });
+
     test('disponible false cuando el embed es null o no es lista', () {
       expect(
         TelaSucursalMapper.jsonToEntity(
