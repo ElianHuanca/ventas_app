@@ -75,11 +75,15 @@ class DetVenta extends StatelessWidget {
                         child: DropdownMenu<Tela>(
                           width: MediaQuery.of(context).size.width * 0.93,
                           hintText: 'Seleccione una Tela',
+                          // En escritorio se puede escribir: un texto que no es
+                          // ninguna tela llega como null y limpia la selección
+                          // (agregar sin tela queda bloqueado por idtelas == 0)
                           onSelected: (value) {
                             detVentaFormCubit
                                 .onPrecxCompraChanged(value?.precxcompra ?? 0);
-                            detVentaFormCubit.onNombreChanged(value!.nombre);
-                            detVentaFormCubit.onIdTelasChanged(value.id);
+                            detVentaFormCubit
+                                .onNombreChanged(value?.nombre ?? '');
+                            detVentaFormCubit.onIdTelasChanged(value?.id ?? 0);
                           },
                           dropdownMenuEntries: telasState.telas
                               .map<DropdownMenuEntry<Tela>>((e) {

@@ -13,7 +13,17 @@ class TelasScreen extends StatefulWidget {
 }
 
 class _TelasScreenState extends State<TelasScreen> {
-  String _busqueda = '';
+  // Controller propio: el TextField se destruye mientras el FullScreenLoader
+  // tapa la recarga y, sin él, volvía vacío mientras la lista seguía filtrada
+  final _buscador = TextEditingController();
+
+  String get _busqueda => _buscador.text;
+
+  @override
+  void dispose() {
+    _buscador.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +56,8 @@ class _TelasScreenState extends State<TelasScreen> {
       Padding(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
         child: TextField(
-          onChanged: (value) => setState(() => _busqueda = value),
+          controller: _buscador,
+          onChanged: (_) => setState(() {}),
           decoration: InputDecoration(
             hintText: 'Buscar tela...',
             prefixIcon: const Icon(Icons.search),
@@ -96,8 +107,9 @@ class _TelasScreenState extends State<TelasScreen> {
               children: [
                 Icon(
                   Icons.checkroom_rounded,
-                  color:
-                      tela.activo ? Theme.of(context).primaryColor : Colors.black26,
+                  color: tela.activo
+                      ? Theme.of(context).primaryColor
+                      : Colors.black26,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -174,7 +186,8 @@ class _TelasScreenState extends State<TelasScreen> {
             Icon(icon, size: 12, color: Colors.black45),
             const SizedBox(width: 4),
           ],
-          Text(texto, style: const TextStyle(fontSize: 11, color: Colors.black54)),
+          Text(texto,
+              style: const TextStyle(fontSize: 11, color: Colors.black54)),
         ],
       ),
     );

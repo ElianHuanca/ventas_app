@@ -93,8 +93,7 @@ class VentaApliquesFormCubit extends Cubit<VentaApliquesFormState> {
         .where((e) =>
             e['idapliques'] == state.idapliques &&
             e['idcolor'] == state.idcolor)
-        .fold<double>(
-            0, (sum, e) => sum + (e['cantidad'] as num).toDouble());
+        .fold<double>(0, (sum, e) => sum + (e['cantidad'] as num).toDouble());
     if (enCarrito + cantidad > state.stockDisponible) {
       return 'Stock insuficiente. Disponible: ${state.stockDisponible}';
     }
@@ -112,16 +111,14 @@ class VentaApliquesFormCubit extends Cubit<VentaApliquesFormState> {
 
     if (existingIndex != -1) {
       final existing = detalles[existingIndex];
-      final nuevaCantidad =
-          (existing['cantidad'] as num).toDouble() + cantidad;
+      final nuevaCantidad = (existing['cantidad'] as num).toDouble() + cantidad;
       detalles[existingIndex] = {
         ...existing,
         'cantidad': nuevaCantidad,
         'total': (nuevaCantidad * precio * 100).round() / 100.0,
-        'ganancias':
-            (((precio - state.costoFabricacion) * nuevaCantidad) * 100)
-                    .round() /
-                100.0,
+        'ganancias': (((precio - state.costoFabricacion) * nuevaCantidad) * 100)
+                .round() /
+            100.0,
       };
     } else {
       detalles.insert(0, {
@@ -137,8 +134,8 @@ class VentaApliquesFormCubit extends Cubit<VentaApliquesFormState> {
 
     emit(state.copyWith(
       detalles: detalles,
-      total: state.total + totalLinea,
-      ganancias: state.ganancias + gananciaLinea,
+      total: _centavos(state.total + totalLinea),
+      ganancias: _centavos(state.ganancias + gananciaLinea),
       cantidad: '',
       precio: '',
     ));
@@ -157,8 +154,9 @@ class VentaApliquesFormCubit extends Cubit<VentaApliquesFormState> {
     final removed = detalles.removeAt(index);
     emit(state.copyWith(
       detalles: detalles,
-      total: state.total - (removed['total'] as num).toDouble(),
-      ganancias: state.ganancias - (removed['ganancias'] as num).toDouble(),
+      total: _centavos(state.total - (removed['total'] as num).toDouble()),
+      ganancias:
+          _centavos(state.ganancias - (removed['ganancias'] as num).toDouble()),
     ));
   }
 
@@ -169,7 +167,7 @@ class VentaApliquesFormCubit extends Cubit<VentaApliquesFormState> {
       if (!_isValidDouble(state.descuento)) return false;
 
       final descuento = _toDouble(state.descuento);
-      final total = state.total - descuento;
+      final total = _centavos(state.total - descuento);
       if (total < 0) return false;
 
       await ventasApliquesRepository.createVentaAplique(
@@ -213,3 +211,7 @@ class VentaApliquesFormCubit extends Cubit<VentaApliquesFormState> {
   void onDescuentoChanged(String value) =>
       emit(state.copyWith(descuento: value));
 }
+
+/// Redondea a centavos: sumar doubles arrastra ruido (10.1 + 20.2 da
+/// 30.299999999999997) que se veía en el total y llegaba así a la base.
+double _centavos(double valor) => (valor * 100).round() / 100.0;

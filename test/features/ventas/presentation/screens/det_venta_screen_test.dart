@@ -278,10 +278,6 @@ void main() {
 
   // En escritorio (la app corre en Windows) el DropdownMenu deja escribir; en
   // Android/iOS el campo es de solo lectura y este camino no se alcanza.
-  // bug: si el texto no coincide con ninguna tela, DropdownMenu llama a
-  // onSelected(null) y det_venta_screen.dart:81 hace `value!.nombre`, que
-  // lanza "Null check operator used on a null value".
-  // testWidgets solo acepta `skip` booleano: el motivo queda en este comentario.
   testWidgets(
       'en escritorio, escribir una tela que no existe y confirmar no rompe '
       'la pantalla', (tester) async {
@@ -299,5 +295,5 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(cubit.state.idtelas, 0);
-  }, variant: TargetPlatformVariant.only(TargetPlatform.windows), skip: true);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 }

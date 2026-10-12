@@ -16,7 +16,8 @@ class DetVentas extends StatelessWidget {
             if (detalleVentasState.isLoading || ventaState.isLoading) {
               return const FullScreenLoader();
             }
-            final venta = ventaState.venta!;
+            final venta = ventaState.venta;
+            if (venta == null) return const CargaFallida(titulo: 'Venta');
             final bloc = context.read<DetalleVentasBloc>();
             return Screen1(
               widget: [

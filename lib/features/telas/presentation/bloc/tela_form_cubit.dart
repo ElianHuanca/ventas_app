@@ -51,14 +51,20 @@ class TelaFormCubit extends Cubit<TelaFormState> {
   }) : super(TelaFormState(
           id: tela.id,
           nombre: tela.nombre,
-          precxmen: tela.precxmen != 0 ? (tela.precxmen?.toString() ?? '') : '',
-          precxmay: tela.precxmay != 0 ? (tela.precxmay?.toString() ?? '') : '',
-          precxrollo:
-              tela.precxrollo != 0 ? (tela.precxrollo?.toString() ?? '') : '',
-          precxcompra:
-              tela.precxcompra != 0 ? (tela.precxcompra?.toString() ?? '') : '',
+          precxmen: _precioInicial(tela.id, tela.precxmen),
+          precxmay: _precioInicial(tela.id, tela.precxmay),
+          precxrollo: _precioInicial(tela.id, tela.precxrollo),
+          precxcompra: _precioInicial(tela.id, tela.precxcompra),
           activo: tela.activo,
         ));
+
+  /// Una tela nueva arranca con los campos vacíos; una existente muestra su
+  /// precio aunque sea 0 ("no se vende en esa modalidad"): vacío, la
+  /// validación exigía reescribirlo para poder guardar.
+  static String _precioInicial(int id, double? precio) {
+    if (id == 0 && (precio ?? 0) == 0) return '';
+    return precio?.toString() ?? '';
+  }
 
   Future<bool> onSubmit({required bool isUpdate}) async {
     if (_isFormInvalid()) return false;

@@ -187,10 +187,6 @@ void main() {
     expect(enTabla('395.0 Bs'), findsOneWidget);
   });
 
-  // bug: det_ventas_screen.dart:19 hace `ventaState.venta!`. Si getVenta
-  // falla (sin conexión), VentaBloc termina con isLoading false y venta null,
-  // y la pantalla lanza "Null check operator used on a null value".
-  // testWidgets solo acepta `skip` booleano: el motivo queda en este comentario.
   testWidgets('si la venta no se pudo cargar no rompe la pantalla',
       (tester) async {
     ventasRepo.error = Exception('sin conexión');
@@ -198,5 +194,5 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.byType(Scaffold), findsOneWidget);
-  }, skip: true);
+  });
 }
