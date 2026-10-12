@@ -153,7 +153,7 @@ void main() {
           BlocProvider.value(value: cubit),
           BlocProvider.value(value: telasBloc),
         ],
-        child: DetVenta(),
+        child: const DetVenta(),
       ),
     );
 

@@ -97,7 +97,7 @@ void main() {
     cubit.onFechaChanged(DateTime(2026, 10, 3));
     await montarChica(
       tester,
-      BlocProvider.value(value: cubit, child: ProduccionScreen()),
+      BlocProvider.value(value: cubit, child: const ProduccionScreen()),
     );
 
     Future<void> elegir<T>(String opcion) async {
