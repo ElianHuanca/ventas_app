@@ -208,6 +208,35 @@ void main() {
       expect(cubit.state.ganancias, 30.0);
     });
 
+    test(
+        'con líneas parecidas quita solo la que coincide en tela, cantidad y '
+        'precio', () {
+      // Tela 1, 2 x 100: la línea a quitar (queda última en la tabla)
+      cargarLinea(idtelas: 1, cantidad: '2', precio: '100', precxcompra: 60);
+      cubit.addDetalleVenta();
+      // Misma tela a otro precio
+      cargarLinea(idtelas: 1, cantidad: '1', precio: '120', precxcompra: 60);
+      cubit.addDetalleVenta();
+      // Otra tela al mismo precio
+      cargarLinea(idtelas: 2, cantidad: '3', precio: '100', precxcompra: 60);
+      cubit.addDetalleVenta();
+      expect(cubit.state.total, 620.0);
+
+      cubit.removeDetalleVenta(1, 2.0, 100.0);
+
+      expect(
+        cubit.state.detVentas
+            .map((e) => [e['idtelas'], e['cantidad'], e['precio']]),
+        [
+          [2, 3.0, 100.0],
+          [1, 1.0, 120.0],
+        ],
+      );
+      expect(cubit.state.total, 420.0);
+      // (100 - 60) * 3 + (120 - 60) * 1
+      expect(cubit.state.ganancias, 180.0);
+    });
+
     test('con datos inexistentes no modifica el estado', () {
       cargarLinea(cantidad: '2', precio: '100');
       cubit.addDetalleVenta();

@@ -65,9 +65,14 @@ void main() {
       cubit.onCantidadChanged('0');
       cubit.onPrecioChanged('100');
       expect(cubit.addDetalle(), 'La cantidad debe ser mayor a 0');
+      cubit.onCantidadChanged('-1');
+      expect(cubit.addDetalle(), 'La cantidad debe ser mayor a 0');
       cubit.onCantidadChanged('1');
       cubit.onPrecioChanged('-1');
       expect(cubit.addDetalle(), 'El precio debe ser mayor a 0');
+      cubit.onPrecioChanged('0');
+      expect(cubit.addDetalle(), 'El precio debe ser mayor a 0');
+      expect(cubit.state.detalles, isEmpty);
     });
   });
 
@@ -238,6 +243,48 @@ void main() {
       expect(cubit.state.detalles, isEmpty);
       expect(cubit.state.total, 0);
       expect(cubit.state.ganancias, 0);
+    });
+
+    test(
+        'con líneas parecidas quita solo la que coincide en aplique, color, '
+        'cantidad y precio', () {
+      // Flor/Rojo 2 x 25: la línea a quitar (queda última en la tabla)
+      seleccionar();
+      cubit.onCantidadChanged('2');
+      cubit.onPrecioChanged('25');
+      cubit.addDetalle();
+      // Flor/Rojo a otro precio: mismo aplique y color
+      cubit.onCantidadChanged('1');
+      cubit.onPrecioChanged('30');
+      cubit.addDetalle();
+      // Luna/Verde 2 x 25: misma cantidad y precio, otro aplique y color
+      cubit.onApliqueChanged(
+          Aplique(id: 2, nombre: 'Luna', costoFabricacion: 4));
+      cubit.onColorChanged(const StockAplique(
+        apliqueId: 2,
+        colorId: 9,
+        colorNombre: 'Verde',
+        hex: '#00FF00',
+        stock: 5,
+      ));
+      cubit.onCantidadChanged('2');
+      cubit.onPrecioChanged('25');
+      cubit.addDetalle();
+      expect(cubit.state.total, 130.0); // 50 + 30 + 50
+
+      cubit.removeDetalle(1, 5, 2.0, 25.0);
+
+      expect(
+        cubit.state.detalles.map(
+            (e) => [e['idapliques'], e['idcolor'], e['cantidad'], e['precio']]),
+        [
+          [2, 9, 2.0, 25.0],
+          [1, 5, 1.0, 30.0],
+        ],
+      );
+      expect(cubit.state.total, 80.0);
+      // (30 - 10) * 1 + (25 - 4) * 2
+      expect(cubit.state.ganancias, 62.0);
     });
   });
 
