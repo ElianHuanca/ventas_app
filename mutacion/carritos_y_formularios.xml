@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Mutation testing de los carritos (venta de apliques, venta de telas,
+  fabricación) y de los formularios (tela, aplique, sucursal, color, login).
+
+  Correr desde la raíz del repo (Windows: los comandos pasan por cmd):
+    dart pub global run mutation_test mutacion/carritos_y_formularios.xml -o build/mutacion/carritos_y_formularios -f all
+  Contar los mutantes sin correr nada: lo mismo con -d (dry run).
+
+  Cómo se eligen los tests: mutation_test corre TODOS los <command> por cada
+  mutante (no tiene comandos por archivo). Cada comando empieza con un
+  "git diff quiet" de su archivo de lib/: si ese archivo no es el mutado sale
+  con 0 al instante y no corre nada; si es el mutado corre solo los tests de
+  su cubit y de su pantalla. Por eso hay que correrlo con lib/ sin cambios sin
+  commitear (si no, el comando de ese archivo corre en todos los mutantes).
+  Al terminar, git status tiene que mostrar lib/ limpio: la herramienta
+  restaura cada archivo después de mutarlo.
+
+  Los comandos se cortan por espacios (sin comillas): las rutas no pueden
+  tener espacios.
+
+  Tarda unos 40 minutos (248 mutantes, ~10 s cada uno). Con otros flutter
+  corriendo en la PC un mutante puede quedar esperando y cortarse por
+  timeout: se cuenta aparte, verificarlo a mano. Último resultado
+  (2026-10-12): 248/248 muertos; antes de los tests que se agregaron por esta
+  corrida, 238/250.
+-->
+<mutations version="1.2">
+  <files>
+    <file>lib/features/apliques/presentation/bloc/venta_apliques_form_cubit.dart</file>
+    <file>lib/features/ventas/presentation/bloc/detalle_venta_form_cubit.dart</file>
+    <file>lib/features/apliques/presentation/bloc/produccion_form_cubit.dart</file>
+    <file>lib/features/telas/presentation/bloc/tela_form_cubit.dart</file>
+    <file>lib/features/apliques/presentation/bloc/aplique_form_cubit.dart</file>
+    <file>lib/features/sucursales/presentation/bloc/sucursal_form_cubit.dart</file>
+    <file>lib/features/colores/presentation/bloc/color_form_cubit.dart</file>
+    <file>lib/features/auth/presentation/bloc/login_form_cubit.dart</file>
+  </files>
+
+  <!-- Un comando por archivo (ver arriba). timeout en segundos (el de la
+       herramienta); el timeout de flutter test corta antes un test colgado. -->
+  <commands>
+    <command group="venta_apliques_form_cubit" timeout="420">git diff --quiet -- lib/features/apliques/presentation/bloc/venta_apliques_form_cubit.dart || flutter test --concurrency=1 --timeout=60s --no-pub test/features/apliques/presentation/bloc/venta_apliques_form_cubit_test.dart test/features/apliques/presentation/screens/venta_apliques_screen_test.dart</command>
+    <command group="detalle_venta_form_cubit" timeout="420">git diff --quiet -- lib/features/ventas/presentation/bloc/detalle_venta_form_cubit.dart || flutter test --concurrency=1 --timeout=60s --no-pub test/features/ventas/presentation/bloc/detalle_venta_form_cubit_test.dart test/features/ventas/presentation/screens/det_venta_screen_test.dart</command>
+    <command group="produccion_form_cubit" timeout="420">git diff --quiet -- lib/features/apliques/presentation/bloc/produccion_form_cubit.dart || flutter test --concurrency=1 --timeout=60s --no-pub test/features/apliques/presentation/bloc/produccion_form_cubit_test.dart test/features/apliques/presentation/screens/produccion_screen_test.dart</command>
+    <command group="tela_form_cubit" timeout="420">git diff --quiet -- lib/features/telas/presentation/bloc/tela_form_cubit.dart || flutter test --concurrency=1 --timeout=60s --no-pub test/features/telas/presentation/bloc/tela_form_cubit_test.dart test/features/telas/presentation/screens/tela_screen_test.dart</command>
+    <command group="aplique_form_cubit" timeout="420">git diff --quiet -- lib/features/apliques/presentation/bloc/aplique_form_cubit.dart || flutter test --concurrency=1 --timeout=60s --no-pub test/features/apliques/presentation/bloc/aplique_form_cubit_test.dart test/features/apliques/presentation/screens/aplique_screen_test.dart</command>
+    <command group="sucursal_form_cubit" timeout="420">git diff --quiet -- lib/features/sucursales/presentation/bloc/sucursal_form_cubit.dart || flutter test --concurrency=1 --timeout=60s --no-pub test/features/sucursales/presentation/bloc/sucursal_form_cubit_test.dart test/features/sucursales/presentation/screens/sucursal_screen_test.dart</command>
+    <command group="color_form_cubit" timeout="420">git diff --quiet -- lib/features/colores/presentation/bloc/color_form_cubit.dart || flutter test --concurrency=1 --timeout=60s --no-pub test/features/colores/colores_test.dart test/features/colores/presentation/screens/color_screen_test.dart</command>
+    <command group="login_form_cubit" timeout="420">git diff --quiet -- lib/features/auth/presentation/bloc/login_form_cubit.dart || flutter test --concurrency=1 --timeout=60s --no-pub test/features/auth/presentation/bloc/login_form_cubit_test.dart test/features/auth/auth_test.dart test/features/auth/presentation/screens/login_screen_test.dart</command>
+  </commands>
+
+  <!-- Las reglas builtin (se cargan solas; ya excluyen imports y
+       comentarios) más estas exclusiones. Una exclusión descarta el mutante
+       si el principio o el final de lo que reemplaza cae adentro. -->
+  <exclude>
+    <!-- Logs: borrar un debugPrint no cambia nada observable. Incluye el
+         salto de línea siguiente porque la regla que borra llamadas termina
+         justo después del punto y coma. -->
+    <regex pattern="debugPrint\(.*?\);\s" dotAll="true"/>
+    <!-- Campos de las clases (final sin inicializar). La regla que borra
+         llamadas sin valor de retorno toma como "llamada" la declaración del
+         constructor que sigue al último campo, empezando en su punto y coma:
+         borrar el constructor no compila, así que ese mutante muere siempre
+         sin probar nada. Las variables locales final llevan "=" y no entran. -->
+    <regex pattern="^\s*final [^;=]*;"/>
+    <!-- El factor del redondeo a centavos, (x * 100).round() / 100.0: pasar
+         100 a -100 solo le cambia el signo al resultado y lo mata cualquier
+         test que mire un importe (24 mutantes de relleno). Se excluye solo el
+         espacio previo al 100, donde empieza ese mutante: los que cambian el
+         * por / (o al revés) siguen. -->
+    <regex pattern="\s(?=100)"/>
+    <!-- Mutantes equivalentes (sobrevivieron y no cambian nada). Al quitar
+         una línea del carrito (removeDetalle de apliques y
+         removeDetalleVenta de telas) la regla que intercambia dos argumentos
+         toma "(removed['ganancias'] as num).toDouble()),\n ));" y solo mueve
+         la coma final de lugar: toDouble(\n ),))); es el mismo código. Se
+         excluye el espacio donde empieza ese mutante (antes de "num"). -->
+    <regex pattern="\s(?=num\)\.toDouble\(\)\),\s*\)\);)"/>
+  </exclude>
+
+  <threshold failure="80">
+    <rating over="95" name="A"/>
+    <rating over="80" name="B"/>
+    <rating over="60" name="C"/>
+    <rating over="40" name="D"/>
+    <rating over="20" name="E"/>
+    <rating over="0" name="F"/>
+  </threshold>
+</mutations>
