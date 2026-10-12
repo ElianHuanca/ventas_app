@@ -120,9 +120,54 @@ void main() {
 
       expect(cubit.state.detalles.length, 2);
     });
+
+    // Casos mínimos de test/propiedades/carritos_propiedades_test.dart
+    test('el merge sube el total lo que sube la línea, sin sumar redondeos',
+        () {
+      seleccionar(stock: 3);
+      for (var i = 0; i < 2; i++) {
+        cubit.onCantidadChanged('1.5');
+        cubit.onPrecioChanged('0.01');
+        expect(cubit.addDetalle(), isNull);
+      }
+
+      // 3 × 0.01 = 0.03; cada 1.5 redondeado por separado daba 0.04
+      expect(cubit.state.detalles.single['total'], 0.03);
+      expect(cubit.state.total, 0.03);
+
+      cubit.removeDetalle(1, 5, 3.0, 0.01);
+      expect(cubit.state.total, 0);
+      expect(cubit.state.ganancias, 0);
+    });
+
+    test('NaN e Infinity no son cantidades ni precios válidos', () {
+      seleccionar();
+      cubit.onCantidadChanged('NaN');
+      cubit.onPrecioChanged('25');
+      expect(cubit.addDetalle(), 'Ingrese una cantidad válida');
+
+      cubit.onCantidadChanged('1');
+      cubit.onPrecioChanged('Infinity');
+      expect(cubit.addDetalle(), 'Ingrese un precio válido');
+
+      expect(cubit.state.detalles, isEmpty);
+    });
   });
 
   group('bloqueo de sobre-stock', () {
+    test('sumar cantidades con decimales no rechaza la última unidad', () {
+      seleccionar(stock: 2.07);
+      cubit.onCantidadChanged('1.07');
+      cubit.onPrecioChanged('25');
+      expect(cubit.addDetalle(), isNull);
+
+      // 1.07 + 1 en double da 2.0700000000000003 > 2.07
+      cubit.onCantidadChanged('1');
+      cubit.onPrecioChanged('25');
+      expect(cubit.addDetalle(), isNull);
+      expect(cubit.state.detalles.single['cantidad'], 2.07);
+    });
+
     test('cantidad mayor al stock disponible se rechaza', () {
       seleccionar(stock: 5);
       cubit.onCantidadChanged('6');

@@ -112,6 +112,44 @@ void main() {
       expect(cubit.state.ganancias, 5.1);
     });
 
+    // Casos mínimos de test/propiedades/carritos_propiedades_test.dart
+    test('el merge sube el total lo que sube la línea, sin sumar redondeos',
+        () {
+      cargarLinea(cantidad: '0.5', precio: '0.01', precxcompra: 0);
+      cubit.addDetalleVenta();
+      cargarLinea(cantidad: '0.5', precio: '0.01', precxcompra: 0);
+      cubit.addDetalleVenta();
+
+      // 1 m × 0.01 = 0.01; cada 0.5 m redondeado por separado daba 0.02
+      expect(cubit.state.detVentas.single['total'], 0.01);
+      expect(cubit.state.total, 0.01);
+
+      cubit.removeDetalleVenta(1, 1.0, 0.01);
+      expect(cubit.state.total, 0);
+    });
+
+    test('sumar cantidades en el merge no deja ruido de coma flotante', () {
+      cargarLinea(cantidad: '0.3', precio: '10');
+      cubit.addDetalleVenta();
+      cargarLinea(cantidad: '0.6', precio: '10');
+      cubit.addDetalleVenta();
+
+      // 0.3 + 0.6 en double da 0.8999999999999999
+      expect(cubit.state.detVentas.single['cantidad'], 0.9);
+    });
+
+    test('NaN e Infinity no son cantidades ni precios válidos', () {
+      for (final texto in ['NaN', 'Infinity', '-Infinity']) {
+        cargarLinea(cantidad: texto, precio: '100');
+        cubit.addDetalleVenta();
+        cargarLinea(cantidad: '1', precio: texto);
+        cubit.addDetalleVenta();
+      }
+
+      expect(cubit.state.detVentas, isEmpty);
+      expect(cubit.state.total, 0);
+    });
+
     test('no agrega sin producto seleccionado', () {
       cubit.onCantidadChanged('1');
       cubit.onPrecioChanged('100');
@@ -190,6 +228,18 @@ void main() {
 
       expect(ok, false);
       expect(detalleRepo.detallesCreados, isEmpty);
+    });
+
+    test('descuento NaN devuelve false sin escribir nada', () async {
+      cargarLinea();
+      cubit.addDetalleVenta();
+      cubit.onDescuentoChanged('NaN');
+
+      final ok = await cubit.onFormSubmit();
+
+      expect(ok, false);
+      expect(detalleRepo.detallesCreados, isEmpty);
+      expect(ventasRepo.actualizaciones, isEmpty);
     });
 
     test(

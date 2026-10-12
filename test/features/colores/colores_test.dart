@@ -21,6 +21,14 @@ void main() {
       expect(ColorFormCubit.normalizarHex('GGGGGG'), isNull);
       expect(ColorFormCubit.normalizarHex(''), isNull);
     });
+
+    // Caso mínimo de test/propiedades/colores_propiedades_test.dart
+    test('rechaza signos que int.parse acepta (+00000, -ABCDE)', () {
+      expect(ColorFormCubit.normalizarHex('+00000'), isNull);
+      expect(ColorFormCubit.normalizarHex('#-ABCDE'), isNull);
+      // "ﬀ" (una letra) pasa a "FF" en mayúsculas
+      expect(ColorFormCubit.normalizarHex('ﬀ1234'), isNull);
+    });
   });
 
   group('ColorFormCubit', () {
