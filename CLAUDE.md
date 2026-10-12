@@ -230,7 +230,7 @@ flutter pub get          # instalar dependencias
 flutter run              # correr en debug
 flutter build apk        # build Android APK
 flutter analyze          # lint check
-flutter test             # 574 unitarios/de widget + 121 capturas golden; 16 omitidos (= bugs conocidos)
+flutter test             # 577 unitarios/de widget + 128 capturas golden; 8 omitidos (= bugs conocidos)
 flutter test --exclude-tags golden          # sin las capturas (p. ej. fuera de Windows)
 flutter test test/goldens --update-goldens  # regenerar capturas tras un cambio visual buscado
 flutter test benchmark/micro                # 176 micro-benchmarks (~1 min)

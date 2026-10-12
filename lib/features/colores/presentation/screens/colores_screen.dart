@@ -40,10 +40,7 @@ class ColoresScreen extends StatelessWidget {
     }
     return state.colores
         .map((color) => ListTile(
-              leading: CircleAvatar(
-                radius: 12,
-                backgroundColor: colorFromHex(color.hex),
-              ),
+              leading: MuestraColor(hex: color.hex, radio: 12),
               title: Text(color.nombre),
               subtitle: Text('#${color.hex}'),
               onTap: () async {

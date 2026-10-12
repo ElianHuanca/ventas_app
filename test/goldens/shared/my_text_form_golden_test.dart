@@ -99,10 +99,5 @@ void main() {
 
     expect(find.text('Hex inválido'), findsOneWidget);
     await compararCaptura('my_text_form_con_error');
-  },
-      // bug: my_text_form.dart:34-43 — MiTextField recibe errorMessage pero
-      // nunca lo pasa al InputDecoration (falta errorText): el error no se
-      // muestra (lo usa color_screen.dart:68-70 para "Hex inválido"). Al
-      // arreglarlo, quitar el skip y generar la captura con --update-goldens.
-      skip: true);
+  });
 }

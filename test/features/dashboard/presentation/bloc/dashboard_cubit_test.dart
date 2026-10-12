@@ -57,12 +57,10 @@ void main() {
     expect(cubit.state.isLoading, isFalse);
   });
 
-  // bug: dashboard_cubit.dart:70-88 — cargar() tiene try/finally sin catch
-  // (todos los demás cubits atrapan): si una RPC falla (sin conexión) la
-  // excepción escapa sin atrapar —el constructor llama a cargar() sin await—
-  // y la pantalla muestra "Sin ventas de … en el período seleccionado" como
-  // si no hubiera ventas.
-  test('si una RPC falla, cargar no lanza y deja de cargar', () async {
+  // Sin conexión la pantalla no puede mostrar el período como "Sin ventas":
+  // el estado marca el error (ver dashboard_screen_test).
+  test('si una RPC falla, cargar no lanza, deja de cargar y marca el error',
+      () async {
     final repo = _DashboardSinConexion(topTelas: const [
       TopProducto(nombre: 'Lino', totalVendido: 10, totalCantidad: 1),
     ]);
@@ -71,10 +69,14 @@ void main() {
 
     await expectLater(cubit.cargar(), completes);
     expect(cubit.state.isLoading, isFalse);
+    expect(cubit.state.error, isTrue);
+    expect(cubit.state.topTelas, isEmpty);
+    expect(cubit.state.resumenTelas, isNull);
 
     // Al volver la conexión, cambiar de período recupera los datos
     repo.fallar = false;
     await cubit.cambiarRango(DateTime(2026, 1, 1), DateTime(2026, 1, 31));
+    expect(cubit.state.error, isFalse);
     expect(cubit.state.topTelas.single.nombre, 'Lino');
-  }, skip: true);
+  });
 }

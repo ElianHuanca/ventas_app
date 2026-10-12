@@ -56,9 +56,5 @@ void main() {
     ]);
 
     await compararCaptura('tela_colores_color_claro');
-  },
-      // bug: producto_colores_list.dart:35-38 — el CircleAvatar de la muestra
-      // no tiene borde: Blanco o Crema quedan casi invisibles sobre el fondo
-      // claro de la pantalla. (testWidgets solo acepta skip bool.)
-      skip: true);
+  });
 }

@@ -45,6 +45,14 @@ class _RepoLento extends FakeDashboardRepository {
   }
 }
 
+/// Sin conexión: las RPC fallan.
+class _RepoSinConexion extends FakeDashboardRepository {
+  @override
+  Future<ResumenVentas> getResumenVentas(
+          {required DateTime desde, required DateTime hasta}) async =>
+      throw Exception('Sin conexión');
+}
+
 void main() {
   // Las RPC devuelven los rankings ordenados por total vendido
   const topTelas = [
@@ -134,6 +142,13 @@ void main() {
     await montar(tester, FakeDashboardRepository());
 
     await compararCaptura('dashboard_sin_ventas');
+  });
+
+  testWidgets('sin conexión: avisa del error y ofrece reintentar',
+      (tester) async {
+    await montar(tester, _RepoSinConexion());
+
+    await compararCaptura('dashboard_error');
   });
 
   testWidgets('cargando', (tester) async {

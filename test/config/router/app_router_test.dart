@@ -195,7 +195,7 @@ void main() {
       expect(find.text('Sucursales'), findsOneWidget);
       expect(find.text('CENTRO'), findsOneWidget);
       // El inicio es la venta de telas: sin la tarjeta de alta
-      expect(find.text('AGREGAR SUCUSAL'), findsNothing);
+      expect(find.text('AGREGAR SUCURSAL'), findsNothing);
     });
 
     testWidgets('con sesión, ir a /login vuelve al inicio', (tester) async {
@@ -215,7 +215,7 @@ void main() {
       router.go('/sucursales');
       await tester.pumpAndSettle();
       expect(ubicacion(), '/sucursales');
-      expect(find.text('AGREGAR SUCUSAL'), findsOneWidget);
+      expect(find.text('AGREGAR SUCURSAL'), findsOneWidget);
 
       router.go('/venta-apliques');
       await tester.pumpAndSettle();

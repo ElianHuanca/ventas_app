@@ -16,6 +16,9 @@ class DataTableApliques extends StatelessWidget {
   Widget build(BuildContext context) {
     return DataTable(
       columnSpacing: 8,
+      // La fila crece con el nombre: los de producción ocupan hasta 3 líneas
+      // y con el alto fijo de 48 px la última salía cortada
+      dataRowMaxHeight: double.infinity,
       columns: const ['Nombre', 'Cantidad', 'Precio', 'Total', '']
           .map((header) => DataColumn(
                 label: Text(

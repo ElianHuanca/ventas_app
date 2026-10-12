@@ -24,15 +24,12 @@ class ProduccionDetalleScreen extends StatelessWidget {
             else if (state.lineas.isEmpty)
               const Padding(
                 padding: EdgeInsets.all(20),
-                child:
-                    Center(child: Text('Todavía no hay producciones registradas')),
+                child: Center(
+                    child: Text('Todavía no hay producciones registradas')),
               )
             else
               ...state.lineas.map((p) => ListTile(
-                    leading: CircleAvatar(
-                      radius: 10,
-                      backgroundColor: colorFromHex(p.hex),
-                    ),
+                    leading: MuestraColor(hex: p.hex, radio: 10),
                     title: Text('${p.apliqueNombre} (${p.colorNombre})'),
                     subtitle: Text(p.sucursalNombre),
                     trailing: Text('${p.cantidad} uds'),

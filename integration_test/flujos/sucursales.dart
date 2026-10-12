@@ -13,7 +13,7 @@ void sucursalesTests() {
       await montarApp(tester);
 
       await irDesdeMenu(tester, 'Sucursales');
-      await tocar(tester, tarjeta('Agregar Sucusal'));
+      await tocar(tester, tarjeta('Agregar Sucursal'));
       expect(find.text('Crear Sucursal'), findsOneWidget);
       await escribir(tester, campo('Nombre'), nombre);
       await tocar(tester, find.text('Guardar'));

@@ -16,8 +16,8 @@ class DashboardScreen extends StatelessWidget {
       child: Scaffold(
         drawer: const SideMenu(),
         appBar: AppBar(
-          title: Text('Dashboard',
-              style: Theme.of(context).textTheme.titleSmall),
+          title:
+              Text('Dashboard', style: Theme.of(context).textTheme.titleSmall),
           centerTitle: true,
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(
@@ -91,18 +91,48 @@ class _PestanaVentas extends StatelessWidget {
         ],
         _ToggleVista(verPorCantidad: state.verPorCantidad),
         const SizedBox(height: 12),
-        state.isLoading
-            ? const Padding(
-                padding: EdgeInsets.only(top: 60),
-                child: Center(child: CircularProgressIndicator()),
-              )
-            : _TopProductos(
-                productos: productos,
-                verPorCantidad: state.verPorCantidad,
-                plural: plural,
-                unidad: unidad,
-              ),
+        if (state.isLoading)
+          const Padding(
+            padding: EdgeInsets.only(top: 60),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (state.error)
+          const _ErrorDeCarga()
+        else
+          _TopProductos(
+            productos: productos,
+            verPorCantidad: state.verPorCantidad,
+            plural: plural,
+            unidad: unidad,
+          ),
       ],
+    );
+  }
+}
+
+/// La carga falló: se dice, en vez de mostrar el período como sin ventas.
+class _ErrorDeCarga extends StatelessWidget {
+  const _ErrorDeCarga();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 60),
+      child: Column(
+        children: [
+          const Text(
+            'No se pudieron cargar las ventas. Revisá la conexión.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.black54),
+          ),
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: () => context.read<DashboardCubit>().cargar(),
+            icon: const Icon(Icons.refresh),
+            label: const Text('Reintentar'),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -137,9 +167,7 @@ class _RangoFechas extends StatelessWidget {
             ),
           );
           if (rango != null && context.mounted) {
-            context
-                .read<DashboardCubit>()
-                .cambiarRango(rango.start, rango.end);
+            context.read<DashboardCubit>().cambiarRango(rango.start, rango.end);
           }
         },
         child: Container(
@@ -158,7 +186,8 @@ class _RangoFechas extends StatelessWidget {
                     'Período',
                     style: TextStyle(
                       fontSize: 11,
-                      color: colorScheme.onPrimaryContainer.withValues(alpha: .7),
+                      color:
+                          colorScheme.onPrimaryContainer.withValues(alpha: .7),
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -301,8 +330,8 @@ class _ToggleVista extends StatelessWidget {
                   color: !verPorCantidad
                       ? colorScheme.primary
                       : colorScheme.surfaceContainerHighest,
-                  borderRadius: const BorderRadius.horizontal(
-                      left: Radius.circular(10)),
+                  borderRadius:
+                      const BorderRadius.horizontal(left: Radius.circular(10)),
                 ),
                 alignment: Alignment.center,
                 child: Text(
@@ -329,8 +358,8 @@ class _ToggleVista extends StatelessWidget {
                   color: verPorCantidad
                       ? colorScheme.primary
                       : colorScheme.surfaceContainerHighest,
-                  borderRadius: const BorderRadius.horizontal(
-                      right: Radius.circular(10)),
+                  borderRadius:
+                      const BorderRadius.horizontal(right: Radius.circular(10)),
                 ),
                 alignment: Alignment.center,
                 child: Text(

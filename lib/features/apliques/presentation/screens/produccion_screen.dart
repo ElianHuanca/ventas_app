@@ -95,18 +95,15 @@ class ProduccionScreen extends StatelessWidget {
                 hintText: 'Seleccione un Color',
                 enabled: state.idapliques != 0,
                 onSelected: cubit.onColorChanged,
-                dropdownMenuEntries: state.colores
-                    .map<DropdownMenuEntry<ColorItem>>((e) {
+                dropdownMenuEntries:
+                    state.colores.map<DropdownMenuEntry<ColorItem>>((e) {
                   final texto = '${e.nombre} (stock: ${_stockDe(state, e.id)})';
                   return DropdownMenuEntry<ColorItem>(
                     value: e,
                     label: texto,
                     labelWidget: Row(
                       children: [
-                        CircleAvatar(
-                          radius: 8,
-                          backgroundColor: colorFromHex(e.hex),
-                        ),
+                        MuestraColor(hex: e.hex),
                         const SizedBox(width: 8),
                         Text(texto),
                       ],
@@ -139,8 +136,7 @@ class ProduccionScreen extends StatelessWidget {
                           suffixText: 'uds',
                           suffixStyle: TextStyle(fontSize: 12),
                           border: OutlineInputBorder(
-                            borderRadius:
-                                BorderRadius.all(Radius.circular(10)),
+                            borderRadius: BorderRadius.all(Radius.circular(10)),
                           ),
                         ),
                       ),

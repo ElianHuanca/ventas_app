@@ -1,4 +1,3 @@
-
 export 'full_screen_loader.dart';
 export 'side_menu.dart';
 export 'itemDashboard.dart';
@@ -9,3 +8,4 @@ export 'my_text_form.dart';
 export 'DialogoDeAlerta.dart';
 export 'color_from_hex.dart';
 export 'producto_colores_list.dart';
+export 'muestra_color.dart';

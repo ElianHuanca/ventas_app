@@ -71,9 +71,5 @@ void main() {
 
       await compararCaptura('color_hex_invalido_aviso');
     },
-    // bug: color_screen.dart:68-70 pasa errorMessage a MiTextField, pero
-    // my_text_form.dart:34-43 nunca lo usa (no hay errorText en el
-    // InputDecoration): el aviso inline no se muestra jamás.
-    skip: true,
   );
 }

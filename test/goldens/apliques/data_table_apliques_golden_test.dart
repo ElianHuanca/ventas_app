@@ -84,14 +84,8 @@ void main() {
       lessThanOrEqualTo(nombre.size.height),
       reason: 'el nombre no entra en la fila y se corta',
     );
-    // Al quitar el skip, generar la captura con --update-goldens
     await compararCaptura('data_table_apliques_nombre_largo');
-  },
-      // bug: data_table_apliques.dart:34 — el nombre no tiene maxLines ni
-      // ellipsis y la fila del DataTable mide 48 px fijos (sin
-      // dataRowMaxHeight): con un nombre real en 3 líneas el texto necesita
-      // 51 px y la última línea ("(Verde esmeralda)") sale cortada por abajo.
-      skip: true);
+  });
 
   testWidgets('sin líneas: solo la fila de total en 0', (tester) async {
     await montar(tester, listbody: const [], total: 0);

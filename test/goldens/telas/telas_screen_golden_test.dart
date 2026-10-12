@@ -112,7 +112,6 @@ void main() {
   });
 
   testWidgets('cargando', (tester) async {
-    // El loader no pinta fondo (bug en full_screen_loader_golden_test.dart)
     final repo = _RepoConCargaPendiente(telas: telas);
     await montar(tester, repo, asentar: false);
     // En el primer frame el spinner es un punto: se avanza a un instante fijo

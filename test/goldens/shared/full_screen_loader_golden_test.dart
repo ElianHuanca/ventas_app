@@ -11,9 +11,7 @@ void main() {
   testWidgets('como raíz de la ruta, igual que en las pantallas de listado',
       (tester) async {
     // Las pantallas devuelven FullScreenLoader directo (sin Scaffold) mientras
-    // cargan: así se monta acá. No pinta fondo, así que la captura sale
-    // transparente salvo el spinner (en el celular se ve lo que haya detrás
-    // de la vista de Flutter).
+    // cargan: así se monta acá.
     await montarParaCaptura(tester, const FullScreenLoader(), asentar: false);
     // En t=0 el spinner es un punto: se avanza el reloj falso hasta ver el arco
     await tester.pump(const Duration(milliseconds: 400));
@@ -37,12 +35,5 @@ void main() {
       findsWidgets,
     );
     await compararCaptura('full_screen_loader_con_fondo');
-  },
-      // bug: full_screen_loader.dart:9 — devuelve un SizedBox sin Scaffold ni
-      // Material, y 15 pantallas lo usan como raíz de la ruta mientras cargan:
-      // no pinta fondo (la captura sale transparente) y en el celular se ve lo
-      // que haya detrás de la vista de Flutter (en modo oscuro, negro), sin
-      // AppBar. Al arreglarlo: quitar el skip y generar la captura con
-      // --update-goldens. (testWidgets solo acepta skip bool.)
-      skip: true);
+  });
 }

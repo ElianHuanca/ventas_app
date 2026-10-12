@@ -20,7 +20,7 @@ class MiTextField extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {    
+  Widget build(BuildContext context) {
     return Expanded(
       flex: flex ?? 1,
       child: Container(
@@ -30,9 +30,10 @@ class MiTextField extends StatelessWidget {
             initialValue: initialValue,
             controller: controller,
             keyboardType: keyboardType ?? TextInputType.text,
-            onChanged: onChanged,            
+            onChanged: onChanged,
             decoration: InputDecoration(
-              label: Text(label),              
+              label: Text(label),
+              errorText: errorMessage,
               suffixText: label == 'Cantidad'
                   ? ' mts'
                   : (label.contains('Precio') ? ' Bs' : ''),

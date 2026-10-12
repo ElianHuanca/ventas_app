@@ -24,6 +24,20 @@ class _DashboardLento extends FakeDashboardRepository {
   }
 }
 
+/// Falla el resumen de telas (sin conexión) mientras [fallar] sea true.
+class _DashboardSinConexion extends FakeDashboardRepository {
+  bool fallar = true;
+
+  _DashboardSinConexion({super.topTelas, super.resumenTelas});
+
+  @override
+  Future<ResumenVentas> getResumenVentas(
+      {required DateTime desde, required DateTime hasta}) async {
+    if (fallar) throw Exception('Sin conexión');
+    return super.getResumenVentas(desde: desde, hasta: hasta);
+  }
+}
+
 void main() {
   const topTelas = [
     TopProducto(nombre: 'Lino', totalVendido: 400, totalCantidad: 10),
@@ -108,6 +122,28 @@ void main() {
     expect(find.text('750.00 Bs'), findsOneWidget);
     expect(find.text('300.00 Bs'), findsOneWidget);
     expect(find.text('10.00 Bs'), findsOneWidget);
+  });
+
+  testWidgets(
+      'sin conexión avisa del error (no "Sin ventas") y reintentar '
+      'recupera los datos', (tester) async {
+    final sinConexion =
+        _DashboardSinConexion(topTelas: topTelas, resumenTelas: resumen);
+    repo = sinConexion;
+    await montar(tester);
+
+    expect(find.text('No se pudieron cargar las ventas. Revisá la conexión.'),
+        findsOneWidget);
+    expect(find.textContaining('Sin ventas'), findsNothing);
+    expect(find.text('750.00 Bs'), findsNothing);
+
+    sinConexion.fallar = false;
+    await tester.tap(find.text('Reintentar'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('No se pudieron cargar'), findsNothing);
+    expect(find.text('750.00 Bs'), findsOneWidget);
+    expect(find.text('Lino'), findsOneWidget);
   });
 
   testWidgets('numera el ranking y las barras son proporcionales al primero',
