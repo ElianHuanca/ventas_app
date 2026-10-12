@@ -99,14 +99,7 @@ void main() {
       } finally {
         prueba.cerrar();
       }
-    },
-        // bug: detalle_venta_form_cubit.dart:112 (y :95 en el merge) —
-        // `(cantidad * precio * 100).round()` redondea el double y no el valor
-        // exacto: en la mitad del centavo sube o baja según cómo quedó el
-        // binario (entrada mínima: 0.5 m a 0.29 Bs = 0.145 da 0.14, pero
-        // 0.5 m a 0.01 Bs = 0.005 da 0.01; glados: 3.75 m a 23.22 Bs =
-        // 87.075 da 87.07).
-        skip: true);
+    });
   });
 
   group('venta de apliques (VentaApliquesFormCubit)', () {
@@ -202,12 +195,7 @@ void main() {
       } finally {
         prueba.cerrar();
       }
-    },
-        // bug: venta_apliques_form_cubit.dart:103 (y :120 en el merge) — el
-        // mismo redondeo del double que en telas; con unidades enteras no
-        // pasa, con decimales sí (entrada mínima: 1.5 uds a 0.15 Bs = 0.225
-        // da 0.22, no 0.23; glados: 1.9 uds a 42.15 Bs = 80.085 da 80.08).
-        skip: true);
+    });
   });
 
   group('fabricación (ProduccionFormCubit)', () {

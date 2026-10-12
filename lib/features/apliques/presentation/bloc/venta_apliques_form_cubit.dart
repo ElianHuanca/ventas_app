@@ -100,9 +100,9 @@ class VentaApliquesFormCubit extends Cubit<VentaApliquesFormState> {
       return 'Stock insuficiente. Disponible: ${state.stockDisponible}';
     }
 
-    final totalLinea = (cantidad * precio * 100).round() / 100.0;
+    final totalLinea = _centavos(cantidad * precio);
     final gananciaLinea =
-        (((precio - state.costoFabricacion) * cantidad) * 100).round() / 100.0;
+        _centavos((precio - state.costoFabricacion) * cantidad);
     final nombreLinea = '${state.nombre} (${state.nombreColor})';
 
     final detalles = List<Map<String, dynamic>>.from(state.detalles);
@@ -117,10 +117,9 @@ class VentaApliquesFormCubit extends Cubit<VentaApliquesFormState> {
       final existing = detalles[existingIndex];
       final nuevaCantidad =
           _sinRuido((existing['cantidad'] as num).toDouble() + cantidad);
-      final nuevoTotal = (nuevaCantidad * precio * 100).round() / 100.0;
+      final nuevoTotal = _centavos(nuevaCantidad * precio);
       final nuevasGanancias =
-          (((precio - state.costoFabricacion) * nuevaCantidad) * 100).round() /
-              100.0;
+          _centavos((precio - state.costoFabricacion) * nuevaCantidad);
       // El carrito sube lo que subió la línea: sumar el redondeo de cada
       // agregado por separado lo descuadraba de la línea.
       totalDelta = nuevoTotal - (existing['total'] as num).toDouble();
@@ -224,9 +223,14 @@ class VentaApliquesFormCubit extends Cubit<VentaApliquesFormState> {
       emit(state.copyWith(descuento: value));
 }
 
-/// Redondea a centavos: sumar doubles arrastra ruido (10.1 + 20.2 da
-/// 30.299999999999997) que se veía en el total y llegaba así a la base.
-double _centavos(double valor) => (valor * 100).round() / 100.0;
+/// Redondea a centavos, la mitad hacia arriba como `numeric` en Postgres.
+/// Sumar doubles arrastra ruido (10.1 + 20.2 da 30.299999999999997) y el
+/// double de cantidad × precio no es el decimal exacto: 1.5 × 0.15 da
+/// 0.22499999999999998 y redondeado directo quedaba 0.22 en vez de 0.23.
+/// Primero se quita el ruido a 6 decimales (las cantidades y precios
+/// tipeados tienen menos) y recién ahí se redondea la mitad del centavo.
+double _centavos(double valor) =>
+    ((valor * 1000000).round() / 10000).round() / 100.0;
 
 /// Quita el ruido de sumar cantidades (con 1.07 en el carrito y stock 2.07,
 /// 1.07 + 1 daba 2.0700000000000003 y rechazaba la última unidad). A 6

@@ -92,10 +92,10 @@ class DetalleVentaFormCubit extends Cubit<DetalleVentaFormState> {
       final existing = detVentas[existingIndex];
       final nuevaCantidad =
           _sinRuido((existing['cantidad'] as num).toDouble() + cantidad);
-      final nuevoTotal = (nuevaCantidad * precio * 100).round() / 100.0;
+      final nuevoTotal = _centavos(nuevaCantidad * precio);
       final nuevasGanancias = precxcompra == 0
           ? 0.0
-          : (((precio - precxcompra) * nuevaCantidad) * 100).round() / 100.0;
+          : _centavos((precio - precxcompra) * nuevaCantidad);
       // El carrito sube lo que subió la línea: sumar el redondeo de cada
       // agregado por separado lo descuadraba (0.5 m + 0.5 m a 0.01 Bs:
       // línea 0.01, total 0.02, y al quitarla quedaba 0.01).
@@ -109,10 +109,9 @@ class DetalleVentaFormCubit extends Cubit<DetalleVentaFormState> {
         'ganancias': nuevasGanancias,
       };
     } else {
-      totalDelta = (cantidad * precio * 100).round() / 100.0;
-      gananciasDelta = precxcompra == 0
-          ? 0
-          : (((precio - precxcompra) * cantidad) * 100).round() / 100.0;
+      totalDelta = _centavos(cantidad * precio);
+      gananciasDelta =
+          precxcompra == 0 ? 0 : _centavos((precio - precxcompra) * cantidad);
       detVentas.insert(0, {
         'idtelas': state.idtelas,
         'nombre': state.nombre,
@@ -221,9 +220,14 @@ class DetalleVentaFormCubit extends Cubit<DetalleVentaFormState> {
   }
 }
 
-/// Redondea a centavos: sumar doubles arrastra ruido (10.1 + 20.2 da
-/// 30.299999999999997) que se veía en el total y llegaba así a la base.
-double _centavos(double valor) => (valor * 100).round() / 100.0;
+/// Redondea a centavos, la mitad hacia arriba como `numeric` en Postgres.
+/// Sumar doubles arrastra ruido (10.1 + 20.2 da 30.299999999999997) y el
+/// double de cantidad × precio no es el decimal exacto: 3.75 × 23.22 da
+/// 87.07499999999999 y redondeado directo quedaba 87.07 en vez de 87.08.
+/// Primero se quita el ruido a 6 decimales (las cantidades y precios
+/// tipeados tienen menos) y recién ahí se redondea la mitad del centavo.
+double _centavos(double valor) =>
+    ((valor * 1000000).round() / 10000).round() / 100.0;
 
 /// Quita el ruido de sumar cantidades (0.3 + 0.6 daba 0.8999999999999999
 /// mts en la línea). A 6 decimales: no cambia ninguna cantidad tipeada.

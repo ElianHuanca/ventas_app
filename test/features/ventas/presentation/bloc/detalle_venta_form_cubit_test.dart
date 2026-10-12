@@ -128,6 +128,15 @@ void main() {
       expect(cubit.state.total, 0);
     });
 
+    test('la mitad del centavo redondea hacia arriba, como numeric', () {
+      cargarLinea(cantidad: '3.75', precio: '23.22', precxcompra: 0);
+      cubit.addDetalleVenta();
+
+      // 3.75 × 23.22 = 87.075, en double 87.07499999999999 (daba 87.07)
+      expect(cubit.state.detVentas.single['total'], 87.08);
+      expect(cubit.state.total, 87.08);
+    });
+
     test('sumar cantidades en el merge no deja ruido de coma flotante', () {
       cargarLinea(cantidad: '0.3', precio: '10');
       cubit.addDetalleVenta();

@@ -44,7 +44,8 @@ class _VentaApliquesScreenState extends State<VentaApliquesScreen> {
         .toList();
 
     final descuento = double.tryParse(formState.descuento) ?? 0;
-    final totalPagar = formState.total - descuento;
+    // Redondeado como el total que se guarda (10.3 - 0.1 daba 10.200000000000001)
+    final totalPagar = ((formState.total - descuento) * 100).round() / 100;
 
     return [
       apliquesState.isLoading

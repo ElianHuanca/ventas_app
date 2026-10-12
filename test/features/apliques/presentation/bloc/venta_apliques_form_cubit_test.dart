@@ -140,6 +140,17 @@ void main() {
       expect(cubit.state.ganancias, 0);
     });
 
+    test('la mitad del centavo redondea hacia arriba, como numeric', () {
+      seleccionar();
+      cubit.onCantidadChanged('1.5');
+      cubit.onPrecioChanged('0.15');
+      expect(cubit.addDetalle(), isNull);
+
+      // 1.5 × 0.15 = 0.225, en double 0.22499999999999998 (daba 0.22)
+      expect(cubit.state.detalles.single['total'], 0.23);
+      expect(cubit.state.total, 0.23);
+    });
+
     test('NaN e Infinity no son cantidades ni precios válidos', () {
       seleccionar();
       cubit.onCantidadChanged('NaN');
