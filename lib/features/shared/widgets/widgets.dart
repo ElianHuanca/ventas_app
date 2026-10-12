@@ -9,3 +9,4 @@ export 'DialogoDeAlerta.dart';
 export 'color_from_hex.dart';
 export 'producto_colores_list.dart';
 export 'muestra_color.dart';
+export 'tabla_desplazable.dart';

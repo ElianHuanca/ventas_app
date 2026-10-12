@@ -28,14 +28,16 @@ class DetVentas extends StatelessWidget {
                           child: Text('Lista Vacia',
                               style: TextStyle(fontStyle: FontStyle.italic)),
                         )
-                      : dataTableWidget(
-                          ['Tela', 'Cantidad', 'Precio', 'Total', 'Accion'],
-                          context,
-                          detalleVentasState.detalleVentas,
-                          venta.total,
-                          venta.ganancias,
-                          venta.descuento,
-                          (int id) => bloc.deleteDetVenta(id),
+                      : TablaDesplazable(
+                          child: dataTableWidget(
+                            ['Tela', 'Cantidad', 'Precio', 'Total', 'Accion'],
+                            context,
+                            detalleVentasState.detalleVentas,
+                            venta.total,
+                            venta.ganancias,
+                            venta.descuento,
+                            (int id) => bloc.deleteDetVenta(id),
+                          ),
                         ),
                 ),
               ],
