@@ -19,6 +19,21 @@ class _DashboardSinConexion extends FakeDashboardRepository {
 }
 
 void main() {
+  // Al fallar una carga el cubit arma un DashboardState nuevo para tirar los
+  // datos del período anterior: depende de que uno nuevo venga vacío.
+  test('un DashboardState nuevo no trae datos, no carga y no marca error', () {
+    final estado = DashboardState(
+        desde: DateTime(2026, 1, 1), hasta: DateTime(2026, 1, 31));
+
+    expect(estado.isLoading, isFalse);
+    expect(estado.error, isFalse);
+    expect(estado.verPorCantidad, isFalse);
+    expect(estado.topTelas, isEmpty);
+    expect(estado.topApliques, isEmpty);
+    expect(estado.resumenTelas, isNull);
+    expect(estado.resumenApliques, isNull);
+  });
+
   test('el estado inicial es el mes actual hasta hoy, por monto', () async {
     final antes = DateTime.now();
     final cubit = DashboardCubit(repository: FakeDashboardRepository());

@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Mutation testing de mappers, utilidades, entidades, repositorios y el
+  DashboardCubit.
+
+  Correr desde la raíz del repo, con lib/ limpio (el comando de test,
+  mappers_utilidades_dashboard.dart, usa `git diff lib` para saber qué archivo
+  se mutó y corre solo sus tests):
+
+    dart pub global run mutation_test - -no-builtin mutacion/mappers_utilidades_dashboard.xml -o build/mutacion -f all
+
+  (`- -no-builtin` va con los dos guiones juntos: en un comentario XML no se
+  pueden escribir seguidos.) Solo contar los mutantes, sin correr tests: `-d`.
+  223 mutantes, ~25 min.
+
+  La herramienta (mutation_test 1.8.0, `dart pub global activate mutation_test`)
+  muta un archivo de lib/ por vez (reemplazo de texto), corre el comando de
+  abajo y lo restaura. Si el comando sigue en verde, el mutante "sobrevivió":
+  hay un comportamiento que ningún test fija. Si se corta a la mitad (Ctrl+C),
+  revisar `git status` y restaurar lib/ con `git checkout lib`.
+
+  Reglas: SIN las builtin (- -no-builtin). Las útiles están copiadas abajo
+  (operadores, if, argumentos posicionales cruzados, llamadas borradas),
+  acotadas a una línea: las builtin con dotAll generaban ~20 mutantes que solo
+  rompían la sintaxis (borrar el constructor entero, `toDouble(\n,)`, un `if`
+  que abarcaba dos funciones). Se suman reglas para lo que pueden romper estos
+  archivos: un default de `??`, una columna mal leída, un booleano invertido,
+  el orden del ranking, desde/hasta cruzados.
+
+  Ojo con mutation_test 1.8.0: en el texto de una mutación, dos grupos pegados
+  (`$1$2`) no se reemplazan bien (el segundo queda literal). Separarlos.
+-->
+<mutations version="1.2">
+  <files>
+    <!-- Mappers: fila de Supabase → entidad -->
+    <file>lib/features/apliques/infrastructure/mappers/aplique_mapper.dart</file>
+    <file>lib/features/apliques/infrastructure/mappers/produccion_mapper.dart</file>
+    <file>lib/features/apliques/infrastructure/mappers/stock_aplique_mapper.dart</file>
+    <file>lib/features/apliques/infrastructure/mappers/venta_aplique_mapper.dart</file>
+    <file>lib/features/sucursales/infrastructure/mappers/sucursal_mapper.dart</file>
+    <file>lib/features/sucursales/infrastructure/mappers/tela_sucursal_mapper.dart</file>
+    <file>lib/features/telas/infrastructure/mappers/tela_mapper.dart</file>
+    <file>lib/features/ventas/infrastructure/mappers/detalleVenta_mapper.dart</file>
+    <file>lib/features/ventas/infrastructure/mappers/venta_mapper.dart</file>
+
+    <!-- Utilidades -->
+    <file>lib/features/shared/changeFormatDate.dart</file>
+    <file>lib/features/shared/widgets/color_from_hex.dart</file>
+
+    <!-- Dashboard: carga de las 4 RPC, error, orden por cantidad -->
+    <file>lib/features/dashboard/presentation/bloc/dashboard_cubit.dart</file>
+
+    <!-- Entidades con algo más que campos (empty(), copyWith, toJson, defaults).
+         El resto de domain/entities son solo campos `final`. -->
+    <file>lib/features/apliques/domain/entities/aplique.dart</file>
+    <file>lib/features/sucursales/domain/entities/sucursal.dart</file>
+    <file>lib/features/sucursales/domain/entities/tela_sucursal.dart</file>
+    <file>lib/features/telas/domain/entities/tela.dart</file>
+    <file>lib/features/ventas/domain/entities/detalleVenta.dart</file>
+
+    <!-- Repositorios: delegan en el datasource (los tests usan
+         test/helpers/fake_datasources.dart) -->
+    <file>lib/features/apliques/infrastructure/repositories/apliques_repository_impl.dart</file>
+    <file>lib/features/apliques/infrastructure/repositories/ventas_apliques_repository_impl.dart</file>
+    <file>lib/features/colores/infrastructure/repositories/colores_repository_impl.dart</file>
+    <file>lib/features/dashboard/infrastructure/repositories/dashboard_repository_impl.dart</file>
+    <file>lib/features/sucursales/infrastructure/repositories/sucursales_repository_impl.dart</file>
+    <file>lib/features/telas/infrastructure/repositories/telas_repository_impl.dart</file>
+    <file>lib/features/ventas/infrastructure/repositories/detalleVentas_repository_impl.dart</file>
+    <file>lib/features/ventas/infrastructure/repositories/ventas_repository_impl.dart</file>
+    <!-- AuthRepositoryImpl no delega en un datasource: habla directo con
+         SupabaseConfig.client.auth (estático, no inyectable), así que solo se
+         muta mensajeDeError. El resto lo cubren los tests de integración. -->
+    <file>lib/features/auth/infrastructure/repositories/auth_repository_impl.dart
+      <lines begin="34" end="46"/>
+    </file>
+  </files>
+
+  <commands>
+    <!-- Solo los tests del archivo mutado (no la suite entera): el script mira
+         `git diff lib` y corre `flutter test - -concurrency=1` con los tests
+         de su tabla. ~12 s por mutante. Un mutante que no compila también hace
+         fallar el comando (cuenta como detectado). -->
+    <command group="test" expected="0" timeout="180">dart mutacion/mappers_utilidades_dashboard.dart</command>
+  </commands>
+
+  <rules>
+    <!-- ===== Copiadas de las builtin, acotadas a una línea ===== -->
+    <literal text="&amp;&amp;" id="builtin.and">
+      <mutation text="||"/>
+    </literal>
+    <literal text="||" id="builtin.or">
+      <mutation text="&amp;&amp;"/>
+    </literal>
+    <literal text="==" id="builtin.op.eq">
+      <mutation text="!="/>
+    </literal>
+    <literal text="!=" id="builtin.op.neq">
+      <mutation text="=="/>
+    </literal>
+    <literal text="&lt;=" id="builtin.op.leq">
+      <mutation text="=="/>
+      <mutation text="&lt;"/>
+    </literal>
+    <literal text="&gt;=" id="builtin.op.geq">
+      <mutation text="=="/>
+      <mutation text="&gt;"/>
+    </literal>
+    <!-- Condición del if negada. Solo `if (...) {`: en los `if (...) return`
+         de estos archivos la condición es un == / != / is, y negarla repetía el
+         mutante de builtin.op.eq / dart.type.is. -->
+    <regex pattern="\sif\s*\(([^\n]*?)\)\s*\{" id="builtin.if">
+      <mutation text=" if (!($1)) {"/>
+    </regex>
+    <!-- Un operando de && / || negado -->
+    <regex pattern="(&amp;&amp;|\|\|)\s*([a-z]\w*\.\w+\(|\()" id="builtin.logical.operand_not">
+      <mutation text="$1 !$2"/>
+    </regex>
+    <regex pattern="([\s=\(])([1-9\.]+[0-9]+|0\.0*[1-9])" id="builtin.number.negative">
+      <mutation text="$1-$2"/>
+    </regex>
+    <!-- Argumentos posicionales cruzados (una sola línea, sin argumentos con nombre) -->
+    <regex pattern="([\s][a-zA-Z]+?[^(;\s{}]*?)\(([^,:;{}(\n]+?),([^,:;{}(\n]+?)\)\s*;" id="builtin.function.arg2">
+      <mutation text="$1($3,$2);"/>
+    </regex>
+    <regex pattern="([\s][a-zA-Z]+?[^(;\s{}]*?)\(([^,:;{}(\n]+?),([^,:;{}(\n]+?),([^,:;{}(\n]+?)\)\s*;" id="builtin.function.arg3">
+      <mutation text="$1($3,$2,$4);"/>
+      <mutation text="$1($2,$4,$3);"/>
+    </regex>
+    <regex pattern="\+([^=+])" id="builtin.arith.add">
+      <mutation text="-$1"/>
+    </regex>
+    <regex pattern="-([^=\-])" id="builtin.arith.sub">
+      <mutation text="+$1"/>
+    </regex>
+    <!-- Llamada sin valor borrada (`emit(...)`, `cargar();`, `await cargar();`).
+         Solo empieza en minúscula: así no borra un constructor `Clase(...);`.
+         El `{`, `;` o comentario previo va en un lookbehind para que dos
+         llamadas seguidas den dos mutantes (si no, la primera se come el `;`
+         de la segunda). -->
+    <regex pattern="(?&lt;=([{;]|//[^\n]*)\s*)(await )?[a-z][\w.]*\([^;]*\)\s*;" id="builtin.function.removeVoidCall">
+      <mutation text=""/>
+    </regex>
+
+    <!-- ===== Propias ===== -->
+    <!-- Booleanos literales: defaults de `activo`, flags del estado del dashboard -->
+    <regex pattern="([^\w.])true\b" id="dart.bool.true">
+      <mutation text="$1false"/>
+    </regex>
+    <regex pattern="([^\w.])false\b" id="dart.bool.false">
+      <mutation text="$1true"/>
+    </regex>
+
+    <!-- Valores por defecto: `?? 0`, `= 0`, `id: 0`, `return 0.0` -->
+    <regex pattern="([=:]|\?\?|return) 0([,;)\s])" id="dart.default.zero">
+      <mutation text="$1 1$2"/>
+    </regex>
+    <regex pattern="([=:]|\?\?|return) 0\.0([,;)\s])" id="dart.default.zero_double">
+      <mutation text="$1 1.0$2"/>
+    </regex>
+    <!-- `?? ''`, `= ''`, `nombre: ''`, `: ''` del ternario -->
+    <regex pattern="([=:]|\?\?) ''" id="dart.default.empty_string">
+      <mutation text="$1 'mutante'"/>
+    </regex>
+    <!-- Fecha de respaldo cuando la fila no trae una parseable -->
+    <literal text="return DateTime.now();" id="dart.default.now_return">
+      <mutation text="return DateTime(2000);"/>
+    </literal>
+    <regex pattern="\?\?\s*DateTime\.now\(\)" id="dart.default.now_nullish">
+      <mutation text="?? DateTime(2000)"/>
+    </regex>
+    <!-- Período por defecto del dashboard: del día 1 del mes a hoy -->
+    <literal text="DateTime.now().month, 1)" id="dart.default.primer_dia">
+      <mutation text="DateTime.now().month, 2)"/>
+    </literal>
+    <literal text="hasta: DateTime.now()" id="dart.default.hasta_hoy">
+      <mutation text="hasta: DateTime(2000)"/>
+    </literal>
+    <!-- Negro opaco de colorFromHex -->
+    <literal text="0xFF000000" id="dart.default.color">
+      <mutation text="0xFFFFFFFF"/>
+    </literal>
+
+    <!-- Columna equivocada: el mapper lee otra clave de la fila -->
+    <regex pattern="\['(\w+)'\]" id="dart.map.key_read">
+      <mutation text="['$1_mutante']"/>
+    </regex>
+    <!-- Columna equivocada al escribir (toJson) -->
+    <regex pattern="'(\w+)': " id="dart.map.key_write">
+      <mutation text="'$1_mutante': "/>
+    </regex>
+
+    <!-- Chequeos de tipo invertidos -->
+    <regex pattern=" is (Map|List|num|DateTime)\b" id="dart.type.is">
+      <mutation text=" is! $1"/>
+    </regex>
+    <literal text=".any(" id="dart.iterable.any">
+      <mutation text=".every("/>
+    </literal>
+    <!-- Normalización de texto borrada -->
+    <regex pattern="\.(replaceAll\([^)]*\)|toLowerCase\(\))" id="dart.string.normalize">
+      <mutation text=""/>
+    </regex>
+
+    <!-- Negación borrada (`!state.verPorCantidad`) -->
+    <regex pattern="!([a-zA-Z_(])" id="dart.not.remove">
+      <mutation text="$1"/>
+    </regex>
+    <!-- Ternario con la condición invertida (`=> verPorCantidad ? ...`) -->
+    <regex pattern="=> (\w+)\s*\?" id="dart.ternary.not">
+      <mutation text="=> !$1 ?"/>
+    </regex>
+    <!-- copyWith que ignora el argumento -->
+    <regex pattern="(\w+) \?\? this\.(\w+)\b" id="dart.copywith.ignore">
+      <mutation text="this.$2"/>
+    </regex>
+    <!-- Orden del ranking invertido -->
+    <regex pattern="(\w)\.(\w+)\.compareTo\((\w)\.(\w+)\)" id="dart.sort.reverse">
+      <mutation text="$3.$2.compareTo($1.$4)"/>
+    </regex>
+
+    <!-- Argumentos con nombre cruzados (mismo tipo: compila y pasa desapercibido) -->
+    <literal text="desde: desde, hasta: hasta" id="dart.args.desde_hasta">
+      <mutation text="desde: hasta, hasta: desde"/>
+    </literal>
+    <literal text="total: total," id="dart.args.total">
+      <mutation text="total: ganancias,"/>
+    </literal>
+    <literal text="descuento: descuento," id="dart.args.descuento">
+      <mutation text="descuento: ganancias,"/>
+    </literal>
+    <!-- El filtro de activos que se pasa al revés -->
+    <literal text="soloActivos: soloActivos" id="dart.args.solo_activos">
+      <mutation text="soloActivos: !soloActivos"/>
+    </literal>
+    <!-- Resultados de Future.wait cruzados -->
+    <literal text="resultados[0]" id="dart.dashboard.resultado0">
+      <mutation text="resultados[1]"/>
+    </literal>
+    <literal text="resultados[2]" id="dart.dashboard.resultado2">
+      <mutation text="resultados[3]"/>
+    </literal>
+  </rules>
+
+  <exclude>
+    <!-- Comentarios, imports/exports, `// ignore_for_file` -->
+    <token begin="//" end="\n"/>
+    <token begin="export &apos;" end="&apos;;"/>
+    <token begin="import &apos;" end="&apos;;"/>
+    <token begin="export &quot;" end="&quot;;"/>
+    <token begin="import &quot;" end="&quot;;"/>
+    <regex pattern="/[*].*?[*]/" dotAll="true"/>
+
+    <!-- ===== Mutantes equivalentes ===== -->
+    <!-- `DateTime.tryParse(json['fecha']?.toString() ?? '')` (ProduccionMapper,
+         VentaApliqueMapper): cambiar el '' por otro texto no parseable da el
+         mismo null → la misma fecha de respaldo. -->
+    <!-- (lookbehind: el rango arranca en el `??`, así el mutante de la clave
+         ['fecha'] sigue contando) -->
+    <regex pattern="(?&lt;=tryParse\(json\['fecha'\]\?\.toString\(\) )\?\? ''\)"/>
+    <!-- Aplique.tamanio quedó sin uso (el tamaño va en el nombre): nada en lib/
+         lo lee, así que su default y el de empty() no cambian nada. -->
+    <regex pattern="tamanio( =|:) ''"/>
+    <!-- Default del constructor de Aplique: en lib/ nadie arma un Aplique sin
+         costo (el mapper y empty() lo pasan siempre). El costo 0 de un aplique
+         nuevo sí está cubierto, por empty(). -->
+    <regex pattern="this\.costoFabricacion = 0"/>
+  </exclude>
+
+  <threshold failure="80">
+    <rating over="95" name="A"/>
+    <rating over="80" name="B"/>
+    <rating over="60" name="C"/>
+    <rating over="40" name="D"/>
+    <rating over="20" name="E"/>
+    <rating over="0" name="F"/>
+  </threshold>
+</mutations>

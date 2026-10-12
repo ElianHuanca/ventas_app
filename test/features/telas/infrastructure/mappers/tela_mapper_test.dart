@@ -33,5 +33,17 @@ void main() {
       final Tela tela = TelaMapper.jsonToEntity({'id': 1});
       expect(tela.nombre, '');
     });
+
+    test('mapea activo: una tela dada de baja no queda activa', () {
+      final Tela tela = TelaMapper.jsonToEntity({'id': 1, 'activo': false});
+      expect(tela.activo, false);
+    });
+
+    test('activo null o faltante queda activa', () {
+      final Tela faltante = TelaMapper.jsonToEntity({'id': 1});
+      final Tela nulo = TelaMapper.jsonToEntity({'id': 2, 'activo': null});
+      expect(faltante.activo, true);
+      expect(nulo.activo, true);
+    });
   });
 }
