@@ -43,7 +43,7 @@ void main() {
       expect(cubit.state.activo, true);
     });
 
-    test('tela existente precarga precios distintos de 0 y su activo', () {
+    test('tela existente precarga sus precios (también los 0) y su activo', () {
       final cubit = crearCubit(Tela(
         id: 2,
         nombre: 'Seda',
@@ -56,7 +56,8 @@ void main() {
       addTearDown(cubit.close);
 
       expect(cubit.state.precxmen, '120.0');
-      expect(cubit.state.precxmay, ''); // 0 se muestra vacío
+      // 0 = no se vende así: se muestra, si no habría que reescribirlo
+      expect(cubit.state.precxmay, '0.0');
       expect(cubit.state.precxrollo, '90.0');
       expect(cubit.state.precxcompra, '60.0');
       expect(cubit.state.activo, false);

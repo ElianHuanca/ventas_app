@@ -97,6 +97,21 @@ void main() {
       expect(linea['ganancias'], 69.66);
     });
 
+    test('el total acumulado no arrastra error de coma flotante', () {
+      cargarLinea(cantidad: '1', precio: '10.1', precxcompra: 5);
+      cubit.addDetalleVenta();
+      cargarLinea(idtelas: 2, cantidad: '1', precio: '20.2', precxcompra: 5);
+      cubit.addDetalleVenta();
+
+      // 10.1 + 20.2 en double da 30.299999999999997
+      expect(cubit.state.total, 30.3);
+      expect(cubit.state.ganancias, 20.3);
+
+      cubit.removeDetalleVenta(2, 1.0, 20.2);
+      expect(cubit.state.total, 10.1);
+      expect(cubit.state.ganancias, 5.1);
+    });
+
     test('no agrega sin producto seleccionado', () {
       cubit.onCantidadChanged('1');
       cubit.onPrecioChanged('100');
@@ -177,7 +192,8 @@ void main() {
       expect(detalleRepo.detallesCreados, isEmpty);
     });
 
-    test('flujo completo con venta inexistente: crea venta, detalles y actualiza',
+    test(
+        'flujo completo con venta inexistente: crea venta, detalles y actualiza',
         () async {
       ventasRepo.ventaByFecha = null; // no hay venta para la fecha
       cubit.onFechaChanged(DateTime(2024, 6, 10));

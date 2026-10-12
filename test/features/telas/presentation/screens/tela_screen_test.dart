@@ -190,7 +190,11 @@ void main() {
       await montar(tester, 0);
 
       await completar(tester,
-          nombre: 'Gabardina', men: 'diez', may: '9', rollo: '300', compra: '7');
+          nombre: 'Gabardina',
+          men: 'diez',
+          may: '9',
+          rollo: '300',
+          compra: '7');
       await tocar(tester, 'Guardar');
 
       expect(repo.creadas, isEmpty);
@@ -235,8 +239,8 @@ void main() {
       expect(find.widgetWithText(TextFormField, '6.0'), findsOneWidget);
       // Switch Activo visible y encendido
       expect(find.text('Activo'), findsOneWidget);
-      expect(
-          tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value, true);
+      expect(tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+          true);
     });
 
     testWidgets('"Modificar" envía el id y los cambios al repo',
@@ -267,8 +271,7 @@ void main() {
 
       await tester.tap(find.byType(Switch));
       await tester.pump();
-      expect(
-          tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+      expect(tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
           false);
 
       await tocar(tester, 'Modificar');
@@ -292,8 +295,7 @@ void main() {
       ];
       await montar(tester, 4);
 
-      expect(
-          tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+      expect(tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
           false);
 
       await tester.tap(find.byType(Switch));
@@ -323,12 +325,7 @@ void main() {
 
       expect(repo.actualizadas.single['nombre'], 'Tul Ilusión');
       expect(repo.actualizadas.single['precxrollo'], 0);
-    },
-        // bug: tela_form_cubit.dart:54-59 precarga los precios en 0 como ''
-        // y _isFormInvalid (línea 94) exige los cuatro precios: editar una
-        // tela con un precio en 0 ("no se vende en esa modalidad") falla con
-        // "Hubo un error" salvo que se vuelva a escribir el 0.
-        skip: true);
+    });
   });
 
   testWidgets('si la carga de la tela falla, la pantalla no revienta',
@@ -337,9 +334,5 @@ void main() {
     await montar(tester, 3);
 
     expect(tester.takeException(), isNull);
-  },
-      // bug: tela_screen.dart:15 (y :40) hace telaState.tela! — si getTela
-      // lanza, TelaBloc termina con tela null e isLoading false y la
-      // pantalla tira "Null check operator used on a null value".
-      skip: true);
+  });
 }

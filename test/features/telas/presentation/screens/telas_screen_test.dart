@@ -96,8 +96,8 @@ void main() {
         of: find
             .ancestor(
               of: find.text(nombre),
-              matching: find.byWidgetPredicate(
-                  (w) => w is Container && w.margin != null),
+              matching: find
+                  .byWidgetPredicate((w) => w is Container && w.margin != null),
             )
             .first,
         matching: find.text(boton),
@@ -206,12 +206,7 @@ void main() {
       expect(textoBusqueda(tester), 'seda');
       expect(find.text('Seda'), findsOneWidget);
       expect(find.text('Lino'), findsNothing);
-    },
-        // bug: telas_screen.dart:22-23 — la recarga muestra el
-        // FullScreenLoader, el TextField (sin controller) se recrea vacío y
-        // _busqueda sigue filtrando: el campo dice '' pero la lista queda
-        // filtrada por 'seda'. (testWidgets solo acepta skip bool.)
-        skip: true);
+    });
   });
 
   group('navegación', () {

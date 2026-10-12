@@ -13,7 +13,8 @@ class SucursalScreen extends StatelessWidget {
     return BlocBuilder<SucursalBloc, SucursalState>(
       builder: (context, sucursalState) {
         if (sucursalState.isLoading) return const FullScreenLoader();
-        final sucursal = sucursalState.sucursal!;
+        final sucursal = sucursalState.sucursal;
+        if (sucursal == null) return const CargaFallida(titulo: 'Sucursal');
         return BlocProvider(
           create: (ctx) => SucursalFormCubit(
             onCreateCallback: ctx.read<SucursalesBloc>().createSucursal,
@@ -26,8 +27,7 @@ class SucursalScreen extends StatelessWidget {
             child: Screen1(
               backRoute: true,
               widget: [_sucursalInformation(context)],
-              title:
-                  sucursal.id == 0 ? 'Crear Sucursal' : 'Editar Sucursal',
+              title: sucursal.id == 0 ? 'Crear Sucursal' : 'Editar Sucursal',
               isGridview: false,
             ),
           ),
@@ -60,8 +60,8 @@ class SucursalScreen extends StatelessWidget {
                 children: [
                   MaterialButtonWidget(
                     onTap: () async {
-                      final value = await cubit.onSubmit(
-                          isUpdate: sucursal.id != 0);
+                      final value =
+                          await cubit.onSubmit(isUpdate: sucursal.id != 0);
                       if (context.mounted) showSnackbarBool(context, value);
                     },
                     texto: sucursal.id == 0 ? 'Guardar' : 'Modificar',

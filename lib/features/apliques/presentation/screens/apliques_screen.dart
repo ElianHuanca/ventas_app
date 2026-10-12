@@ -13,7 +13,17 @@ class ApliquesScreen extends StatefulWidget {
 }
 
 class _ApliquesScreenState extends State<ApliquesScreen> {
-  String _busqueda = '';
+  // Controller propio: el TextField se destruye mientras el FullScreenLoader
+  // tapa la recarga y, sin él, volvía vacío mientras la lista seguía filtrada
+  final _buscador = TextEditingController();
+
+  String get _busqueda => _buscador.text;
+
+  @override
+  void dispose() {
+    _buscador.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,15 +49,15 @@ class _ApliquesScreenState extends State<ApliquesScreen> {
 
   List<Widget> _buildBody(BuildContext context, ApliquesState state) {
     final filtrados = state.apliques
-        .where((a) =>
-            a.nombre.toLowerCase().contains(_busqueda.toLowerCase()))
+        .where((a) => a.nombre.toLowerCase().contains(_busqueda.toLowerCase()))
         .toList();
 
     return [
       Padding(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
         child: TextField(
-          onChanged: (value) => setState(() => _busqueda = value),
+          controller: _buscador,
+          onChanged: (_) => setState(() {}),
           decoration: InputDecoration(
             hintText: 'Buscar aplique...',
             prefixIcon: const Icon(Icons.search),
@@ -78,7 +88,8 @@ class _ApliquesScreenState extends State<ApliquesScreen> {
     // el sufijo tras " - " se muestra como chip aparte.
     final partes = aplique.nombre.split(' - ');
     final nombre = partes.first;
-    final presentacion = partes.length > 1 ? partes.sublist(1).join(' - ') : null;
+    final presentacion =
+        partes.length > 1 ? partes.sublist(1).join(' - ') : null;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),

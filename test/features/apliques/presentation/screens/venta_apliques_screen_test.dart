@@ -370,12 +370,9 @@ void main() {
       expect(enTabla('50.0 Bs'), findsOneWidget);
     });
 
-    // bug: VentaApliquesFormCubit.addDetalle (venta_apliques_form_cubit.dart
-    // :140) acumula el total sumando doubles sin redondear: 10.1 + 20.2 se ve
-    // como "30.299999999999997 Bs" y se manda así a crear_venta_apliques
-    // (p_total NUMERIC guarda el ruido). testWidgets solo acepta skip bool.
-    testWidgets('el total no arrastra error de coma flotante', skip: true,
-        (tester) async {
+    // 10.1 + 20.2 en double da 30.299999999999997: no se tiene que ver ni
+    // llegar así a crear_venta_apliques (p_total NUMERIC guardaría el ruido)
+    testWidgets('el total no arrastra error de coma flotante', (tester) async {
       await montar(tester);
 
       await agregarLinea(tester,

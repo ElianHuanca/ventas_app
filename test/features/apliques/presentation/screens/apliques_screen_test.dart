@@ -80,8 +80,8 @@ void main() {
         of: find
             .ancestor(
               of: find.text(nombre),
-              matching: find.byWidgetPredicate(
-                  (w) => w is Container && w.margin != null),
+              matching: find
+                  .byWidgetPredicate((w) => w is Container && w.margin != null),
             )
             .first,
         matching: find.text(texto),
@@ -205,12 +205,7 @@ void main() {
       expect(textoBusqueda(tester), 'luna');
       expect(find.text('Luna'), findsOneWidget);
       expect(find.text('Flor Grande'), findsNothing);
-    },
-        // bug: apliques_screen.dart:22-23 — la recarga muestra el
-        // FullScreenLoader, el TextField (sin controller) se recrea vacío y
-        // _busqueda sigue filtrando: el campo dice '' pero la lista queda
-        // filtrada por 'luna'. (testWidgets solo acepta skip bool.)
-        skip: true);
+    });
   });
 
   group('navegación', () {
@@ -245,7 +240,8 @@ void main() {
       expect(repo.getApliquesCalls, 2);
     });
 
-    testWidgets('"Colores" navega a /aplique-colores/:id sin recargar al volver',
+    testWidgets(
+        '"Colores" navega a /aplique-colores/:id sin recargar al volver',
         (tester) async {
       await montar(tester);
 

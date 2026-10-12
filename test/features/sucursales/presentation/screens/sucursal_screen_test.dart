@@ -82,8 +82,7 @@ void main() {
           builder: (_, state) {
             final id = int.parse(state.pathParameters['idsucursal']!);
             return BlocProvider(
-              create: (_) =>
-                  SucursalBloc(sucursalesRepository: repo, id: id),
+              create: (_) => SucursalBloc(sucursalesRepository: repo, id: id),
               child: SucursalScreen(id: id),
             );
           },
@@ -303,9 +302,5 @@ void main() {
 
       expect(tester.takeException(), isNull);
     },
-    // bug: al fallar la carga SucursalBloc deja sucursal = null y
-    // sucursal_screen.dart:17 hace `sucursalState.sucursal!` (Null check
-    // operator used on a null value → pantalla roja).
-    skip: true,
   );
 }

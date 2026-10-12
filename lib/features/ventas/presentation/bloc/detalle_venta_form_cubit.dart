@@ -118,8 +118,8 @@ class DetalleVentaFormCubit extends Cubit<DetalleVentaFormState> {
 
     emit(state.copyWith(
       detVentas: detVentas,
-      total: state.total + totalDelta,
-      ganancias: state.ganancias + gananciasDelta,
+      total: _centavos(state.total + totalDelta),
+      ganancias: _centavos(state.ganancias + gananciasDelta),
       precio: '',
       cantidad: '',
     ));
@@ -139,8 +139,9 @@ class DetalleVentaFormCubit extends Cubit<DetalleVentaFormState> {
     final removed = detVentas.removeAt(index);
     emit(state.copyWith(
       detVentas: detVentas,
-      total: state.total - (removed['total'] as num).toDouble(),
-      ganancias: state.ganancias - (removed['ganancias'] as num).toDouble(),
+      total: _centavos(state.total - (removed['total'] as num).toDouble()),
+      ganancias:
+          _centavos(state.ganancias - (removed['ganancias'] as num).toDouble()),
     ));
   }
 
@@ -151,8 +152,8 @@ class DetalleVentaFormCubit extends Cubit<DetalleVentaFormState> {
       if (!_isValidDouble(state.descuento)) return false;
 
       // Buscar o crear venta para la fecha + sucursal
-      Venta? venta = await ventasRepository.getVentaByFecha(
-          idsucursal, state.fecha);
+      Venta? venta =
+          await ventasRepository.getVentaByFecha(idsucursal, state.fecha);
       venta ??= await ventasRepository.createVenta(idsucursal, state.fecha);
 
       final idventa = venta.id;
@@ -212,3 +213,7 @@ class DetalleVentaFormCubit extends Cubit<DetalleVentaFormState> {
     ));
   }
 }
+
+/// Redondea a centavos: sumar doubles arrastra ruido (10.1 + 20.2 da
+/// 30.299999999999997) que se veía en el total y llegaba así a la base.
+double _centavos(double valor) => (valor * 100).round() / 100.0;

@@ -12,7 +12,8 @@ class TelaScreen extends StatelessWidget {
     return BlocBuilder<TelaBloc, TelaState>(
       builder: (context, telaState) {
         if (telaState.isLoading) return const FullScreenLoader();
-        final tela = telaState.tela!;
+        final tela = telaState.tela;
+        if (tela == null) return const CargaFallida(titulo: 'Tela');
         return BlocProvider(
           create: (ctx) => TelaFormCubit(
             onCreateCallback: ctx.read<TelasBloc>().createTela,
