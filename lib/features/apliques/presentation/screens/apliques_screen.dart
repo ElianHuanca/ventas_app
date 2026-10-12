@@ -36,6 +36,7 @@ class _ApliquesScreenState extends State<ApliquesScreen> {
                 widget: _buildBody(context, state),
                 title: 'Apliques',
                 isGridview: false,
+                tooltipAgregar: 'Agregar aplique',
                 onTap: () async {
                   await context.push('/aplique/0');
                   if (context.mounted) {

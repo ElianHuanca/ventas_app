@@ -93,6 +93,10 @@ class _ProduccionScreenState extends State<ProduccionScreen> {
               DropdownMenu<Aplique>(
                 width: MediaQuery.of(context).size.width * 0.93,
                 hintText: 'Seleccione un Aplique',
+                trailingIcon: const Icon(Icons.arrow_drop_down,
+                    semanticLabel: 'Abrir lista de apliques'),
+                selectedTrailingIcon: const Icon(Icons.arrow_drop_up,
+                    semanticLabel: 'Cerrar lista de apliques'),
                 onSelected: cubit.onApliqueChanged,
                 dropdownMenuEntries: state.apliques
                     .map<DropdownMenuEntry<Aplique>>((e) =>
@@ -105,6 +109,10 @@ class _ProduccionScreenState extends State<ProduccionScreen> {
                 key: ValueKey(state.idapliques),
                 width: MediaQuery.of(context).size.width * 0.93,
                 hintText: 'Seleccione un Color',
+                trailingIcon: const Icon(Icons.arrow_drop_down,
+                    semanticLabel: 'Abrir lista de colores'),
+                selectedTrailingIcon: const Icon(Icons.arrow_drop_up,
+                    semanticLabel: 'Cerrar lista de colores'),
                 enabled: state.idapliques != 0,
                 onSelected: cubit.onColorChanged,
                 dropdownMenuEntries:

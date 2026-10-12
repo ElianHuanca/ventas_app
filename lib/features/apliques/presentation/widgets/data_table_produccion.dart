@@ -48,6 +48,7 @@ class DataTableProduccion extends StatelessWidget {
           _cell('${data['cantidad']} uds'),
           DataCell(
             IconButton(
+              tooltip: 'Quitar línea',
               padding: EdgeInsets.zero,
               onPressed: () => onTap(
                 data['idaplique'] as int,

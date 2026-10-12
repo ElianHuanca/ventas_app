@@ -60,6 +60,10 @@ class _VentaApliquesScreenState extends State<VentaApliquesScreen> {
                         child: DropdownMenu<Aplique>(
                           width: MediaQuery.of(context).size.width * 0.93,
                           hintText: 'Seleccione un Aplique',
+                          trailingIcon: const Icon(Icons.arrow_drop_down,
+                              semanticLabel: 'Abrir lista de apliques'),
+                          selectedTrailingIcon: const Icon(Icons.arrow_drop_up,
+                              semanticLabel: 'Cerrar lista de apliques'),
                           onSelected: formCubit.onApliqueChanged,
                           dropdownMenuEntries: apliquesState.apliques
                               .map<DropdownMenuEntry<Aplique>>((e) {
@@ -82,6 +86,10 @@ class _VentaApliquesScreenState extends State<VentaApliquesScreen> {
                           key: ValueKey(formState.idapliques),
                           width: MediaQuery.of(context).size.width * 0.93,
                           hintText: 'Seleccione un Color',
+                          trailingIcon: const Icon(Icons.arrow_drop_down,
+                              semanticLabel: 'Abrir lista de colores'),
+                          selectedTrailingIcon: const Icon(Icons.arrow_drop_up,
+                              semanticLabel: 'Cerrar lista de colores'),
                           enabled: formState.idapliques != 0,
                           onSelected: formCubit.onColorChanged,
                           dropdownMenuEntries: coloresDisponibles

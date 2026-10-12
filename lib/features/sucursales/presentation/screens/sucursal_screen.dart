@@ -24,6 +24,7 @@ class SucursalScreen extends StatelessWidget {
           ),
           child: GestureDetector(
             onTap: () => FocusScope.of(context).unfocus(),
+            excludeFromSemantics: true,
             child: Screen1(
               backRoute: true,
               widget: [_sucursalInformation(context)],

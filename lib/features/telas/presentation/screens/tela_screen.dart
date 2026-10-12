@@ -22,6 +22,7 @@ class TelaScreen extends StatelessWidget {
           ),
           child: GestureDetector(
             onTap: () => FocusScope.of(context).unfocus(),
+            excludeFromSemantics: true,
             child: Screen1(
               widget: [_telaInformation(context)],
               title: tela.id == 0 ? 'Crear Tela' : 'Editar Tela',
