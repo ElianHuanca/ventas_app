@@ -178,6 +178,33 @@ void main() {
       expect(cubit.state.detProducciones.single['cantidad'], 5.0);
     });
 
+    // Casos mínimos de test/propiedades/carritos_propiedades_test.dart
+    test('sumar cantidades no deja ruido de coma flotante', () async {
+      final cubit = await crearCubit();
+      addTearDown(cubit.close);
+      await seleccionarLinea(cubit, cantidad: '1.03');
+      cubit.addDetalleProduccion();
+      for (final cantidad in ['1', '1.23']) {
+        cubit.onCantidadChanged(cantidad);
+        cubit.addDetalleProduccion();
+      }
+
+      // 1.03 + 1 + 1.23 en double da 3.2600000000000002
+      expect(cubit.state.detProducciones.single['cantidad'], 3.26);
+    });
+
+    test('NaN e Infinity no son cantidades válidas', () async {
+      final cubit = await crearCubit();
+      addTearDown(cubit.close);
+      for (final texto in ['NaN', 'Infinity']) {
+        await seleccionarLinea(cubit, cantidad: texto);
+        expect(cubit.addDetalleProduccion(),
+            'Ingrese una cantidad válida mayor a 0');
+      }
+
+      expect(cubit.state.detProducciones, isEmpty);
+    });
+
     test('distinto color agrega otra línea', () async {
       final cubit = await crearCubit();
       addTearDown(cubit.close);

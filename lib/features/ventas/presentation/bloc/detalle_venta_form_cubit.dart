@@ -64,7 +64,9 @@ class DetalleVentaFormCubit extends Cubit<DetalleVentaFormState> {
     required this.idsucursal,
   }) : super(DetalleVentaFormState());
 
-  bool _isValidDouble(String value) => double.tryParse(value) != null;
+  // "NaN" e "Infinity" también los parsea double.tryParse
+  bool _isValidDouble(String value) =>
+      double.tryParse(value)?.isFinite ?? false;
   double _toDouble(String value) => double.tryParse(value)!;
 
   void addDetalleVenta() {
@@ -88,18 +90,23 @@ class DetalleVentaFormCubit extends Cubit<DetalleVentaFormState> {
 
     if (existingIndex != -1) {
       final existing = detVentas[existingIndex];
-      final nuevaCantidad = (existing['cantidad'] as num).toDouble() + cantidad;
-      totalDelta = (cantidad * precio * 100).round() / 100.0;
-      gananciasDelta = precxcompra == 0
-          ? 0
-          : (((precio - precxcompra) * cantidad) * 100).round() / 100.0;
+      final nuevaCantidad =
+          _sinRuido((existing['cantidad'] as num).toDouble() + cantidad);
+      final nuevoTotal = (nuevaCantidad * precio * 100).round() / 100.0;
+      final nuevasGanancias = precxcompra == 0
+          ? 0.0
+          : (((precio - precxcompra) * nuevaCantidad) * 100).round() / 100.0;
+      // El carrito sube lo que subió la línea: sumar el redondeo de cada
+      // agregado por separado lo descuadraba (0.5 m + 0.5 m a 0.01 Bs:
+      // línea 0.01, total 0.02, y al quitarla quedaba 0.01).
+      totalDelta = nuevoTotal - (existing['total'] as num).toDouble();
+      gananciasDelta =
+          nuevasGanancias - (existing['ganancias'] as num).toDouble();
       detVentas[existingIndex] = {
         ...existing,
         'cantidad': nuevaCantidad,
-        'total': (nuevaCantidad * precio * 100).round() / 100.0,
-        'ganancias': precxcompra == 0
-            ? 0
-            : (((precio - precxcompra) * nuevaCantidad) * 100).round() / 100.0,
+        'total': nuevoTotal,
+        'ganancias': nuevasGanancias,
       };
     } else {
       totalDelta = (cantidad * precio * 100).round() / 100.0;
@@ -217,3 +224,7 @@ class DetalleVentaFormCubit extends Cubit<DetalleVentaFormState> {
 /// Redondea a centavos: sumar doubles arrastra ruido (10.1 + 20.2 da
 /// 30.299999999999997) que se veía en el total y llegaba así a la base.
 double _centavos(double valor) => (valor * 100).round() / 100.0;
+
+/// Quita el ruido de sumar cantidades (0.3 + 0.6 daba 0.8999999999999999
+/// mts en la línea). A 6 decimales: no cambia ninguna cantidad tipeada.
+double _sinRuido(double valor) => (valor * 1000000).round() / 1000000.0;

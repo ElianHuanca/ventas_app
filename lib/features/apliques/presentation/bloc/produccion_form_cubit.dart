@@ -136,7 +136,8 @@ class ProduccionFormCubit extends Cubit<ProduccionFormState> {
     if (state.idapliques == 0) return 'Seleccione un aplique';
     if (state.idcolor == 0) return 'Seleccione un color';
     final cantidad = double.tryParse(state.cantidad);
-    if (cantidad == null || cantidad <= 0) {
+    // "NaN" e "Infinity" también los parsea double.tryParse
+    if (cantidad == null || !cantidad.isFinite || cantidad <= 0) {
       return 'Ingrese una cantidad válida mayor a 0';
     }
 
@@ -149,7 +150,8 @@ class ProduccionFormCubit extends Cubit<ProduccionFormState> {
       final existing = detProducciones[existingIndex];
       detProducciones[existingIndex] = {
         ...existing,
-        'cantidad': (existing['cantidad'] as num).toDouble() + cantidad,
+        'cantidad':
+            _sinRuido((existing['cantidad'] as num).toDouble() + cantidad),
       };
     } else {
       detProducciones.insert(0, {
@@ -216,3 +218,8 @@ class ProduccionFormCubit extends Cubit<ProduccionFormState> {
     }
   }
 }
+
+/// Quita el ruido de sumar cantidades (1.03 + 1 + 1.23 daba
+/// 3.2600000000000002 uds). A 6 decimales: no cambia ninguna cantidad
+/// tipeada.
+double _sinRuido(double valor) => (valor * 1000000).round() / 1000000.0;
