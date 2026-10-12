@@ -19,11 +19,16 @@
   Los comandos se cortan por espacios (sin comillas): las rutas no pueden
   tener espacios.
 
-  Tarda unos 40 minutos (248 mutantes, ~10 s cada uno). Con otros flutter
+  Tarda unos 40 minutos (234 mutantes, ~10 s cada uno). Con otros flutter
   corriendo en la PC un mutante puede quedar esperando y cortarse por
-  timeout: se cuenta aparte, verificarlo a mano. Último resultado
-  (2026-10-12): 248/248 muertos; antes de los tests que se agregaron por esta
-  corrida, 238/250.
+  timeout: se cuenta aparte, verificarlo a mano. Para correr solo algunos
+  archivos, copiar este XML dejando solo esos <file> (los comandos de los
+  demás no corren nada).
+  Resultados (2026-10-12): primera corrida 238/250, 248/248 con los tests que
+  se agregaron por ella. Después de los arreglos de redondeo (_centavos,
+  _sinRuido) y del doble envío en los tres carritos, y de normalizarHex con
+  RegExp en colores: carritos 188/188 y color 5/5 sin tests nuevos; los
+  otros cuatro cubits no cambiaron (41/41).
 -->
 <mutations version="1.2">
   <files>
@@ -64,11 +69,13 @@
          borrar el constructor no compila, así que ese mutante muere siempre
          sin probar nada. Las variables locales final llevan "=" y no entran. -->
     <regex pattern="^\s*final [^;=]*;"/>
-    <!-- El factor del redondeo a centavos, (x * 100).round() / 100.0: pasar
-         100 a -100 solo le cambia el signo al resultado y lo mata cualquier
-         test que mire un importe (24 mutantes de relleno). Se excluye solo el
-         espacio previo al 100, donde empieza ese mutante: los que cambian el
-         * por / (o al revés) siguen. -->
+    <!-- Los factores de _centavos, ((x * 1000000).round() / 10000).round()
+         / 100.0, y de _sinRuido, (x * 1000000).round() / 1000000.0, en los
+         tres carritos: pasar uno a negativo solo le cambia el signo al
+         resultado y lo mata cualquier test que mire un importe o una cantidad
+         (mutantes de relleno). Se excluye solo el espacio previo al factor
+         (empiezan todos con 100), donde empieza ese mutante: los que cambian
+         el * por / (o al revés) siguen. -->
     <regex pattern="\s(?=100)"/>
     <!-- Mutantes equivalentes (sobrevivieron y no cambian nada). Al quitar
          una línea del carrito (removeDetalle de apliques y
