@@ -377,7 +377,9 @@ void main() {
       }
 
       expect(await primero, isNull);
-      await segundo;
+      // No es null ("se registró"): la pantalla mostraba el éxito antes de
+      // tiempo y, si el primero fallaba, el error después del éxito
+      expect(await segundo, 'Ya se está registrando la producción');
       expect(lento.produccionesCreadas, hasLength(1));
       expect(cubit.state.isSubmitting, isFalse);
     });

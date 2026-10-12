@@ -188,6 +188,8 @@ class _ProduccionScreenState extends State<ProduccionScreen> {
           padding: const EdgeInsets.all(12.0),
           child: MaterialButtonWidget(
             onTap: () async {
+              // Un segundo toque mientras se registra no hace nada
+              if (cubit.state.isSubmitting) return;
               final error = await cubit.onFormSubmit();
               if (!context.mounted) return;
               if (error != null) {

@@ -223,6 +223,8 @@ class _VentaApliquesScreenState extends State<VentaApliquesScreen> {
         padding: const EdgeInsets.all(12.0),
         child: MaterialButtonWidget(
           onTap: () {
+            // Mientras se envía, otro "Guardar" no abre otra confirmación
+            if (formCubit.enviando) return;
             if (formCubit.state.detalles.isEmpty) {
               showSnackbar(context, 'Agregue al menos un aplique a la venta');
               return;
@@ -230,6 +232,7 @@ class _VentaApliquesScreenState extends State<VentaApliquesScreen> {
             dialogoDeAlerta(
               context,
               () async {
+                if (formCubit.enviando) return;
                 final value = await formCubit.onFormSubmit();
                 if (context.mounted) showSnackbarBool(context, value);
               },

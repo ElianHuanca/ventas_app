@@ -151,7 +151,15 @@ class DetalleVentaFormCubit extends Cubit<DetalleVentaFormState> {
     ));
   }
 
+  /// true mientras se envía la venta. Un segundo envío en ese lapso (doble
+  /// toque en "Guardar") se ignora: mandaría el carrito otra vez y la base
+  /// sumaría las cantidades y el total dos veces.
+  bool get enviando => _enviando;
+  bool _enviando = false;
+
   Future<bool> onFormSubmit() async {
+    if (_enviando) return false;
+    _enviando = true;
     try {
       if (state.detVentas.isEmpty) return false;
       if (state.descuento == '') onDescuentoChanged('0');
@@ -175,6 +183,8 @@ class DetalleVentaFormCubit extends Cubit<DetalleVentaFormState> {
     } catch (e) {
       debugPrint('Error al crear detalle venta: $e');
       return false;
+    } finally {
+      _enviando = false;
     }
   }
 

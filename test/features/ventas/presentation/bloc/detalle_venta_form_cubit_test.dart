@@ -1,8 +1,23 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:textiles_app/features/ventas/domain/domain.dart';
 import 'package:textiles_app/features/ventas/presentation/bloc/detalle_venta_form_cubit.dart';
 
 import '../../../../helpers/fake_repositories.dart';
+
+/// Guarda las líneas recién cuando se completa [registro]: deja ver qué pasa
+/// si se vuelve a tocar "Guardar" mientras tanto.
+class _DetalleLento extends FakeDetalleVentasRepository {
+  final registro = Completer<void>();
+
+  @override
+  Future<List<DetalleVenta>> createDetalleVenta(
+      List<Map<String, dynamic>> detalleVentasLike, int idventas) async {
+    await registro.future;
+    return super.createDetalleVenta(detalleVentasLike, idventas);
+  }
+}
 
 void main() {
   late FakeVentasRepository ventasRepo;
@@ -248,6 +263,40 @@ void main() {
   });
 
   group('onFormSubmit', () {
+    test('un segundo envío mientras se guarda no registra la venta dos veces',
+        () async {
+      final lento = _DetalleLento();
+      final cubitLento = DetalleVentaFormCubit(
+        ventasRepository: ventasRepo,
+        detalleVentasRepository: lento,
+        idsucursal: 1,
+      );
+      addTearDown(cubitLento.close);
+      cubitLento
+        ..onIdTelasChanged(1)
+        ..onNombreChanged('Lino')
+        ..onCantidadChanged('2')
+        ..onPrecioChanged('100')
+        ..onPrecxCompraChanged(60)
+        ..addDetalleVenta();
+
+      final primero = cubitLento.onFormSubmit();
+      try {
+        await pumpEventQueue();
+        expect(cubitLento.enviando, isTrue);
+        // Doble toque en "Guardar": antes mandaba el carrito otra vez y la
+        // base sumaba cantidades y total dos veces
+        expect(await cubitLento.onFormSubmit(), isFalse);
+      } finally {
+        lento.registro.complete();
+      }
+
+      expect(await primero, isTrue);
+      expect(lento.detallesCreados, hasLength(1));
+      expect(ventasRepo.actualizaciones, hasLength(1));
+      expect(cubitLento.enviando, isFalse);
+    });
+
     test('sin items devuelve false y no toca los repositorios', () async {
       final ok = await cubit.onFormSubmit();
 

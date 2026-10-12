@@ -175,6 +175,8 @@ class _DetVentaState extends State<DetVenta> {
         padding: const EdgeInsets.all(12.0),
         child: MaterialButtonWidget(
           onTap: () async {
+            // Un segundo toque mientras se envía no hace nada
+            if (detVentaFormCubit.enviando) return;
             final value = await detVentaFormCubit.onFormSubmit();
             if (context.mounted) showSnackbarBool(context, value);
           },

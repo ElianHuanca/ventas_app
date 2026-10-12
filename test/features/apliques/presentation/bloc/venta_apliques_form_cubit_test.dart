@@ -1,8 +1,34 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:textiles_app/features/apliques/domain/domain.dart';
 import 'package:textiles_app/features/apliques/presentation/bloc/venta_apliques_form_cubit.dart';
 
 import '../../../../helpers/fake_repositories.dart';
+
+/// Registra la venta recién cuando se completa [registro]: deja ver qué pasa
+/// si se vuelve a confirmar mientras tanto.
+class _VentaLenta extends FakeVentasApliquesRepository {
+  final registro = Completer<void>();
+
+  @override
+  Future<int> createVentaAplique({
+    required int idsucursales,
+    required double total,
+    required double ganancias,
+    required double descuento,
+    required List<Map<String, dynamic>> detalles,
+  }) async {
+    await registro.future;
+    return super.createVentaAplique(
+      idsucursales: idsucursales,
+      total: total,
+      ganancias: ganancias,
+      descuento: descuento,
+      detalles: detalles,
+    );
+  }
+}
 
 void main() {
   late FakeVentasApliquesRepository repo;
@@ -289,6 +315,36 @@ void main() {
   });
 
   group('onFormSubmit', () {
+    test('un segundo envío mientras se guarda no registra la venta dos veces',
+        () async {
+      final lenta = _VentaLenta();
+      final cubitLento = VentaApliquesFormCubit(
+        ventasApliquesRepository: lenta,
+        idsucursal: 3,
+      );
+      addTearDown(cubitLento.close);
+      cubitLento
+        ..onApliqueChanged(aplique)
+        ..onColorChanged(stockRojo)
+        ..onCantidadChanged('2')
+        ..onPrecioChanged('25');
+      expect(cubitLento.addDetalle(), isNull);
+
+      final primero = cubitLento.onFormSubmit();
+      try {
+        expect(cubitLento.enviando, isTrue);
+        // Volver a confirmar antes de que responda la base: antes descontaba
+        // el stock y sumaba la venta dos veces
+        expect(await cubitLento.onFormSubmit(), isFalse);
+      } finally {
+        lenta.registro.complete();
+      }
+
+      expect(await primero, isTrue);
+      expect(lenta.createCalls, 1);
+      expect(cubitLento.enviando, isFalse);
+    });
+
     test('sin detalles devuelve false', () async {
       expect(await cubit.onFormSubmit(), false);
       expect(repo.createCalls, 0);

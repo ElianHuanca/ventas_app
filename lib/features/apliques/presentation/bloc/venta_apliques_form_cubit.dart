@@ -171,7 +171,15 @@ class VentaApliquesFormCubit extends Cubit<VentaApliquesFormState> {
     ));
   }
 
+  /// true mientras se envía la venta. Un segundo envío en ese lapso (volver
+  /// a tocar "Guardar" y confirmar antes de que responda la base) se ignora:
+  /// descontaría el stock y sumaría la venta dos veces.
+  bool get enviando => _enviando;
+  bool _enviando = false;
+
   Future<bool> onFormSubmit() async {
+    if (_enviando) return false;
+    _enviando = true;
     try {
       if (state.detalles.isEmpty) return false;
       if (state.descuento == '') onDescuentoChanged('0');
@@ -193,6 +201,8 @@ class VentaApliquesFormCubit extends Cubit<VentaApliquesFormState> {
     } catch (e) {
       debugPrint('Error al crear venta de apliques: $e');
       return false;
+    } finally {
+      _enviando = false;
     }
   }
 
