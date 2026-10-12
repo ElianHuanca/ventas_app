@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:textiles_app/features/apliques/apliques.dart';
@@ -26,11 +27,13 @@ int _pathParamInt(GoRouterState state, String key, {int fallback = 0}) {
   return int.tryParse(value) ?? fallback;
 }
 
+/// El router de la app. Quien lo crea lo libera con `dispose()`, que también
+/// cierra la suscripción al stream de sesión.
 GoRouter createAppRouter({required AuthRepository authRepository}) {
-  return GoRouter(
+  return _AppRouter(
     initialLocation: '/',
     // Sin sesión todo va a /login; al entrar o salir se re-evalúa solo
-    refreshListenable: SesionListenable(authRepository.cambiosDeSesion),
+    sesion: SesionListenable(authRepository.cambiosDeSesion),
     redirect: (context, state) => redireccionPorSesion(
       haySesion: authRepository.haySesion,
       ubicacion: state.matchedLocation,
@@ -57,8 +60,8 @@ GoRouter createAppRouter({required AuthRepository authRepository}) {
           final idsucursal = _pathParamInt(state, 'idsucursal');
           return BlocProvider(
             create: (_) => VentasApliquesBloc(
-              ventasApliquesRepository: VentasApliquesRepositoryImpl(
-                  VentasApliquesDatasourceImpl()),
+              ventasApliquesRepository:
+                  VentasApliquesRepositoryImpl(VentasApliquesDatasourceImpl()),
               idsucursal: idsucursal,
             ),
             child: VentasApliquesScreen(idsucursal: idsucursal),
@@ -69,10 +72,9 @@ GoRouter createAppRouter({required AuthRepository authRepository}) {
         path: '/venta-apliques/registro/:idsucursal',
         builder: (context, state) {
           final idsucursal = _pathParamInt(state, 'idsucursal');
-          final apliquesRepo =
-              ApliquesRepositoryImpl(ApliquesDatasourceImpl());
-          final ventasApliquesRepo = VentasApliquesRepositoryImpl(
-              VentasApliquesDatasourceImpl());
+          final apliquesRepo = ApliquesRepositoryImpl(ApliquesDatasourceImpl());
+          final ventasApliquesRepo =
+              VentasApliquesRepositoryImpl(VentasApliquesDatasourceImpl());
           return MultiBlocProvider(
             providers: [
               BlocProvider(
@@ -88,7 +90,7 @@ GoRouter createAppRouter({required AuthRepository authRepository}) {
                 ),
               ),
             ],
-            child: VentaApliquesScreen(),
+            child: const VentaApliquesScreen(),
           );
         },
       ),
@@ -100,8 +102,8 @@ GoRouter createAppRouter({required AuthRepository authRepository}) {
               DateTime.tryParse(state.uri.queryParameters['fecha'] ?? '');
           return BlocProvider(
             create: (_) => DetalleVentaApliquesCubit(
-              ventasApliquesRepository: VentasApliquesRepositoryImpl(
-                  VentasApliquesDatasourceImpl()),
+              ventasApliquesRepository:
+                  VentasApliquesRepositoryImpl(VentasApliquesDatasourceImpl()),
               idventa: idventa,
             ),
             child: VentaApliquesDetalleScreen(idventa: idventa, fecha: fecha),
@@ -150,7 +152,7 @@ GoRouter createAppRouter({required AuthRepository authRepository}) {
                   ApliquesRepositoryImpl(ApliquesDatasourceImpl()),
               idsucursal: idsucursal,
             ),
-            child: ProduccionScreen(),
+            child: const ProduccionScreen(),
           );
         },
       ),
@@ -195,8 +197,7 @@ GoRouter createAppRouter({required AuthRepository authRepository}) {
         path: '/colores',
         builder: (context, state) => BlocProvider(
           create: (_) => ColoresBloc(
-            coloresRepository:
-                ColoresRepositoryImpl(ColoresDatasourceImpl()),
+            coloresRepository: ColoresRepositoryImpl(ColoresDatasourceImpl()),
           ),
           child: const ColoresScreen(),
         ),
@@ -207,8 +208,7 @@ GoRouter createAppRouter({required AuthRepository authRepository}) {
           final id = _pathParamInt(state, 'idcolor');
           return BlocProvider(
             create: (_) => ColoresBloc(
-              coloresRepository:
-                  ColoresRepositoryImpl(ColoresDatasourceImpl()),
+              coloresRepository: ColoresRepositoryImpl(ColoresDatasourceImpl()),
             ),
             child: ColorScreen(id: id),
           );
@@ -362,14 +362,52 @@ GoRouter createAppRouter({required AuthRepository authRepository}) {
                 ),
               ),
               BlocProvider(
-                create: (_) =>
-                    TelasBloc(telasRepository: TelasRepositoryImpl(TelasDatasourceImpl()), idsucursal: idsucursal),
+                create: (_) => TelasBloc(
+                    telasRepository: TelasRepositoryImpl(TelasDatasourceImpl()),
+                    idsucursal: idsucursal),
               ),
             ],
-            child: DetVenta(),
+            child: const DetVenta(),
           );
         },
       ),
     ],
   );
+}
+
+/// GoRouter que es dueño de su `refreshListenable`: `GoRouter.dispose()` no
+/// libera el listenable que recibe (no es suyo), y el [SesionListenable] lo
+/// crea [createAppRouter], así que se libera acá junto con el router (si no,
+/// la suscripción al stream de sesión quedaba abierta).
+///
+/// Se arma con `GoRouter.routingConfig` (el constructor por defecto es una
+/// factory): una [RoutingConfig] fija equivale a pasar `routes` y `redirect`.
+class _AppRouter extends GoRouter {
+  _AppRouter({
+    required String initialLocation,
+    required SesionListenable sesion,
+    required GoRouterRedirect redirect,
+    required List<RouteBase> routes,
+  }) : this._(
+          initialLocation,
+          sesion,
+          ValueNotifier(RoutingConfig(routes: routes, redirect: redirect)),
+        );
+
+  _AppRouter._(String initialLocation, this._sesion, this._config)
+      : super.routingConfig(
+          routingConfig: _config,
+          initialLocation: initialLocation,
+          refreshListenable: _sesion,
+        );
+
+  final SesionListenable _sesion;
+  final ValueNotifier<RoutingConfig> _config;
+
+  @override
+  void dispose() {
+    super.dispose();
+    _config.dispose();
+    _sesion.dispose();
+  }
 }

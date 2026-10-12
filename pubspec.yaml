@@ -45,6 +45,9 @@ dev_dependencies:
     sdk: flutter
   integration_test:
     sdk: flutter
+  # Rastreo de fugas de memoria en los tests de widget (test/flutter_test_config.dart).
+  # La versión la fija flutter_test (viene con el SDK): por eso `any`.
+  leak_tracker_flutter_testing: any
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

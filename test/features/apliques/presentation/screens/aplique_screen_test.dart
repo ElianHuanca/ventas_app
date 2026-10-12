@@ -74,6 +74,7 @@ void main() {
         ),
       ],
     );
+    addTearDown(router.dispose);
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     router.push('/aplique/$id');
     await tester.pumpAndSettle();

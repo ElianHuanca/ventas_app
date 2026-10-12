@@ -87,6 +87,7 @@ void main() {
         ),
       ],
     );
+    addTearDown(router.dispose);
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     await tester.pumpAndSettle();
   }

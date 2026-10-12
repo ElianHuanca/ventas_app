@@ -95,6 +95,7 @@ void main() {
         ),
       ],
     );
+    addTearDown(router.dispose);
     await tester.pumpWidget(BlocProvider.value(
       value: sucursalesBloc,
       child: MaterialApp.router(routerConfig: router),

@@ -33,7 +33,7 @@ void main() {
           BlocProvider.value(value: cubit),
           BlocProvider.value(value: telasBloc),
         ],
-        child: DetVenta(),
+        child: const DetVenta(),
       );
 
   void crearBlocs(WidgetTester tester) {
@@ -219,6 +219,7 @@ void main() {
         GoRoute(path: '/det_venta/:idsucursal', builder: (_, __) => pantalla()),
       ],
     );
+    addTearDown(router.dispose);
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     router.push('/det_venta/1');
     await tester.pumpAndSettle();
@@ -296,4 +297,20 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(cubit.state.idtelas, 0);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  testWidgets('al salir de la pantalla libera los campos de precio y cantidad',
+      (tester) async {
+    await montar(tester);
+    final controllers = [
+      for (final label in ['Precio', 'Cantidad'])
+        tester.widget<TextFormField>(campo(label)).controller!,
+    ];
+
+    await tester.pumpWidget(const SizedBox());
+
+    for (final c in controllers) {
+      expect(() => ChangeNotifier.debugAssertNotDisposed(c), throwsFlutterError,
+          reason: 'controller sin dispose()');
+    }
+  });
 }

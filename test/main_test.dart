@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -16,11 +18,12 @@ import 'helpers/fake_repositories.dart';
 void main() {
   late FakeAuthRepository auth;
 
-  Future<void> montar(WidgetTester tester) async {
+  Future<void> montar(WidgetTester tester,
+      {FakeAuthRepository? conAuth}) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    auth = FakeAuthRepository();
+    auth = conAuth ?? FakeAuthRepository();
     final sucursales = SucursalesBloc(
       sucursalesRepository: FakeSucursalesRepository(
           sucursales: [Sucursal(id: 1, nombre: 'Centro')]),
@@ -112,4 +115,27 @@ void main() {
     expect(find.byType(LoginScreen), findsNothing);
     expect(find.text('CENTRO'), findsOneWidget);
   });
+
+  testWidgets('al desmontarse libera el router y deja de escuchar la sesión',
+      (tester) async {
+    final cambios = StreamController<bool>.broadcast();
+    addTearDown(cambios.close);
+    await montar(tester, conAuth: _AuthConCambios(cambios.stream));
+    expect(cambios.hasListener, isTrue);
+
+    await tester.pumpWidget(const SizedBox());
+
+    expect(cambios.hasListener, isFalse,
+        reason: 'MyApp no liberó su router (ni su SesionListenable)');
+  });
+}
+
+/// Fake de auth con el stream de sesión a la vista del test.
+class _AuthConCambios extends FakeAuthRepository {
+  _AuthConCambios(this._cambios);
+
+  final Stream<bool> _cambios;
+
+  @override
+  Stream<bool> get cambiosDeSesion => _cambios;
 }
