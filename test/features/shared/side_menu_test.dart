@@ -57,6 +57,7 @@ void main() {
           GoRoute(path: ruta, builder: (_, __) => pagina(ruta)),
       ],
     );
+    addTearDown(router.dispose);
     await tester.pumpWidget(RepositoryProvider<AuthRepository>.value(
       value: auth,
       child: BlocProvider.value(
@@ -100,8 +101,8 @@ void main() {
     await montar(tester);
     await abrirMenu(tester);
 
-    final tile = tester.widget<ListTile>(
-        find.widgetWithText(ListTile, 'Cerrar sesión'));
+    final tile =
+        tester.widget<ListTile>(find.widgetWithText(ListTile, 'Cerrar sesión'));
     expect((tile.subtitle as Text).data, '');
   });
 
@@ -117,7 +118,8 @@ void main() {
   });
 
   for (final (i, (texto, ruta)) in secciones.indexed) {
-    testWidgets('tocar "$texto" navega a $ruta, guarda el índice $i '
+    testWidgets(
+        'tocar "$texto" navega a $ruta, guarda el índice $i '
         'y cierra el menú', (tester) async {
       await montar(tester);
       await abrirMenu(tester);

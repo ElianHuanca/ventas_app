@@ -74,7 +74,7 @@ void main() {
     cubit.onFechaChanged(DateTime(2026, 10, 3));
     await montarParaCaptura(
       tester,
-      BlocProvider.value(value: cubit, child: ProduccionScreen()),
+      BlocProvider.value(value: cubit, child: const ProduccionScreen()),
       asentar: asentar,
     );
   }

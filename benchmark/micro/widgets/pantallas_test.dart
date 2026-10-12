@@ -238,7 +238,7 @@ void main() {
               value: caso.endsWith('vacío') ? carritoVacio : carrito100,
             ),
           ],
-          child: DetVenta(),
+          child: const DetVenta(),
         )),
         repeticiones: repeticiones,
       );

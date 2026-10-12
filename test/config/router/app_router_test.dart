@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -256,4 +258,27 @@ void main() {
       expect(ubicacion(), '/login');
     });
   });
+
+  test('dispose() del router deja de escuchar los cambios de sesión', () {
+    final cambios = StreamController<bool>.broadcast();
+    addTearDown(cambios.close);
+    final router =
+        createAppRouter(authRepository: _AuthConCambios(cambios.stream));
+    expect(cambios.hasListener, isTrue);
+
+    router.dispose();
+
+    expect(cambios.hasListener, isFalse,
+        reason: 'el SesionListenable del router quedó suscripto');
+  });
+}
+
+/// Fake de auth con el stream de sesión a la vista del test.
+class _AuthConCambios extends FakeAuthRepository {
+  _AuthConCambios(this._cambios);
+
+  final Stream<bool> _cambios;
+
+  @override
+  Stream<bool> get cambiosDeSesion => _cambios;
 }

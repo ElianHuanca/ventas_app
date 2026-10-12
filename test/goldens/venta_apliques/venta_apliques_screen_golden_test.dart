@@ -90,7 +90,7 @@ void main() {
           BlocProvider.value(value: apliquesBloc),
           BlocProvider.value(value: cubit),
         ],
-        child: VentaApliquesScreen(),
+        child: const VentaApliquesScreen(),
       ),
       asentar: asentar,
     );

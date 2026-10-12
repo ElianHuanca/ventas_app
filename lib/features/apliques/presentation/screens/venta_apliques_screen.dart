@@ -5,11 +5,24 @@ import '../../domain/domain.dart';
 import '../bloc/bloc.dart';
 import '../widgets/data_table_apliques.dart';
 
-class VentaApliquesScreen extends StatelessWidget {
+class VentaApliquesScreen extends StatefulWidget {
+  const VentaApliquesScreen({super.key});
+
+  @override
+  State<VentaApliquesScreen> createState() => _VentaApliquesScreenState();
+}
+
+class _VentaApliquesScreenState extends State<VentaApliquesScreen> {
+  // En el State (no en el widget) para liberarlos en dispose()
   final TextEditingController cantidadController = TextEditingController();
   final TextEditingController precioController = TextEditingController();
 
-  VentaApliquesScreen({super.key});
+  @override
+  void dispose() {
+    cantidadController.dispose();
+    precioController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

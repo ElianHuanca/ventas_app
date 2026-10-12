@@ -5,10 +5,22 @@ import '../../domain/domain.dart';
 import '../bloc/bloc.dart';
 import '../widgets/data_table_produccion.dart';
 
-class ProduccionScreen extends StatelessWidget {
+class ProduccionScreen extends StatefulWidget {
+  const ProduccionScreen({super.key});
+
+  @override
+  State<ProduccionScreen> createState() => _ProduccionScreenState();
+}
+
+class _ProduccionScreenState extends State<ProduccionScreen> {
+  // En el State (no en el widget) para liberarlo en dispose()
   final TextEditingController cantidadController = TextEditingController();
 
-  ProduccionScreen({super.key});
+  @override
+  void dispose() {
+    cantidadController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

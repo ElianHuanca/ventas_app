@@ -6,11 +6,24 @@ import 'package:textiles_app/features/telas/domain/domain.dart';
 import 'package:textiles_app/features/telas/presentation/bloc/bloc.dart';
 import '../bloc/bloc.dart';
 
-class DetVenta extends StatelessWidget {
+class DetVenta extends StatefulWidget {
+  const DetVenta({super.key});
+
+  @override
+  State<DetVenta> createState() => _DetVentaState();
+}
+
+class _DetVentaState extends State<DetVenta> {
+  // En el State (no en el widget) para liberarlos en dispose()
   final TextEditingController precioController = TextEditingController();
   final TextEditingController cantidadController = TextEditingController();
 
-  DetVenta({super.key});
+  @override
+  void dispose() {
+    precioController.dispose();
+    cantidadController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
