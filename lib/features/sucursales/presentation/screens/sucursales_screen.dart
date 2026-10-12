@@ -17,8 +17,7 @@ class SucursalesScreen extends StatelessWidget {
             ? const FullScreenLoader()
             : Screen1(
                 backRoute: false,
-                widget: _buildBody(
-                    state.sucursales, context, gSucursales),
+                widget: _buildBody(state.sucursales, context, gSucursales),
                 title: 'Sucursales',
                 isGridview: true,
               );
@@ -39,7 +38,7 @@ class SucursalesScreen extends StatelessWidget {
           .toList(),
       if (gSucursales)
         ItemDashboard(
-            title: 'Agregar Sucusal',
+            title: 'Agregar Sucursal',
             iconData: Icons.add_business_rounded,
             onTap: () => context.push('/sucursal/0'))
       else

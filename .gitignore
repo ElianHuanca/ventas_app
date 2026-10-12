@@ -99,3 +99,6 @@ coverage/
 
 # Copia de datos reales de producción (solo local, no subir)
 supabase/seed.sql
+
+# Diferencias que deja flutter test cuando una captura golden falla
+test/goldens/**/failures/

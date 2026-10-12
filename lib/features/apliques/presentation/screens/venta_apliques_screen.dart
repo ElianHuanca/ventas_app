@@ -80,10 +80,7 @@ class VentaApliquesScreen extends StatelessWidget {
                               label: texto,
                               labelWidget: Row(
                                 children: [
-                                  CircleAvatar(
-                                    radius: 8,
-                                    backgroundColor: _colorFromHex(e.hex),
-                                  ),
+                                  MuestraColor(hex: e.hex),
                                   const SizedBox(width: 8),
                                   Text(texto),
                                 ],
@@ -224,10 +221,4 @@ class VentaApliquesScreen extends StatelessWidget {
       ),
     ];
   }
-}
-
-Color _colorFromHex(String hex) {
-  var value = hex.replaceAll('#', '');
-  if (value.length == 6) value = 'FF$value';
-  return Color(int.tryParse(value, radix: 16) ?? 0xFF000000);
 }

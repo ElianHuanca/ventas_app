@@ -3,6 +3,9 @@ import 'package:textiles_app/features/dashboard/domain/domain.dart';
 
 class DashboardState {
   final bool isLoading;
+
+  /// La última carga falló (p. ej. sin conexión): no hay datos del período.
+  final bool error;
   final List<TopProducto> topTelas;
   final List<TopProducto> topApliques;
   final bool verPorCantidad;
@@ -13,6 +16,7 @@ class DashboardState {
 
   DashboardState({
     this.isLoading = false,
+    this.error = false,
     this.topTelas = const [],
     this.topApliques = const [],
     this.verPorCantidad = false,
@@ -33,6 +37,7 @@ class DashboardState {
 
   DashboardState copyWith({
     bool? isLoading,
+    bool? error,
     List<TopProducto>? topTelas,
     List<TopProducto>? topApliques,
     bool? verPorCantidad,
@@ -43,6 +48,7 @@ class DashboardState {
   }) =>
       DashboardState(
         isLoading: isLoading ?? this.isLoading,
+        error: error ?? this.error,
         topTelas: topTelas ?? this.topTelas,
         topApliques: topApliques ?? this.topApliques,
         verPorCantidad: verPorCantidad ?? this.verPorCantidad,
@@ -66,7 +72,7 @@ class DashboardCubit extends Cubit<DashboardState> {
 
   /// Carga telas y apliques juntos: cambiar de pestaña no vuelve a consultar.
   Future<void> cargar() async {
-    emit(state.copyWith(isLoading: true));
+    emit(state.copyWith(isLoading: true, error: false));
     try {
       final desde = state.desde;
       final hasta = state.hasta;
@@ -82,6 +88,15 @@ class DashboardCubit extends Cubit<DashboardState> {
         topApliques: resultados[1] as List<TopProducto>,
         resumenTelas: resultados[2] as ResumenVentas,
         resumenApliques: resultados[3] as ResumenVentas,
+      ));
+    } catch (_) {
+      // Sin los datos del período: se avisa en vez de mostrar "Sin ventas"
+      // (ni los del período anterior bajo las fechas nuevas)
+      emit(DashboardState(
+        error: true,
+        verPorCantidad: state.verPorCantidad,
+        desde: state.desde,
+        hasta: state.hasta,
       ));
     } finally {
       emit(state.copyWith(isLoading: false));

@@ -85,7 +85,7 @@ void main() {
       await montar(tester, gestion: false);
 
       expect(find.byIcon(Icons.add_business_rounded), findsNothing);
-      expect(find.text('AGREGAR SUCUSAL'), findsNothing);
+      expect(find.text('AGREGAR SUCURSAL'), findsNothing);
     });
 
     testWidgets('es pantalla raíz: tiene menú lateral y no botón volver',
@@ -117,8 +117,7 @@ void main() {
       expect(find.byType(ItemDashboard), findsNWidgets(3));
       expect(find.text('CENTRO'), findsOneWidget);
       expect(find.text('NORTE'), findsOneWidget);
-      // (sic) el texto en lib/ dice "Agregar Sucusal"
-      expect(find.text('AGREGAR SUCUSAL'), findsOneWidget);
+      expect(find.text('AGREGAR SUCURSAL'), findsOneWidget);
       expect(find.byIcon(Icons.add_business_rounded), findsOneWidget);
     });
 

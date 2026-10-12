@@ -15,6 +15,9 @@ class DataTableProduccion extends StatelessWidget {
   Widget build(BuildContext context) {
     return DataTable(
       columnSpacing: 8,
+      // La fila crece con el nombre: los de producción ocupan hasta 3 líneas
+      // y con el alto fijo de 48 px la última salía cortada
+      dataRowMaxHeight: double.infinity,
       columns: const ['Aplique', 'Color', 'Cantidad', '']
           .map((header) => DataColumn(
                 label: Text(
@@ -32,10 +35,7 @@ class DataTableProduccion extends StatelessWidget {
           _cell('${data['apliqueNombre']}'),
           DataCell(Row(
             children: [
-              CircleAvatar(
-                radius: 8,
-                backgroundColor: colorFromHex('${data['hex']}'),
-              ),
+              MuestraColor(hex: '${data['hex']}'),
               const SizedBox(width: 6),
               // Nombres largos: cortar con … en vez de desbordar la celda
               Flexible(

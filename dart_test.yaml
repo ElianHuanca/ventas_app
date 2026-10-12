@@ -1,0 +1,5 @@
+# Etiquetas de los tests. `flutter test --exclude-tags golden` saltea las
+# capturas (p. ej. en un SO distinto de Windows, donde se generaron).
+tags:
+  golden:
+  benchmark:

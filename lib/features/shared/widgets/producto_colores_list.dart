@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:textiles_app/features/apliques/domain/entities/color_item.dart';
-import 'color_from_hex.dart';
+import 'muestra_color.dart';
 
 /// Lista de colores con switch para vincular/quitar colores de un producto
 /// (tela o aplique). La baja es lógica (activo = false en la tabla puente).
@@ -32,10 +32,7 @@ class ProductoColoresList extends StatelessWidget {
             ...colores.map((color) => SwitchListTile(
                   dense: true,
                   contentPadding: EdgeInsets.zero,
-                  secondary: CircleAvatar(
-                    radius: 8,
-                    backgroundColor: colorFromHex(color.hex),
-                  ),
+                  secondary: MuestraColor(hex: color.hex),
                   title: Text(color.nombre),
                   value: color.vinculado,
                   onChanged: (valor) => onToggle(color.id, valor),

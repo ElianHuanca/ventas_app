@@ -157,7 +157,7 @@ Ambas con `GRANT SELECT ... TO anon`. Si se cambia una columna que estas vistas 
 - `lib/features/ventas/infrastructure/datasources/detalleVentas_datasource_impl.dart` — upsert por idtelas+precio al crear detalles
 - `lib/features/apliques/infrastructure/datasources/apliques_datasource_impl.dart` — apliques, inventario, colores y producciones (fabricación sube stock)
 - `lib/features/apliques/infrastructure/datasources/ventas_apliques_datasource_impl.dart` — venta de apliques: insert en `ventas_apliques` + detalles + descuento de stock
-- `lib/features/sucursales/presentation/bloc/sucursal_disponibilidad_cubit.dart` — vinculación telas↔sucursal e inventario de apliques por sucursal
+- `lib/features/sucursales/presentation/bloc/sucursal_disponibilidad_cubit.dart` — vinculación telas↔sucursal (solo telas: el inventario de apliques no tiene pantalla de gestión; `addInventario`/`removeInventario` no los llama ninguna)
 - `lib/features/dashboard/infrastructure/datasources/dashboard_datasource_impl.dart` — llama a las RPC del dashboard (`top_productos`, `top_apliques`, `resumen_ventas`, `resumen_ventas_apliques`)
 
 ## Rutas registradas
@@ -230,23 +230,59 @@ flutter pub get          # instalar dependencias
 flutter run              # correr en debug
 flutter build apk        # build Android APK
 flutter analyze          # lint check
-flutter test             # 461 tests unitarios/de widget + 9 omitidos (fakes en test/helpers/)
+flutter test             # 577 unitarios/de widget + 128 capturas golden; 8 omitidos (= bugs conocidos)
+flutter test --exclude-tags golden          # sin las capturas (p. ej. fuera de Windows)
+flutter test test/goldens --update-goldens  # regenerar capturas tras un cambio visual buscado
+flutter test benchmark/micro                # 176 micro-benchmarks (~1 min)
 flutter clean            # limpiar build
 ```
 
 ## Tests
 
-Están los tres tipos de Flutter:
-
 | Tipo | Dónde | Contra qué |
 |---|---|---|
-| Unitarios | `test/` (mappers, cubits, blocs, utilidades) | **fakes en memoria** (`test/helpers/fake_repositories.dart`), nunca Supabase |
+| Unitarios | `test/` (mappers, cubits, blocs, repositorios, router, utilidades) | **fakes en memoria** (`test/helpers/fake_repositories.dart`, `fake_datasources.dart`), nunca Supabase |
 | De widget | `test/` (todas las pantallas y widgets compartidos; la navegación se verifica con un `GoRouter` de rutas stub) | los mismos fakes |
+| Captura (golden) | `test/goldens/` (todas las pantallas y widgets compartidos, en cada estado) | los mismos fakes; compara contra PNG |
+| Micro-benchmarks | `benchmark/micro/` (mappers, utilidades, router, cubits, blocs, montaje de widgets) | fakes; µs/op o ms/montaje con presupuesto |
+| Macro-benchmarks | `benchmark/macro/` + `test_driver/perf_driver.dart` | la app completa en el **celular**, contra el Supabase local |
 | De integración | `integration_test/app_test.dart` | la app completa (`HuantexApp`: router, login, datasources, RLS, RPC) contra el **Supabase local** |
 
-Cada flujo (login, sucursales y su disponibilidad, telas, colores, apliques, fabricación, venta de apliques, venta de telas, dashboard, menú) tiene los tres tipos. Los tests de `test/` siguen la estructura de `lib/` (los de `features/shared/` van sueltos en `test/features/shared/`). Los fakes no se pisan entre tests: si uno necesita otro comportamiento, se hace una subclase local en ese archivo.
+Cada flujo (login, sucursales y su disponibilidad, telas, colores, apliques, fabricación, venta de apliques, venta de telas, dashboard, menú) tiene los seis tipos. Los tests de `test/` siguen la estructura de `lib/` (los de `features/shared/` van sueltos en `test/features/shared/`). Los fakes no se pisan entre tests: si uno necesita otro comportamiento, se hace una subclase local en ese archivo.
 
-**Tests omitidos = bugs conocidos.** Los `skip: true` describen el comportamiento correcto y llevan un comentario `// bug: archivo:línea — qué pasa`. Al arreglar el bug, quitar el `skip` (el test tiene que pasar).
+**Tests omitidos = bugs conocidos.** Los `skip: true` describen el comportamiento correcto y llevan un comentario `// bug: archivo:línea — qué pasa`. Al arreglar el bug, quitar el `skip` (el test tiene que pasar; si es una captura, generarla con `--update-goldens`).
+
+### Capturas (golden)
+
+- `test/goldens/<feature>/<pantalla>_golden_test.dart`, PNG en `goldens/<pantalla>_<estado>.png` al lado. Etiqueta `golden` (`dart_test.yaml`).
+- `montarParaCaptura` / `compararCaptura` (`test/goldens/golden_helpers.dart`) montan la pantalla con el tema real, en español, a 412×915 dp. `test/goldens/flutter_test_config.dart` carga Roboto y MaterialIcons del SDK (si no, flutter_tester dibuja cuadrados) y Arial de Windows como respaldo de símbolos que Roboto no trae (la "→" del dashboard).
+- **Generadas en Windows**: el antialiasing cambia entre SO; en otro, regenerarlas o `--exclude-tags golden`. Las sombras salen como contorno (flutter_test las apaga por determinismo).
+- Determinísticas: nada de `DateTime.now()` (las fechas se fijan por el cubit, p. ej. `onFechaChanged`, `cambiarRango`). Un loader se captura con un fake que espera un `Completer`, `asentar: false` y `pump(400 ms)`; el `complete()` va en un `finally` (si la captura falla y queda pendiente, `Bloc.close()` cuelga el test 10 min).
+- Un cambio visual buscado se acepta regenerando (`--update-goldens`) y revisando el PNG en el diff.
+
+### Micro-benchmarks
+
+- `flutter test benchmark/micro` (no corren con `flutter test` a secas). Helpers en `benchmark/micro/medicion.dart`: `microBenchmark` / `microBenchmarkAsync` (µs por operación, con benchmark_harness) y `widgetBenchmark` (ms por montaje desde cero). Resultados en `build/benchmarks/micro/<grupo>.json`; `--dart-define=BENCH_MS=3000` mide más tiempo.
+- Corren en JIT con asserts: sirven para comparar corridas y frenar regresiones groseras, no son números de release. Cada uno tiene un presupuesto ~10x el peor valor medido y falla si lo excede.
+- `benchmark/micro/widgets/` reusa el `flutter_test_config.dart` de las capturas (con Ahem el texto es más ancho y el dashboard desborda).
+- Con la máquina cargada (otros `flutter test`, Gradle, emulador) la VM de Dart puede quedarse sin memoria: correrlos solos.
+
+### Macro-benchmarks
+
+La app completa en el celular, por flujo: latencia end-to-end (toque → dato visible) y fluidez (`FrameTiming`: build/raster promedio, p90, p99, frames perdidos, más el timeline). Qué mide cada clave: cabecera de `benchmark/macro/app_benchmark.dart`.
+
+```bash
+npx supabase@latest start -x realtime,storage-api,imgproxy,edge-runtime,logflare,vector,supavisor,mailpit
+adb reverse tcp:54321 tcp:54321
+flutter drive --driver=test_driver/perf_driver.dart --target=benchmark/macro/app_benchmark.dart --profile --no-dds -d <id del celular> --dart-define-from-file=env/local-usb.json
+```
+
+- **Números de referencia solo en `--profile` y en el celular físico** (los emuladores no soportan profile; en debug salen varias veces más lentos). `android/app/src/profile/AndroidManifest.xml` permite http para llegar al Supabase local (release no).
+- Resultados en `build/benchmarks/macro/`: `resultados.json` y un `<clave>.timeline.json` / `.timeline_summary.json` por traza (se abren en Perfetto).
+- Crea datos con prefijo `BM ` (150 telas, 150 apliques, 40 colores para que haya scroll real); se limpian con `db reset`.
+- El target no tiene sufijo `_test` a propósito: así no lo toman `flutter test integration_test` ni `flutter test benchmark/micro`.
+
+### Integración
 
 ```bash
 npx supabase@latest start -x realtime,storage-api,imgproxy,edge-runtime,logflare,vector,supavisor,mailpit
@@ -260,12 +296,12 @@ adb -s emulator-5554 shell svc power stayon true && adb -s emulator-5554 shell w
 flutter test integration_test -d emulator-5554 --dart-define-from-file=env/local-android.json
 ```
 
-Un test que se queda quieto sin fallar (sin timeout de `esperarHasta`) casi siempre es la pantalla del dispositivo apagada: `adb shell dumpsys power | grep mWakefulness` dice `Asleep`.
+Un test que se queda quieto sin fallar (sin timeout de `esperarHasta`) casi siempre es la pantalla del dispositivo apagada (`adb shell dumpsys power | grep mWakefulness` dice `Asleep`) o la app de prueba en segundo plano: si otra app pasa al frente (o se toca Inicio), Android la congela. `adb shell dumpsys activity activities | grep topResumedActivity` lo muestra; se trae de vuelta (y el test sigue) con `adb shell monkey -p com.example.textiles_app -c android.intent.category.LAUNCHER 1`.
 
 - **Solo corren contra la base local**: `prepararBaseLocal()` corta antes de conectarse si `SupabaseConfig.isLocal` es `false` (sin `--dart-define` apuntaría a producción).
 - Se crean su usuario (`integracion@example.com`) la primera vez, vía sign-up, que solo está habilitado en el `config.toml` local. Sobrevive hasta el próximo `db reset`.
 - Estructura: `app_test.dart` es el **único punto de entrada** (la app se compila e instala una vez) y llama a los flujos de `flujos/*.dart` (sin sufijo `_test` a propósito: si no, `flutter test` los correría como entradas sueltas). `datos.dart` crea los datos de cada test con los datasources reales.
-- Cubren (25 tests): login; sucursales (alta, renombrar, baja lógica, disponibilidad de telas → venta); telas (alta, precio/desactivar → no se ofrece, colores); colores (alta con hex normalizado, renombrar, baja, hex inválido); apliques (alta/edición/desactivar, deshabilitar un color lo saca de Fabricación y de la venta); fabricación (sube stock, acumula en el día, historial y detalle, fecha anterior, línea quitada no se registra); venta de apliques (descuenta stock, bloquea sobre-stock, acumula en la venta del día, detalle, línea quitada no descuenta stock, descuento); venta de telas (venta, acumula en el día, borrar línea descuenta el total, línea quitada del carrito, descuento, fecha anterior); dashboard (pestañas Telas y Apliques, cambio de período). Cada uno verifica también las filas en la base.
+- Cubren (27 tests): login; sucursales (alta, renombrar, baja lógica, disponibilidad de telas → venta, quitar una tela la saca de la venta y sin ninguna activa vuelve todo el catálogo); telas (alta, precio/desactivar → no se ofrece, colores); colores (alta con hex normalizado, renombrar, baja, hex inválido); apliques (alta/edición/desactivar, deshabilitar un color lo saca de Fabricación y de la venta, habilitarlo lo ofrece en Fabricación); fabricación (sube stock, acumula en el día, historial y detalle, fecha anterior, línea quitada no se registra); venta de apliques (descuenta stock, bloquea sobre-stock, acumula en la venta del día, detalle, línea quitada no descuenta stock, descuento); venta de telas (venta, acumula en el día, borrar línea descuenta el total, línea quitada del carrito, descuento, fecha anterior); dashboard (pestañas Telas y Apliques, cambio de período). Cada uno verifica también las filas en la base.
 - Dejan filas con prefijo `IT ` en casi todas las tablas: la base no permite borrar físicamente. Se limpian con `npx supabase@latest db reset`.
 - La app de prueba se instala con el mismo `applicationId` que la oficial y la reemplaza en el celular. En Windows desktop (`-d windows`) no compila sin el toolchain C++ de Visual Studio.
 - Helpers en `integration_test/helpers.dart`. Las respuestas de Supabase no son frames, así que se espera con `esperarHasta` / `esperarQue` (no basta `pumpAndSettle`), se escribe con `escribir` (re-enfoca el campo; si no, el segundo `enterText` se pierde) y se eligen opciones de `DropdownMenu` con `elegir`. Fechas con `elegirFecha` / `elegirRango` (modo texto del selector, en el idioma del dispositivo). Para tocar un ítem de una lista recién recargada (al volver de un formulario), `tocarHasta`: el toque que cae mientras está el loader se pierde.

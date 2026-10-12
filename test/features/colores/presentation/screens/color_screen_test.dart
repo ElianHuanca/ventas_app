@@ -136,11 +136,7 @@ void main() {
       await tester.pump();
 
       expect(find.text('Hex inválido'), findsOneWidget);
-    },
-        // bug: color_screen.dart:68-70 pasa errorMessage a MiTextField, pero
-        // my_text_form.dart:34-43 nunca lo usa (no hay errorText en el
-        // InputDecoration): el aviso inline no se muestra jamás.
-        skip: true);
+    });
   });
 
   group('dar de baja', () {
