@@ -50,6 +50,14 @@
     <!-- Dashboard: carga de las 2 RPC de la línea, error, orden por cantidad -->
     <file>lib/features/dashboard/presentation/bloc/dashboard_cubit.dart</file>
 
+    <!-- Inventario: regla de reposición (mínimo, cuánto hacer, orden), el
+         mensaje para el fabricante, la fila de la RPC y la ventana de 4
+         semanas del cubit -->
+    <file>lib/features/apliques/domain/reposicion.dart</file>
+    <file>lib/features/apliques/domain/mensaje_faltantes.dart</file>
+    <file>lib/features/apliques/infrastructure/mappers/stock_con_ventas_mapper.dart</file>
+    <file>lib/features/apliques/presentation/bloc/inventario_cubit.dart</file>
+
     <!-- Entidades con algo más que campos (empty(), copyWith, toJson, defaults).
          El resto de domain/entities son solo campos `final`. -->
     <file>lib/features/apliques/domain/entities/aplique.dart</file>

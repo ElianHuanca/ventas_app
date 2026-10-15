@@ -55,6 +55,23 @@ const _testsPorArchivo = <String, List<String>>{
     'test/features/dashboard/dashboard_test.dart',
   ],
 
+  // Inventario
+  'lib/features/apliques/domain/reposicion.dart': [
+    'test/features/apliques/domain/reposicion_test.dart',
+    'test/propiedades/reposicion_propiedades_test.dart',
+  ],
+  'lib/features/apliques/domain/mensaje_faltantes.dart': [
+    'test/features/apliques/domain/mensaje_faltantes_test.dart',
+    'test/features/apliques/presentation/screens/inventario_screen_test.dart',
+  ],
+  'lib/features/apliques/infrastructure/mappers/stock_con_ventas_mapper.dart': [
+    'test/features/apliques/infrastructure/mappers',
+  ],
+  'lib/features/apliques/presentation/bloc/inventario_cubit.dart': [
+    'test/features/apliques/presentation/bloc/inventario_cubit_test.dart',
+    'test/features/apliques/presentation/screens/inventario_screen_test.dart',
+  ],
+
   // Entidades
   'lib/features/apliques/domain/entities/aplique.dart': [
     'test/features/apliques/presentation/bloc/aplique_form_cubit_test.dart',
