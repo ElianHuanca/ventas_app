@@ -47,7 +47,7 @@
     <file>lib/features/shared/changeFormatDate.dart</file>
     <file>lib/features/shared/widgets/color_from_hex.dart</file>
 
-    <!-- Dashboard: carga de las 4 RPC, error, orden por cantidad -->
+    <!-- Dashboard: carga de las 2 RPC de la línea, error, orden por cantidad -->
     <file>lib/features/dashboard/presentation/bloc/dashboard_cubit.dart</file>
 
     <!-- Entidades con algo más que campos (empty(), copyWith, toJson, defaults).
@@ -233,12 +233,12 @@
     <literal text="soloActivos: soloActivos" id="dart.args.solo_activos">
       <mutation text="soloActivos: !soloActivos"/>
     </literal>
-    <!-- Resultados de Future.wait cruzados -->
-    <literal text="resultados[0]" id="dart.dashboard.resultado0">
-      <mutation text="resultados[1]"/>
+    <!-- El dashboard de una línea que consulta las RPC de la otra -->
+    <literal text="repository.getTopProductos(" id="dart.dashboard.top_otra_linea">
+      <mutation text="repository.getTopApliques("/>
     </literal>
-    <literal text="resultados[2]" id="dart.dashboard.resultado2">
-      <mutation text="resultados[3]"/>
+    <literal text="repository.getResumenVentas(" id="dart.dashboard.resumen_otra_linea">
+      <mutation text="repository.getResumenVentasApliques("/>
     </literal>
   </rules>
 

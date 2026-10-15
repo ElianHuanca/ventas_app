@@ -51,6 +51,16 @@ class ApliquesRepositoryImpl extends ApliquesRepository {
   }
 
   @override
+  Future<List<StockConVentas>> getInventarioConVentas(
+    int sucursalId, {
+    required DateTime desde,
+    required DateTime hasta,
+  }) {
+    return datasource.getInventarioConVentas(sucursalId,
+        desde: desde, hasta: hasta);
+  }
+
+  @override
   Future<void> createProduccion({
     required int sucursalId,
     required DateTime fecha,

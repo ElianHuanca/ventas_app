@@ -3,6 +3,7 @@ export 'aplique_colores_cubit.dart';
 export 'aplique_form_cubit.dart';
 export 'detalle_produccion_cubit.dart';
 export 'detalle_venta_apliques_cubit.dart';
+export 'inventario_cubit.dart';
 export 'produccion_form_cubit.dart';
 export 'producciones_bloc.dart';
 export 'venta_apliques_form_cubit.dart';

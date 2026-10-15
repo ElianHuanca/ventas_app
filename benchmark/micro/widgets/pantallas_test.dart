@@ -109,12 +109,10 @@ Future<DashboardCubit> _dashboard(int n) async {
   final cubit = DashboardCubit(
     repository: FakeDashboardRepository(
       topTelas: _ranking(n, 'Tela'),
-      topApliques: _ranking(n, 'Aplique'),
       resumenTelas:
           const ResumenVentas(total: 12500, ganancias: 4100, descuento: 35),
-      resumenApliques:
-          const ResumenVentas(total: 3900, ganancias: 1700, descuento: 0),
     ),
+    linea: LineaDashboard.telas,
   );
   await cubit.stream.firstWhere((s) => !s.isLoading);
   return cubit;

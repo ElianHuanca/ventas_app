@@ -30,6 +30,8 @@ void main() {
     '/fabricacion/:idsucursal',
     '/fabricacion/registro/:idsucursal',
     '/fabricacion/detalle/:idproduccion',
+    '/inventario',
+    '/inventario/:idsucursal',
     '/sucursales',
     '/sucursal/:idsucursal',
     '/sucursal-disponibilidad/:idsucursal',
@@ -44,7 +46,8 @@ void main() {
     '/ventas/:idsucursal',
     '/det_ventas/:idventa',
     '/det_venta/:idsucursal',
-    '/dashboard',
+    '/dashboard/telas',
+    '/dashboard/apliques',
   ];
 
   group('tabla de rutas', () {
@@ -84,6 +87,7 @@ void main() {
         '/fabricacion/detalle/:idproduccion',
         {'idproduccion': '8'}
       ),
+      '/inventario/2': ('/inventario/:idsucursal', {'idsucursal': '2'}),
       '/sucursal/0': ('/sucursal/:idsucursal', {'idsucursal': '0'}),
       '/sucursal-disponibilidad/2': (
         '/sucursal-disponibilidad/:idsucursal',
@@ -115,8 +119,7 @@ void main() {
 
     test('una ruta inexistente no matchea ninguna', () {
       expect(router.configuration.findMatch('/no-existe').isError, isTrue);
-    });
-  });
+    });  });
 
   group('redirect por sesión', () {
     late FakeAuthRepository auth;
@@ -179,7 +182,12 @@ void main() {
         (tester) async {
       await montar(tester);
 
-      for (final destino in ['/sucursales', '/dashboard', '/ventas/1']) {
+      for (final destino in [
+        '/sucursales',
+        '/dashboard/telas',
+        '/dashboard/apliques',
+        '/ventas/1',
+      ]) {
         router.go(destino);
         await tester.pumpAndSettle();
         expect(ubicacion(), '/login', reason: destino);
@@ -228,6 +236,11 @@ void main() {
       await tester.pumpAndSettle();
       expect(ubicacion(), '/fabricacion');
       expect(find.text('Fabricación'), findsOneWidget);
+
+      router.go('/inventario');
+      await tester.pumpAndSettle();
+      expect(ubicacion(), '/inventario');
+      expect(find.text('Inventario'), findsOneWidget);
     });
 
     testWidgets(

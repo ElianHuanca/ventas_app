@@ -157,6 +157,24 @@ GoRouter createAppRouter({required AuthRepository authRepository}) {
         },
       ),
       GoRoute(
+        path: '/inventario',
+        builder: (context, state) => const InventarioSucursalesScreen(),
+      ),
+      GoRoute(
+        path: '/inventario/:idsucursal',
+        builder: (context, state) {
+          final idsucursal = _pathParamInt(state, 'idsucursal');
+          return BlocProvider(
+            create: (_) => InventarioCubit(
+              apliquesRepository:
+                  ApliquesRepositoryImpl(ApliquesDatasourceImpl()),
+              idsucursal: idsucursal,
+            ),
+            child: InventarioScreen(idsucursal: idsucursal),
+          );
+        },
+      ),
+      GoRoute(
         path: '/apliques',
         builder: (context, state) => BlocProvider(
           create: (_) => ApliquesBloc(
@@ -214,15 +232,20 @@ GoRouter createAppRouter({required AuthRepository authRepository}) {
           );
         },
       ),
-      GoRoute(
-        path: '/dashboard',
-        builder: (context, state) => BlocProvider(
-          create: (_) => DashboardCubit(
-            repository: DashboardRepositoryImpl(DashboardDatasourceImpl()),
+      for (final (path, linea) in [
+        ('/dashboard/telas', LineaDashboard.telas),
+        ('/dashboard/apliques', LineaDashboard.apliques),
+      ])
+        GoRoute(
+          path: path,
+          builder: (context, state) => BlocProvider(
+            create: (_) => DashboardCubit(
+              repository: DashboardRepositoryImpl(DashboardDatasourceImpl()),
+              linea: linea,
+            ),
+            child: const DashboardScreen(),
           ),
-          child: const DashboardScreen(),
         ),
-      ),
       GoRoute(
         path: '/sucursales',
         builder: (context, state) => const SucursalesScreen(true),

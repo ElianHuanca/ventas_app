@@ -33,40 +33,48 @@ void main() {
   });
 
   group('DashboardCubit', () {
-    test('carga el top y el resumen de telas y de apliques', () async {
-      final cubit = DashboardCubit(repository: repo);
+    test('telas carga solo el top y el resumen de telas (2 RPC)', () async {
+      final cubit =
+          DashboardCubit(repository: repo, linea: LineaDashboard.telas);
       await cubit.cargar();
 
       expect(cubit.state.isLoading, isFalse);
-      expect(cubit.state.topTelas, topTelas);
-      expect(cubit.state.topApliques, topApliques);
-      expect(cubit.state.resumenTelas, resumenTelas);
-      expect(cubit.state.resumenApliques, resumenApliques);
+      expect(cubit.state.top, topTelas);
+      expect(cubit.state.resumen, resumenTelas);
+      // 2 de la carga del constructor + 2 de cargar()
+      expect(repo.rangos, hasLength(4));
       await cubit.close();
     });
 
-    test('por cantidad reordena ambos rankings sin volver a consultar',
-        () async {
-      final cubit = DashboardCubit(repository: repo);
+    test('apliques carga solo el top y el resumen de apliques', () async {
+      final cubit =
+          DashboardCubit(repository: repo, linea: LineaDashboard.apliques);
+      await cubit.cargar();
+
+      expect(cubit.state.top, topApliques);
+      expect(cubit.state.resumen, resumenApliques);
+      await cubit.close();
+    });
+
+    test('por cantidad reordena el ranking sin volver a consultar', () async {
+      final cubit =
+          DashboardCubit(repository: repo, linea: LineaDashboard.apliques);
       await cubit.cargar();
       final consultas = repo.rangos.length;
 
       cubit.toggleVista();
 
-      expect(cubit.state.telasOrdenadas.map((p) => p.nombre),
-          ['Seda', 'Lino']);
-      expect(cubit.state.apliquesOrdenados.map((p) => p.nombre),
-          ['Mariposa', 'Flor']);
+      expect(cubit.state.ordenados.map((p) => p.nombre), ['Mariposa', 'Flor']);
       expect(repo.rangos.length, consultas);
 
       cubit.toggleVista();
-      expect(cubit.state.telasOrdenadas.map((p) => p.nombre),
-          ['Lino', 'Seda']);
+      expect(cubit.state.ordenados.map((p) => p.nombre), ['Flor', 'Mariposa']);
       await cubit.close();
     });
 
-    test('cambiarRango consulta las cuatro RPC con el rango nuevo', () async {
-      final cubit = DashboardCubit(repository: repo);
+    test('cambiarRango consulta las dos RPC con el rango nuevo', () async {
+      final cubit =
+          DashboardCubit(repository: repo, linea: LineaDashboard.telas);
       await cubit.cargar();
       repo.rangos.clear();
 
@@ -74,7 +82,7 @@ void main() {
       final hasta = DateTime(2026, 9, 30);
       await cubit.cambiarRango(desde, hasta);
 
-      expect(repo.rangos, hasLength(4));
+      expect(repo.rangos, hasLength(2));
       expect(repo.rangos.every((r) => r[0] == desde && r[1] == hasta), isTrue);
       expect(cubit.state.desde, desde);
       expect(cubit.state.hasta, hasta);
@@ -83,12 +91,13 @@ void main() {
   });
 
   group('DashboardScreen', () {
-    Future<DashboardCubit> montar(WidgetTester tester) async {
+    Future<DashboardCubit> montar(
+        WidgetTester tester, LineaDashboard linea) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
 
-      final cubit = DashboardCubit(repository: repo);
+      final cubit = DashboardCubit(repository: repo, linea: linea);
       addTearDown(cubit.close);
       await tester.pumpWidget(MaterialApp(
         home: BlocProvider.value(
@@ -100,46 +109,53 @@ void main() {
       return cubit;
     }
 
-    testWidgets('abre en Telas y muestra Apliques en su propia pestaña',
+    testWidgets('el submenú Telas muestra solo las telas, sin pestañas',
         (tester) async {
-      await montar(tester);
+      await montar(tester, LineaDashboard.telas);
 
+      expect(find.text('Dashboard telas'), findsOneWidget);
+      expect(find.byType(TabBar), findsNothing);
       expect(find.text('Lino'), findsOneWidget);
       expect(find.text('2 telas por total vendido'), findsOneWidget);
       expect(find.text('800.00 Bs'), findsOneWidget); // resumen telas
       expect(find.text('Flor'), findsNothing);
+      expect(find.text('290.00 Bs'), findsNothing);
+    });
 
-      await tester.tap(find.text('Apliques'));
-      await tester.pumpAndSettle();
+    testWidgets('el submenú Apliques muestra solo los apliques',
+        (tester) async {
+      await montar(tester, LineaDashboard.apliques);
 
+      expect(find.text('Dashboard apliques'), findsOneWidget);
       expect(find.text('Flor'), findsOneWidget);
       expect(find.text('Mariposa'), findsOneWidget);
       expect(find.text('2 apliques por total vendido'), findsOneWidget);
       expect(find.text('290.00 Bs'), findsOneWidget); // resumen apliques
       expect(find.text('Lino'), findsNothing);
+      expect(find.text('800.00 Bs'), findsNothing);
     });
 
-    testWidgets('por cantidad: metros en telas, unidades en apliques',
-        (tester) async {
-      await montar(tester);
+    testWidgets('por cantidad: metros en telas', (tester) async {
+      await montar(tester, LineaDashboard.telas);
 
       await tester.tap(find.text('Por cantidad'));
       await tester.pumpAndSettle();
       expect(find.text('12.50 mts'), findsOneWidget);
       expect(find.text('10 mts'), findsOneWidget);
+    });
 
-      await tester.tap(find.text('Apliques'));
+    testWidgets('por cantidad: unidades en apliques', (tester) async {
+      await montar(tester, LineaDashboard.apliques);
+
+      await tester.tap(find.text('Por cantidad'));
       await tester.pumpAndSettle();
       expect(find.text('9 uds'), findsOneWidget);
       expect(find.text('4 uds'), findsOneWidget);
     });
 
-    testWidgets('pestaña sin ventas muestra su aviso', (tester) async {
+    testWidgets('apliques sin ventas muestra su aviso', (tester) async {
       repo.topApliques = const [];
-      await montar(tester);
-
-      await tester.tap(find.text('Apliques'));
-      await tester.pumpAndSettle();
+      await montar(tester, LineaDashboard.apliques);
 
       expect(find.text('Sin ventas de apliques en el período seleccionado'),
           findsOneWidget);

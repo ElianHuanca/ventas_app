@@ -11,63 +11,56 @@ void main() {
   propiedad(
       'por cantidad es una permutación ordenada de mayor a menor y no '
       'toca la lista del estado',
-      any.combine2(_ranking, _ranking, (a, b) => (a, b)), (rankings) {
-    final (telas, apliques) = rankings;
-    final antesTelas = List.of(telas);
-    final antesApliques = List.of(apliques);
+      _ranking, (ranking) {
+    final antes = List.of(ranking);
     final state = DashboardState(
-      topTelas: telas,
-      topApliques: apliques,
+      top: ranking,
       verPorCantidad: true,
       desde: DateTime(2026, 10, 1),
       hasta: DateTime(2026, 10, 11),
     );
 
-    for (final (ordenada, original, antes) in [
-      (state.telasOrdenadas, state.topTelas, antesTelas),
-      (state.apliquesOrdenados, state.topApliques, antesApliques),
-    ]) {
-      expect(ordenada, unorderedEquals(original),
-          reason: 'mismos productos (por identidad), ni más ni menos');
-      for (var i = 1; i < ordenada.length; i++) {
-        expect(ordenada[i - 1].totalCantidad,
-            greaterThanOrEqualTo(ordenada[i].totalCantidad),
-            reason: 'descendente por cantidad en la posición $i');
-      }
-      expect(original, orderedEquals(antes),
-          reason: 'la lista del estado sigue en el orden de la RPC');
+    final ordenada = state.ordenados;
+    expect(ordenada, unorderedEquals(state.top),
+        reason: 'mismos productos (por identidad), ni más ni menos');
+    for (var i = 1; i < ordenada.length; i++) {
+      expect(ordenada[i - 1].totalCantidad,
+          greaterThanOrEqualTo(ordenada[i].totalCantidad),
+          reason: 'descendente por cantidad en la posición $i');
     }
+    expect(state.top, orderedEquals(antes),
+        reason: 'la lista del estado sigue en el orden de la RPC');
   }, casos: 1000);
 
-  propiedad('por monto deja el orden de la RPC', _ranking, (telas) {
+  propiedad('por monto deja el orden de la RPC', _ranking, (ranking) {
     final state = DashboardState(
-      topTelas: telas,
-      topApliques: telas.reversed.toList(),
+      top: ranking,
       desde: DateTime(2026, 10, 1),
       hasta: DateTime(2026, 10, 11),
     );
 
-    expect(state.telasOrdenadas, orderedEquals(telas));
-    expect(state.apliquesOrdenados, orderedEquals(telas.reversed));
+    expect(state.ordenados, orderedEquals(ranking));
   }, casos: 1000);
 
   propiedad(
       'con el cubit: alternar la vista dos veces vuelve al orden por '
       'monto y la lista cargada nunca cambia',
-      _ranking, (telas) async {
-    final cubit =
-        DashboardCubit(repository: FakeDashboardRepository(topTelas: telas));
+      _ranking, (apliques) async {
+    final cubit = DashboardCubit(
+      repository: FakeDashboardRepository(topApliques: apliques),
+      linea: LineaDashboard.apliques,
+    );
     try {
       await cubit.cargar();
-      final cargada = List.of(cubit.state.topTelas);
+      final cargada = List.of(cubit.state.top);
 
       cubit.toggleVista();
-      final porCantidad = cubit.state.telasOrdenadas;
+      final porCantidad = cubit.state.ordenados;
       cubit.toggleVista();
 
       expect(porCantidad, unorderedEquals(cargada));
-      expect(cubit.state.telasOrdenadas, orderedEquals(cargada));
-      expect(cubit.state.topTelas, orderedEquals(cargada));
+      expect(cubit.state.ordenados, orderedEquals(cargada));
+      expect(cubit.state.top, orderedEquals(cargada));
     } finally {
       await cubit.close();
     }

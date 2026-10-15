@@ -40,6 +40,18 @@ void main() {
       ]);
     });
 
+    test('getInventarioConVentas pasa la sucursal y el rango', () async {
+      final desde = DateTime(2026, 9, 18);
+      final hasta = DateTime(2026, 10, 15);
+
+      expect(
+          await repo.getInventarioConVentas(2, desde: desde, hasta: hasta),
+          same(ds.inventarioConVentas));
+      expect(ds.llamadas, [
+        ['getInventarioConVentas', 2, desde, hasta],
+      ]);
+    });
+
     test('getColores y getColoresAplique', () async {
       expect(await repo.getColores(), same(ds.colores));
       expect(await repo.getColoresAplique(4), same(ds.colores));

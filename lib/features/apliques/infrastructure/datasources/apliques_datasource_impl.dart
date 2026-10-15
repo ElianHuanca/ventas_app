@@ -183,6 +183,27 @@ class ApliquesDatasourceImpl implements ApliquesDatasource {
         .eq('color_id', colorId);
   }
 
+  // RPC inventario_con_ventas: el cliente de Supabase no agrupa ni suma.
+  // Compara `fecha` como texto ISO8601 (igual que las del dashboard).
+  @override
+  Future<List<StockConVentas>> getInventarioConVentas(
+    int sucursalId, {
+    required DateTime desde,
+    required DateTime hasta,
+  }) async {
+    final rows = await _db.rpc('inventario_con_ventas', params: {
+      'p_sucursal_id': sucursalId,
+      'desde': DateTime(desde.year, desde.month, desde.day).toIso8601String(),
+      // Último instante del día: `fecha` lleva fracción de segundo
+      'hasta': DateTime(hasta.year, hasta.month, hasta.day, 23, 59, 59, 999, 999)
+          .toIso8601String(),
+    }) as List;
+    return rows
+        .map<StockConVentas>((e) =>
+            StockConVentasMapper.jsonToEntity(e as Map<String, dynamic>))
+        .toList();
+  }
+
   // Una sola transacción (RPC registrar_produccion): cabecera del día (una
   // por sucursal+fecha, UNIQUE en la DB), líneas acumuladas por
   // (idproduccion, idaplique, idcolor) y suma al stock de inventario (crea o

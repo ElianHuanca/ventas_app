@@ -219,6 +219,7 @@ class FakeApliquesRepository implements ApliquesRepository {
   List<ColorItem> colores;
   List<Produccion> detalleProduccion;
   List<ProduccionCabecera> producciones;
+  List<StockConVentas> inventarioConVentas;
 
   FakeApliquesRepository({
     this.apliques = const [],
@@ -226,7 +227,22 @@ class FakeApliquesRepository implements ApliquesRepository {
     this.colores = const [],
     this.detalleProduccion = const [],
     this.producciones = const [],
+    this.inventarioConVentas = const [],
   });
+
+  /// (sucursal, desde, hasta) de cada getInventarioConVentas.
+  final List<(int, DateTime, DateTime)> inventarioConVentasPedidos = [];
+
+  @override
+  Future<List<StockConVentas>> getInventarioConVentas(
+    int sucursalId, {
+    required DateTime desde,
+    required DateTime hasta,
+  }) async {
+    _throwIfError();
+    inventarioConVentasPedidos.add((sucursalId, desde, hasta));
+    return inventarioConVentas;
+  }
 
   bool? lastSoloActivos;
   int getStockCalls = 0;

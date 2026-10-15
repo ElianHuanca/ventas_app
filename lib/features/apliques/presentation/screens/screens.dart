@@ -2,6 +2,8 @@ export 'aplique_colores_screen.dart';
 export 'aplique_screen.dart';
 export 'apliques_screen.dart';
 export 'fabricacion_sucursales_screen.dart';
+export 'inventario_screen.dart';
+export 'inventario_sucursales_screen.dart';
 export 'produccion_detalle_screen.dart';
 export 'produccion_screen.dart';
 export 'producciones_screen.dart';

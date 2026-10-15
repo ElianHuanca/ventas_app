@@ -103,7 +103,7 @@ class _SucursalesRepo extends FakeSucursalesRepository {
 }
 
 class _DashboardRepo extends FakeDashboardRepository {
-  _DashboardRepo({super.topTelas, super.topApliques});
+  _DashboardRepo({super.topTelas});
 
   @override
   Future<List<TopProducto>> getTopProductos(
@@ -904,40 +904,36 @@ void main() {
       for (final n in [10, 100, 500]) {
         late DashboardCubit cubit;
         _microAsync(
-          'DashboardCubit cargar 4 RPC (rankings de $n)',
+          'DashboardCubit cargar 2 RPC (ranking de $n)',
           () => cubit.cargar(),
           preparar: () async {
             cubit = DashboardCubit(
-              repository: _DashboardRepo(
-                topTelas: _ranking(n, 'Tela'),
-                topApliques: _ranking(n, 'Aplique'),
-              ),
+              repository: _DashboardRepo(topTelas: _ranking(n, 'Tela')),
+              linea: LineaDashboard.telas,
             );
             addTearDown(cubit.close);
             await cubit.stream.firstWhere((s) => !s.isLoading);
-            expect(cubit.state.topTelas, hasLength(n));
+            expect(cubit.state.top, hasLength(n));
           },
         );
       }
 
-      // telasOrdenadas/apliquesOrdenados son getters: copian y ordenan en
-      // cada lectura, y DashboardScreen los lee en cada build.
+      // ordenados es un getter: copia y ordena en cada lectura, y
+      // DashboardScreen lo lee en cada build.
       for (final n in [10, 100, 500]) {
         late DashboardState estado;
         _micro(
-          'DashboardState leer rankings por cantidad (2 x $n, ordena)',
-          () => _sumidero +=
-              estado.telasOrdenadas.length + estado.apliquesOrdenados.length,
+          'DashboardState leer ranking por cantidad ($n, ordena)',
+          () => _sumidero += estado.ordenados.length,
           preparar: () {
             estado = DashboardState(
-              topTelas: _ranking(n, 'Tela'),
-              topApliques: _ranking(n, 'Aplique'),
+              top: _ranking(n, 'Tela'),
               verPorCantidad: true,
               desde: _fecha,
               hasta: _fecha,
             );
-            expect(estado.telasOrdenadas.first.totalCantidad,
-                greaterThanOrEqualTo(estado.telasOrdenadas.last.totalCantidad));
+            expect(estado.ordenados.first.totalCantidad,
+                greaterThanOrEqualTo(estado.ordenados.last.totalCantidad));
           },
         );
       }
@@ -997,10 +993,11 @@ const _presupuestos = <String, double>{
   'ApliqueColoresCubit vincular/desvincular 1 color (de 100)': 360,
   'ApliqueColoresCubit cargar 500 colores (ordena por nombre)': 5700,
   'ApliqueColoresCubit vincular/desvincular 1 color (de 500)': 1300,
-  'DashboardCubit cargar 4 RPC (rankings de 10)': 6300,
-  'DashboardCubit cargar 4 RPC (rankings de 100)': 1800,
-  'DashboardCubit cargar 4 RPC (rankings de 500)': 770,
-  'DashboardState leer rankings por cantidad (2 x 10, ordena)': 16,
-  'DashboardState leer rankings por cantidad (2 x 100, ordena)': 510,
-  'DashboardState leer rankings por cantidad (2 x 500, ordena)': 3900,
+  // Dashboard por línea (submenús Telas/Apliques): medido el 2026-10-14
+  'DashboardCubit cargar 2 RPC (ranking de 10)': 330,
+  'DashboardCubit cargar 2 RPC (ranking de 100)': 320,
+  'DashboardCubit cargar 2 RPC (ranking de 500)': 320,
+  'DashboardState leer ranking por cantidad (10, ordena)': 5.4,
+  'DashboardState leer ranking por cantidad (100, ordena)': 140,
+  'DashboardState leer ranking por cantidad (500, ordena)': 800,
 };

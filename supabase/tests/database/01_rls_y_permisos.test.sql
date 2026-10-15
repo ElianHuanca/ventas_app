@@ -13,7 +13,7 @@
 -- Corre en una transacción con rollback: no deja datos.
 -- =====================================================================
 begin;
-select plan(187);
+select plan(189);
 
 -- ---------------------------------------------------------------------
 -- Datos de apoyo (solo viven en esta transacción)
@@ -70,7 +70,9 @@ insert into _rpc values
   ('public.resumen_ventas(text,text)',
    $q$select * from public.resumen_ventas('2187-01-01', '2187-12-31')$q$),
   ('public.resumen_ventas_apliques(text,text)',
-   $q$select * from public.resumen_ventas_apliques('2187-01-01', '2187-12-31')$q$);
+   $q$select * from public.resumen_ventas_apliques('2187-01-01', '2187-12-31')$q$),
+  ('public.inventario_con_ventas(bigint,text,text)',
+   $q$select * from public.inventario_con_ventas(1, '2187-01-01', '2187-12-31')$q$);
 
 -- =====================================================================
 -- 1. Catálogo: RLS, políticas y privilegios
@@ -182,7 +184,7 @@ select set_eq($$
   from pg_proc p
   where p.pronamespace = 'public'::regnamespace and p.proname <> 'rls_auto_enable'
 $$, $$ select firma::text from _rpc $$,
-'las funciones de public son las 8 RPC conocidas (más el event trigger rls_auto_enable)');
+'las funciones de public son las 9 RPC conocidas (más el event trigger rls_auto_enable)');
 
 select todo('bug: 20261004000000_solo_usuarios_logueados.sql:40 — el REVOKE ... FROM anon no saca el EXECUTE que PUBLIC tiene por defecto: anon todavía puede ejecutar top_productos, resumen_ventas y resumen_ventas_apliques (no leen datos porque anon no tiene SELECT en las tablas, pero la RPC no debería ser ejecutable)', 1);
 select is_empty($$

@@ -14,7 +14,7 @@ import 'package:textiles_app/features/shared/widgets/menu_index_cubit.dart';
 import '../../helpers/fake_repositories.dart';
 import 'chica_helpers.dart';
 
-// `/dashboard`, `/login` y el menú lateral abierto.
+// `/dashboard/telas`, `/dashboard/apliques`, `/login` y el menú lateral abierto.
 void main() {
   testWidgets('dashboard: telas por total vendido', (tester) async {
     final cubit = DashboardCubit(
@@ -32,6 +32,7 @@ void main() {
         resumenTelas: const ResumenVentas(
             total: 22161.25, ganancias: 6920.4, descuento: 85),
       ),
+      linea: LineaDashboard.telas,
     );
     addTearDown(cubit.close);
     // Período fijo: el default (primer día del mes → hoy) usa DateTime.now()
@@ -42,6 +43,34 @@ void main() {
     );
 
     await compararChica('dashboard');
+  });
+
+  testWidgets('dashboard: apliques por total vendido', (tester) async {
+    final cubit = DashboardCubit(
+      repository: FakeDashboardRepository(
+        topApliques: const [
+          TopProducto(
+              nombre: 'Flor bordada 10x10',
+              totalVendido: 11250,
+              totalCantidad: 450),
+          TopProducto(
+              nombre: 'Corazón 5x5', totalVendido: 640, totalCantidad: 80),
+          TopProducto(
+              nombre: 'Mariposa 8x6', totalVendido: 555, totalCantidad: 30),
+        ],
+        resumenApliques: const ResumenVentas(
+            total: 12445, ganancias: 5180.5, descuento: 20),
+      ),
+      linea: LineaDashboard.apliques,
+    );
+    addTearDown(cubit.close);
+    await cubit.cambiarRango(DateTime(2026, 9, 1), DateTime(2026, 9, 30));
+    await montarChica(
+      tester,
+      BlocProvider.value(value: cubit, child: const DashboardScreen()),
+    );
+
+    await compararChica('dashboard_apliques');
   });
 
   testWidgets('login con los datos completos', (tester) async {

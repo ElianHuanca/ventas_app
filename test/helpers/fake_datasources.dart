@@ -85,6 +85,27 @@ class FakeApliquesDatasource extends FakeDatasource
           int sucursalId, int apliqueId, int colorId) async =>
       registrar('removeInventario', [sucursalId, apliqueId, colorId], null);
 
+  List<StockConVentas> inventarioConVentas = const [
+    StockConVentas(
+      apliqueId: 1,
+      aplique: 'Flor',
+      colorId: 2,
+      color: 'Rojo',
+      hex: 'FF0000',
+      stock: 3,
+      vendidas: 8,
+    ),
+  ];
+
+  @override
+  Future<List<StockConVentas>> getInventarioConVentas(
+    int sucursalId, {
+    required DateTime desde,
+    required DateTime hasta,
+  }) async =>
+      registrar('getInventarioConVentas', [sucursalId, desde, hasta],
+          inventarioConVentas);
+
   @override
   Future<void> createProduccion({
     required int sucursalId,

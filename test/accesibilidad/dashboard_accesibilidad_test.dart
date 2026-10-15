@@ -8,7 +8,7 @@ import '../helpers/fake_repositories.dart';
 import 'accesibilidad_helpers.dart';
 
 void main() {
-  Future<void> montar(WidgetTester tester) async {
+  Future<void> montar(WidgetTester tester, LineaDashboard linea) async {
     final cubit = DashboardCubit(
       repository: FakeDashboardRepository(
         topTelas: const [
@@ -30,6 +30,7 @@ void main() {
         resumenApliques:
             const ResumenVentas(total: 1890, ganancias: 980, descuento: 20),
       ),
+      linea: linea,
     );
     addTearDown(cubit.close);
     // Período fijo: el default (primer día del mes → hoy) usa DateTime.now()
@@ -45,17 +46,18 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  group('/dashboard (DashboardScreen)', () {
-    verificarGuias('pestaña Telas por total vendido', montar);
+  group('/dashboard/telas (DashboardScreen)', () {
+    verificarGuias('por total vendido',
+        (tester) => montar(tester, LineaDashboard.telas));
 
-    verificarGuias('pestaña Telas por cantidad', (tester) async {
-      await montar(tester);
+    verificarGuias('por cantidad', (tester) async {
+      await montar(tester, LineaDashboard.telas);
       await tocar(tester, 'Por cantidad');
     });
+  });
 
-    verificarGuias('pestaña Apliques', (tester) async {
-      await montar(tester);
-      await tocar(tester, 'Apliques');
-    });
+  group('/dashboard/apliques (DashboardScreen)', () {
+    verificarGuias('por total vendido',
+        (tester) => montar(tester, LineaDashboard.apliques));
   });
 }
