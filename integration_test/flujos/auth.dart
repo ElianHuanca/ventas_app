@@ -37,6 +37,9 @@ void authTests() {
       // El menú muestra la cuenta y permite salir
       await abrirMenu(tester);
       expect(find.text(emailPrueba), findsOneWidget);
+      // Al pie del menú: en un celular chico queda debajo del borde
+      await tester.ensureVisible(find.text('Cerrar sesión'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Cerrar sesión'));
       await esperarHasta(tester, email);
       expect(SupabaseConfig.client.auth.currentSession, isNull);
