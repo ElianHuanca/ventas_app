@@ -72,6 +72,23 @@ void main() {
       await cubit.close();
     });
 
+    test('apliques también consulta sus dos RPC con el rango nuevo', () async {
+      final cubit =
+          DashboardCubit(repository: repo, linea: LineaDashboard.apliques);
+      await cubit.cargar();
+      repo.rangos.clear();
+
+      final desde = DateTime(2026, 9, 1);
+      final hasta = DateTime(2026, 9, 30);
+      await cubit.cambiarRango(desde, hasta);
+
+      expect(repo.rangos, [
+        [desde, hasta],
+        [desde, hasta],
+      ]);
+      await cubit.close();
+    });
+
     test('cambiarRango consulta las dos RPC con el rango nuevo', () async {
       final cubit =
           DashboardCubit(repository: repo, linea: LineaDashboard.telas);

@@ -61,10 +61,8 @@ class Reposicion {
 
   factory Reposicion.de(StockConVentas item, {required bool estimada}) {
     final vendidas = estimada ? item.vendidasOtras : item.vendidas;
-    if (vendidas <= 0) {
-      return Reposicion(
-          item: item, estimada: estimada, porSemana: 0, minimo: 0, hacer: 0);
-    }
+    // Sin ventas el mínimo da 0 y no se pide nada (el stock nunca es
+    // negativo: CHECK en la base)
     // vendidas × 2,5 / 4 en ese orden: con vendidas enteras da exacto en
     // binario (porSemana × 2,5 deja 5.000000001 y el ceil sube uno)
     final minimo = (vendidas *

@@ -41,6 +41,42 @@ void main() {
     return cubit;
   }
 
+  // El estado inicial del cubit: hasta que llega la primera carga, la
+  // pantalla no tiene que mostrar ni el error ni que está cargando de más
+  test('un InventarioState nuevo no carga, no marca error y muestra faltantes',
+      () {
+    final estado = InventarioState(fecha: DateTime(2026, 10, 15));
+
+    expect(estado.isLoading, isFalse);
+    expect(estado.error, isFalse);
+    expect(estado.items, isEmpty);
+    expect(estado.soloFaltantes, isTrue);
+  });
+
+  test('copyWith cambia la fecha (va en el mensaje al fabricante)', () {
+    final estado = InventarioState(fecha: DateTime(2026, 10, 15));
+
+    expect(estado.copyWith(fecha: DateTime(2026, 10, 20)).fecha,
+        DateTime(2026, 10, 20));
+    expect(estado.copyWith().fecha, DateTime(2026, 10, 15));
+  });
+
+  test('recargar otro día usa la fecha y la ventana nuevas', () async {
+    var ahora = DateTime(2026, 10, 15);
+    final cubit = InventarioCubit(
+        apliquesRepository: repo, idsucursal: 2, hoy: () => ahora);
+    addTearDown(cubit.close);
+    await cubit.stream.firstWhere((s) => !s.isLoading);
+
+    ahora = DateTime(2026, 10, 20);
+    await cubit.cargar();
+
+    expect(cubit.state.fecha, DateTime(2026, 10, 20));
+    final (_, desde, hasta) = repo.inventarioConVentasPedidos.last;
+    expect(desde, DateTime(2026, 9, 23));
+    expect(hasta, DateTime(2026, 10, 20));
+  });
+
   test('al crearse carga las ventas de las últimas 4 semanas, hoy incluido',
       () async {
     await crear();

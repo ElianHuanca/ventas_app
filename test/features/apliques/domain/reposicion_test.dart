@@ -139,6 +139,23 @@ void main() {
           ['Flor Azul', 'Flor verde', 'mariposa rojo']);
     });
 
+    test('el color también se ordena sin distinguir mayúsculas', () {
+      // "Verde" < "azul" distinguiendo mayúsculas: el orden de entrada no
+      // tiene que importar
+      for (final entrada in [
+        ['Verde', 'azul'],
+        ['azul', 'Verde'],
+      ]) {
+        final items = ReglaReposicion.aplicar([
+          for (final color in entrada)
+            _item(color: color, vendidas: 1, stock: 99),
+        ]);
+
+        expect(items.map((r) => r.item.color), ['azul', 'Verde'],
+            reason: 'entrada $entrada');
+      }
+    });
+
     test('un inventario vacío no tiene nada que reponer', () {
       expect(ReglaReposicion.aplicar(const []), isEmpty);
     });
