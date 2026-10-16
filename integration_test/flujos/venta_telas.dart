@@ -202,6 +202,10 @@ void ventaTelasTests() {
       final borrar = find.byIcon(Icons.delete_forever_rounded);
       await esperarHasta(tester, borrar);
       expect(borrar, findsNWidgets(2));
+      // A 360 dp la columna de borrar queda cortada en el borde (la tabla se
+      // desplaza de costado): el toque al centro del ícono caía afuera
+      await tester.ensureVisible(borrar.first);
+      await tester.pumpAndSettle();
       await tester.tap(borrar.first);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Eliminar'));

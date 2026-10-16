@@ -318,6 +318,12 @@ flutter test integration_test -d emulator-5554 --dart-define-from-file=env/local
 
 Un test que se queda quieto sin fallar (sin timeout de `esperarHasta`) casi siempre es la pantalla del dispositivo apagada (`adb shell dumpsys power | grep mWakefulness` dice `Asleep`) o la app de prueba en segundo plano: si otra app pasa al frente (o se toca Inicio), Android la congela. `adb shell dumpsys activity activities | grep topResumedActivity` lo muestra; se trae de vuelta (y el test sigue) con `adb shell monkey -p com.example.textiles_app -c android.intent.category.LAUNCHER 1`.
 
+Otros cuelgues vistos (2026-10-15), los dos en `(setUpAll)`:
+
+- **El túnel `adb reverse` no responde** (pasó después de reiniciar Docker Desktop; `adb kill-server` no alcanzó): se prueba con `adb shell "printf 'GET /auth/v1/health HTTP/1.0\r\n\r\n' | nc -w 5 127.0.0.1 54321"` (tiene que devolver `HTTP/1.1 200`). Desenchufar y volver a enchufar el USB lo arregla un rato, pero con este celular se volvió a cortar a los pocos minutos. Lo estable fue **todo por Wi-Fi**: `adb -s <id usb> tcpip 5555`, `adb connect <IP del celular>:5555` y correr con `-d <IP del celular>:5555` y un `--dart-define-from-file` cuya `SUPABASE_URL` sea `http://<IP de la PC>:54321` (cualquier URL que no sea la de producción cuenta como local; sin `adb reverse`). Así pasaron los 29.
+- **La app de prueba no llega a inicializar Supabase** (el log no dice `Supabase init completed` y `docker logs supabase_auth_ventas_app` no muestra pedidos): quedó estado de una corrida anterior; `adb shell pm clear --user 0 com.example.textiles_app` y volver a correr.
+- `--name` con acentos no encuentra ningún test en Windows (se rompe la codificación del argumento) y la corrida espera para siempre: filtrar por un pedazo sin acentos (`--name "borrar una l"`).
+
 - **Solo corren contra la base local**: `prepararBaseLocal()` corta antes de conectarse si `SupabaseConfig.isLocal` es `false` (sin `--dart-define` apuntaría a producción).
 - Se crean su usuario (`integracion@example.com`) la primera vez, vía sign-up, que solo está habilitado en el `config.toml` local. Sobrevive hasta el próximo `db reset`.
 - Estructura: `app_test.dart` es el **único punto de entrada** (la app se compila e instala una vez) y llama a los flujos de `flujos/*.dart` (sin sufijo `_test` a propósito: si no, `flutter test` los correría como entradas sueltas). `datos.dart` crea los datos de cada test con los datasources reales.
