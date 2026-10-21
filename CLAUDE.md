@@ -103,6 +103,7 @@ Features: `sucursales`, `telas`, `ventas`, `apliques`, `colores`, `dashboard`, `
 | `producciones` | id, fecha (date), sucursal_id — **cabecera** de fabricación: una fila por sucursal+día (migración `supabase/detalle_produccion.sql`) |
 | `detalle_produccion` | id, idproduccion, idaplique, idcolor, cantidad — líneas de la fabricación del día; sube el stock de `inventario` |
 | `detalle_ventas_apliques` | id, idventa, idapliques, idcolor, nombre, precio, cantidad, total, ganancias |
+| `operaciones_aplicadas` | id (uuid, PK), rpc, resultado, creada — claves de idempotencia de las escrituras ya aplicadas (migración `20261020000000_idempotencia_y_venta_telas.sql`); la escriben solo las RPC, nadie la lee ni la borra |
 
 `fecha` se almacena como **TEXT ISO8601** (igual que en la versión SQLite) para preservar la lógica de comparación — las RPC comparan lexicográficamente y eso depende de este formato. Los precios son `NUMERIC` (no `REAL`) para evitar errores de coma flotante en dinero.
 
@@ -110,22 +111,24 @@ Las tablas nuevas (`categorias`, `colores`, `tela_colores`, `tela_fotos`) y las 
 
 ### Convención importante: `actualizarVenta`
 
-`VentasDatasourceImpl.actualizarVenta` mantiene la convención **incremental**: suma el delta al valor actual (`total = total + delta`), excepto `fecha` que se asigna directa. Siempre pasar **deltas** (no valores absolutos) desde los BLoCs. La suma la hace la DB en un solo `UPDATE` (RPC `incrementar_venta`) para que dos dispositivos no se pisen.
+`VentasDatasourceImpl.actualizarVenta` mantiene la convención **incremental**: suma el delta al valor actual (`total = total + delta`), excepto `fecha` que se asigna directa. Siempre pasar **deltas** (no valores absolutos). La suma la hace la DB en un solo `UPDATE` (RPC `incrementar_venta`) para que dos dispositivos no se pisen. **La app ya no la usa para vender ni para borrar líneas** (eso va por `registrar_venta_telas` / `borrar_detalle_venta`, abajo); `incrementar_venta` y `registrar_detalle_venta` siguen en la base porque las usan Android e iOS (`09_contrato`).
 
 ### Escrituras multi-tabla → RPC transaccionales
 
-Todo lo que antes era "leer → sumar en Dart → escribir" en varias llamadas HTTP ahora es una RPC (migración `20261003000100_integridad_stock_y_ventas.sql`). **No volver al patrón leer-y-escribir desde el cliente**: con dos dispositivos pierde unidades.
-
-Son atómicas pero **no idempotentes**: si se pierde la respuesta después del commit y el usuario vuelve a tocar Guardar, se aplican dos veces. Y la venta de telas y el borrado de una línea siguen siendo varias llamadas: una falla en el medio deja el total de la venta distinto de la suma de sus líneas. Son bugs conocidos (omitidos) de `red/`.
+Todo lo que antes era "leer → sumar en Dart → escribir" en varias llamadas HTTP ahora es una RPC (migraciones `20261003000100_integridad_stock_y_ventas.sql` y `20261020000000_idempotencia_y_venta_telas.sql`). **No volver al patrón leer-y-escribir ni a encadenar llamadas desde el cliente**: con dos dispositivos pierde unidades, y una falla de red en el medio deja la venta a medias.
 
 | Datasource | RPC | Qué hace en una transacción |
 |---|---|---|
-| `VentasApliquesDatasourceImpl.createVentaAplique` | `crear_venta_apliques` | **venta del día** de la sucursal (la crea o le suma total/ganancias/descuento) + líneas acumuladas por `(aplique, color, precio)` + descuento de stock; **falla entera** si alguna línea no tiene stock (o no está en inventario activo) o su color no está vinculado al aplique (`aplique_colores` activo) |
-| `ApliquesDatasourceImpl.createProduccion` | `registrar_produccion` | cabecera del día + líneas acumuladas + suma al stock |
-| `DetalleVentasDatasourceImpl.createDetalleVenta` | `registrar_detalle_venta` | upsert por `(idventa, idtelas, precio)` sumando cantidad/total/ganancias |
-| `VentasDatasourceImpl.actualizarVenta` | `incrementar_venta` | suma deltas a la venta |
+| `VentasApliquesDatasourceImpl.createVentaAplique` | `crear_venta_apliques` (+ `p_id_operacion`) | **venta del día** de la sucursal (la crea o le suma total/ganancias/descuento) + líneas acumuladas por `(aplique, color, precio)` + descuento de stock; **falla entera** si alguna línea no tiene stock (o no está en inventario activo) o su color no está vinculado al aplique (`aplique_colores` activo) |
+| `ApliquesDatasourceImpl.createProduccion` | `registrar_produccion` (+ `p_id_operacion`) | cabecera del día + líneas acumuladas + suma al stock |
+| `VentasDatasourceImpl.registrarVentaTelas` | `registrar_venta_telas` (+ `p_id_operacion`) | **venta del día** de telas (la crea o la reusa) + líneas acumuladas por `(idventa, idtelas, precio)` + a la venta el total y las ganancias **de esas líneas** (las calcula la RPC) y el descuento: el total de la venta es siempre la suma de sus líneas. La `fecha` de una venta del día que ya existe **no se toca** (queda la del primer registro, como en apliques; antes `incrementar_venta` la pisaba con la hora del último). Rechaza sin líneas, líneas sin total/ganancias y descuento negativo |
+| `DetalleVentasDatasourceImpl.borrarDetalleVenta` | `borrar_detalle_venta` | borra la línea y le resta su total/ganancias a la venta; devuelve la venta (o null si la línea ya no estaba: no hace nada, es idempotente sin clave) |
+| `DetalleVentasDatasourceImpl.createDetalleVenta` | `registrar_detalle_venta` | upsert por `(idventa, idtelas, precio)` sumando cantidad/total/ganancias, sin tocar la venta. Ya no lo usa la venta: queda para armar datos (integración, macro-benchmarks) |
+| `VentasDatasourceImpl.actualizarVenta` | `incrementar_venta` | suma deltas a la venta (sin uso en la app; ver arriba) |
 
-`VentasDatasourceImpl.createVenta` choca con el UNIQUE `(idsucursales, día)` si otro dispositivo creó la venta del día entre medio: atrapa el `23505` y devuelve la existente.
+`VentasDatasourceImpl.createVenta` (solo para armar datos) choca con el UNIQUE `(idsucursales, día)` si otro dispositivo creó la venta del día entre medio: atrapa el `23505` y devuelve la existente.
+
+**Idempotencia (`p_id_operacion`).** Las tres RPC de escritura con carrito reciben una clave `uuid` por envío (`DEFAULT NULL`, al final de la firma: las apps viejas, Android e iOS no la mandan y siguen andando igual que antes). La base la guarda en `operaciones_aplicadas` en la **misma transacción** (`INSERT ... ON CONFLICT DO NOTHING` al principio): con una clave ya aplicada la RPC devuelve el resultado de entonces **sin aplicar nada**; si la escritura falla, la clave se revierte con todo y el reintento se aplica; una clave usada por otra RPC es un error (HINT `operacion_de_otra_rpc`). En la app la genera `ClaveDeOperacion` (`lib/features/shared/clave_de_operacion.dart`, uuid v4 con `Random.secure`), una por cubit que guarda (`VentaApliquesFormCubit`, `ProduccionFormCubit`, `DetalleVentaFormCubit`): queda **atada a lo que se manda** (carrito/listado, descuento, día): el reintento del mismo envío lleva la misma; si cambió algo es otro envío y lleva otra; después de un envío que salió bien se descarta. Riesgo que queda: si después de una respuesta perdida el usuario **cambia** el carrito y guarda, es otro envío (si el primero había llegado, quedan los dos).
 
 Restricciones en la DB (no solo en la UI): `inventario.stock >= 0`, cantidades `> 0`, precios/costos `>= 0`, y UNIQUE de una venta de telas y una de apliques por sucursal+día, una producción por sucursal+fecha, una línea por `(idventa, idtelas, precio)`, por `(idventa, idapliques, idcolor, precio)` y por `(idproduccion, idaplique, idcolor)`.
 
@@ -156,8 +159,9 @@ Ambas con `GRANT SELECT ... TO anon`. Si se cambia una columna que estas vistas 
 - `supabase/landing.sql` — vistas públicas de la landing
 - `lib/config/router/app_router.dart` — todas las rutas (GoRouter + BLoC providers por ruta)
 - `lib/config/theme/app_theme.dart` — tema Material 3
-- `lib/features/ventas/infrastructure/datasources/ventas_datasource_impl.dart` — lógica incremental de ventas (tabla `ventas`, solo telas)
-- `lib/features/ventas/infrastructure/datasources/detalleVentas_datasource_impl.dart` — upsert por idtelas+precio al crear detalles
+- `lib/features/ventas/infrastructure/datasources/ventas_datasource_impl.dart` — venta de telas en una llamada (`registrarVentaTelas`, RPC `registrar_venta_telas`) y la convención incremental de `actualizarVenta` (tabla `ventas`, solo telas)
+- `lib/features/ventas/infrastructure/datasources/detalleVentas_datasource_impl.dart` — borrar una línea (`borrarDetalleVenta`, RPC `borrar_detalle_venta`) y el upsert por idtelas+precio para armar datos
+- `lib/features/shared/clave_de_operacion.dart` — clave de idempotencia (`p_id_operacion`) de cada envío: uuid v4, la misma en los reintentos del mismo envío
 - `lib/features/apliques/infrastructure/datasources/apliques_datasource_impl.dart` — apliques, inventario, colores y producciones (fabricación sube stock)
 - `lib/features/apliques/infrastructure/datasources/ventas_apliques_datasource_impl.dart` — venta de apliques: insert en `ventas_apliques` + detalles + descuento de stock
 - `lib/features/sucursales/presentation/bloc/sucursal_disponibilidad_cubit.dart` — vinculación telas↔sucursal (solo telas: el inventario de apliques no tiene pantalla de gestión; `addInventario`/`removeInventario` no los llama ninguna)
@@ -203,7 +207,8 @@ Ambas con `GRANT SELECT ... TO anon`. Si se cambia una columna que estas vistas 
 - **Cubit** para estado de formularios
 - Los BLoC providers se crean a nivel de ruta en `app_router.dart`
 - `DetalleVentaFormCubit` acumula items en memoria antes del submit; si se añade el mismo producto al mismo precio **suma la cantidad** en vez de crear un item nuevo
-- Al hacer submit, `createDetalleVenta` hace **upsert** (busca por `idventa + idtelas + precio`; si existe suma, si no inserta)
+- Al hacer submit va **una sola llamada** (`registrar_venta_telas`) con el carrito entero y su clave de operación; la RPC hace el **upsert** de cada línea (por `idventa + idtelas + precio`; si existe suma, si no inserta) y suma los totales a la venta del día
+- Los cubits que guardan (`DetalleVentaFormCubit`, `VentaApliquesFormCubit`, `ProduccionFormCubit`) conservan el carrito/listado si el envío falla, para volver a tocar Guardar con la misma clave; `ProduccionFormCubit` lo vacía apenas el registro sale bien, aunque después falle el refresco del stock
 
 ## Dashboard
 
@@ -245,7 +250,7 @@ flutter pub get          # instalar dependencias
 flutter run              # correr en debug
 flutter build apk        # build Android APK
 flutter analyze          # lints estrictos (ver "Lints"): tiene que quedar limpio
-flutter test             # 878 unitarios/de widget + 168 capturas golden (sin omitidos)
+flutter test             # 931 unitarios/de widget + 168 capturas golden (sin omitidos)
 flutter test --exclude-tags golden          # sin las capturas (p. ej. fuera de Windows)
 flutter test test/goldens --update-goldens  # regenerar capturas tras un cambio visual buscado
 flutter test benchmark/micro                # 176 micro-benchmarks (~1 min)
@@ -382,7 +387,7 @@ npx supabase@latest start -x realtime,storage-api,imgproxy,edge-runtime,logflare
 flutter test concurrencia --dart-define-from-file=env/local.json --concurrency=1
 ```
 
-- 8 "dispositivos" (`SupabaseClient` independientes, cada uno con su sesión del usuario de integración) disparan la misma operación a la vez y se verifica qué quedó en la base: venta de telas (la venta del día la crea uno y los demás recuperan esa por el `23505`; `registrar_detalle_venta` y `incrementar_venta` suman exacto), venta de apliques (última unidad: solo venden los que tienen stock y queda en 0; la venta del día es una sola) y fabricación (una cabecera, una línea, stock exacto; fabricar y vender a la vez).
+- 8 "dispositivos" (`SupabaseClient` independientes, cada uno con su sesión del usuario de integración) disparan la misma operación a la vez y se verifica qué quedó en la base: venta de telas (con el flujo de Android/iOS: la venta del día la crea uno y los demás recuperan esa por el `23505`, `registrar_detalle_venta` y `incrementar_venta` suman exacto; con el del Flutter: `registrar_venta_telas` desde 8 a la vez deja una venta y una línea con todo sumado y el total igual a la línea, y **la misma clave** desde 8 a la vez —reintentos que se cruzan— se aplica una sola vez), venta de apliques (última unidad: solo venden los que tienen stock y queda en 0; la venta del día es una sola) y fabricación (una cabecera, una línea, stock exacto; fabricar y vender a la vez).
 - Cada escenario se repite `CC_REPETICIONES` veces (5 por defecto; `--dart-define=CC_REPETICIONES=20` para más cruces) con una sucursal nueva y fecha 2001-01-01, fuera de los rangos del dashboard y de la integración. Dejan filas con prefijo `CC `: se limpian con `db reset`.
 - Son `test()` simples, sin `TestWidgetsFlutterBinding` (reemplaza el `HttpClient` y toda request devuelve 400). Las sesiones se guardan en `build/concurrencia/sesiones.json`: el auth local acepta 30 logins cada 5 minutos.
 
@@ -391,7 +396,7 @@ flutter test concurrencia --dart-define-from-file=env/local.json --concurrency=1
 ```bash
 npx supabase@latest start -x realtime,storage-api,imgproxy,edge-runtime,logflare,vector,supavisor,mailpit
 flutter test red --dart-define-from-file=env/local.json --concurrency=1
-# los omitidos (bugs conocidos) también: --dart-define=RED_CORRER_BUGS=true
+# si vuelve a haber omitidos (bugs conocidos), correrlos igual: --dart-define=RED_CORRER_BUGS=true
 ```
 
 - `RedConFallas` (`red/red_con_fallas.dart`) es un `http.Client`: **respuesta perdida** (manda el pedido, espera la respuesta entera —la base ya hizo commit— y lanza `ClientException: Connection closed while receiving data`) y **sin conexión** (falla antes de mandar); a qué pedidos alcanza: `Cuando.rpc`, `Cuando.tabla`, `Cuando.llamada(n)`, `Cuando.desdeLlamada(n)`, con `veces`. `red.registro` dice qué llegó a la base.
@@ -399,7 +404,7 @@ flutter test red --dart-define-from-file=env/local.json --concurrency=1
 - `test()` simples con `WidgetsFlutterBinding.ensureInitialized()` (lo pide `Supabase.initialize`), nunca `TestWidgetsFlutterBinding` (toda request devolvería 400).
 - Datos con prefijo `RD ` (`DatosRD`) y fecha 2001-01-02; se limpian con `db reset`. `crear_venta_apliques` recibe `DateTime.now()` del datasource: la red lo cambia por la fecha fija (`fijarParametro`); el resto del cuerpo es el que arma la app.
 - postgrest reintenta solo GET/HEAD (3 veces: 1 + 2 + 4 s) ante un error de red; los POST (todas las RPC) nunca. Un "sin conexión" en un GET tarda ~7 s en fallar.
-- **Bugs conocidos (9 omitidos, 2026-10-20):** las RPC de escritura no son idempotentes (con la respuesta perdida y un segundo toque en Guardar, stock, líneas y totales se aplican dos veces); la venta y el borrado de líneas de telas son varias llamadas y una falla en el medio deja el total distinto de la suma de las líneas (el borrado ya sacó la línea de la pantalla: no hay cómo reintentar); Fabricación da por fallido el registro si falla el refresco del stock y el reintento lo duplica (este se arregla solo en la app). Arreglo propuesto: un `p_id_operacion uuid` por envío (tabla de operaciones aplicadas, en la misma transacción) y una RPC única para la venta de telas y otra para borrar una línea.
+- 27 tests, **sin omitidos** (2026-10-20). Los 9 bugs que había (las RPC de escritura no eran idempotentes: con la respuesta perdida y un segundo Guardar se aplicaban dos veces; la venta y el borrado de líneas de telas eran varias llamadas y una falla en el medio dejaba el total distinto de la suma de las líneas; Fabricación daba por fallido el registro si fallaba el refresco del stock y el reintento lo duplicaba) se arreglaron con la clave `p_id_operacion` y las RPC `registrar_venta_telas` / `borrar_detalle_venta` (ver "Escrituras multi-tabla"). Cubren, por flujo: respuesta perdida (sin reintentar, con un reintento y con dos perdidas seguidas: se aplica una vez), sin conexión (no llega nada y el reintento aplica una vez), venta de telas y borrado en **una sola llamada**, otra venta después de un reintento exitoso (la clave se renueva), el borrado que saca la línea de la pantalla recién cuando la base respondió, el refresco de stock fallido en Fabricación, y la **app vieja** (`crear_venta_apliques` sin `p_id_operacion`: sigue vendiendo, y sin clave su reintento vende de nuevo, como siempre).
 
 ### Base de datos (pgTAP)
 
@@ -407,8 +412,8 @@ flutter test red --dart-define-from-file=env/local.json --concurrency=1
 npx supabase@latest test db   # con el Supabase local levantado
 ```
 
-- `supabase/tests/database/NN_*.test.sql`: RLS y permisos de `anon`/`authenticated` en cada tabla, vista y RPC (01); `crear_venta_apliques` (02); `registrar_produccion` (03); `registrar_detalle_venta` / `incrementar_venta` (04); restricciones y UNIQUE (05); RPC del dashboard (06); vistas `*_web` (07); `inventario_con_ventas` (08); **contrato con las otras apps (09)**.
-- **Contrato (`09_contrato.test.sql`, 279 aserciones)**: lo que Flutter, Android (master), iOS y la web leen y escriben. Fija tablas y vistas; por columna, que exista, su tipo base (sin precisión) y NOT NULL donde una app la decodifica no nula (Android: tipo Kotlin no nulo, supabase-kt no usa `coerceInputValues`; Flutter: `as int`); las FK de los embeds (una sola por par de tablas, si no PostgREST da `PGRST201`), las PK de los upserts, que los inserts de las apps no dejen afuera una NOT NULL sin default, y las RPC con los nombres de sus parámetros (PostgREST llama por nombre), su resultado y las claves del JSON. Reemplaza el "revisar a mano si otra app usa la columna". **Al cambiar lo que lee una app, actualizar sus listas** (`_columnas`, `_embeds`, `_inserts`, `_rpcs`) y el `plan(n)`. Su `todo`: `top_productos` suma `detalle_ventas.total`, que admite NULL; una tela cuyas líneas no tengan total saldría con `total_vendido` NULL y Android (`TopProductoRow`) no la decodifica (hoy no hay ninguna así).
+- `supabase/tests/database/NN_*.test.sql`: RLS y permisos de `anon`/`authenticated` en cada tabla (17, con `operaciones_aplicadas`), vista y RPC (01, 11 RPC); `crear_venta_apliques` (02); `registrar_produccion` (03); venta de telas: `registrar_detalle_venta` / `incrementar_venta` (las de Android e iOS) y `registrar_venta_telas` / `borrar_detalle_venta` (las del Flutter) (04); restricciones y UNIQUE (05); RPC del dashboard (06); vistas `*_web` (07); `inventario_con_ventas` (08); **contrato con las otras apps (09)**; **idempotencia** de las tres RPC con `p_id_operacion` (10: misma clave dos veces = una sola aplicación y el mismo resultado, aunque cambie el contenido; claves distintas = dos; sin clave = como antes; una falla no gasta la clave; una clave de otra RPC es error). 755 aserciones en total (2026-10-20).
+- **Contrato (`09_contrato.test.sql`, 292 aserciones)**: lo que Flutter, Android (master), iOS y la web leen y escriben. Fija tablas y vistas; por columna, que exista, su tipo base (sin precisión) y NOT NULL donde una app la decodifica no nula (Android: tipo Kotlin no nulo, supabase-kt no usa `coerceInputValues`; Flutter: `as int`); las FK de los embeds (una sola por par de tablas, si no PostgREST da `PGRST201`), las PK de los upserts, que los inserts de las apps no dejen afuera una NOT NULL sin default, y las RPC con los nombres de sus parámetros (PostgREST llama por nombre), su resultado y las claves del JSON. Las apps mandan todos los parámetros por nombre **salvo `p_id_operacion`** (solo el Flutter nuevo): que sea opcional (`DEFAULT NULL`, al final) es parte del contrato, y `crear_venta_apliques` / `registrar_produccion` se llaman sin ella como Android e iOS. Reemplaza el "revisar a mano si otra app usa la columna". **Al cambiar lo que lee una app, actualizar sus listas** (`_columnas`, `_embeds`, `_inserts`, `_rpcs`) y el `plan(n)`. Sin `todo` desde que `top_productos` usa `COALESCE` (una tela con líneas sin total salía con `total_vendido` NULL y Android no la decodificaba).
 - Cada archivo corre en una transacción con `rollback`: no deja datos. Al agregar una tabla, RPC o vista, sumarla acá (y actualizar el `plan(n)`).
 - **Bugs conocidos = `todo()`**, el equivalente SQL del `skip` con su `bug: archivo:línea — qué pasa`. Al arreglarlo con una migración, sacar el `todo` (el test tiene que pasar).
 
@@ -434,7 +439,7 @@ El repo es **público** desde el 2026-10-20 (minutos ilimitados en los runners d
 | `noche.yml` | 06:00 UTC diario + a mano | `concurrencia` y `red` contra el Supabase local; `integracion` en emulador Android API 34 (google_apis x86_64, KVM) que llega al Supabase del host por `10.0.2.2`; `micro-benchmarks` (informativo: los presupuestos se calibraron en la PC; sube los JSON) |
 | `semanal.yml` | domingo 07:00 UTC + a mano | `mutacion`: matriz en windows-latest con cada XML de `mutacion/` (los comandos pasan por cmd), `mutation_test 1.8.0`, sube `build/mutacion/<xml>`; un XML que no existe se saltea con aviso |
 
-- **Cobertura:** `tool/cobertura.dart` lee `coverage/lcov.info`, descarta archivos generados, imprime el % por carpeta (`--profundidad`, 3 por defecto) y el total, y falla si el total < `--minimo`. Medido el 2026-10-20: 84.0 % (lo más flojo: `lib/config/router`, 26.8 %). El mínimo va un punto abajo: si baja, falta un test para lo nuevo. Lista aparte los archivos de `lib/` con código que ningún test importa.
+- **Cobertura:** `tool/cobertura.dart` lee `coverage/lcov.info`, descarta archivos generados, imprime el % por carpeta (`--profundidad`, 3 por defecto) y el total, y falla si el total < `--minimo`. Medido el 2026-10-20: 83.6 % (lo más flojo: `lib/config/router`, 27.0 %; los `*DatasourceImpl` quedan en 0 % a propósito: hablan con Supabase y los cubren `red/` e integración). El mínimo va un punto abajo: si baja, falta un test para lo nuevo. Lista aparte los archivos de `lib/` con código que ningún test importa.
 - `noche.yml` y `semanal.yml` se lanzan a mano desde Actions → Run workflow. Los artifacts (lcov, diferencias de capturas, benchmarks, reportes de mutación) quedan en cada corrida.
 - Los workflows se validan con `actionlint` (binario de su release de GitHub; con `-shellcheck` si está shellcheck).
 
