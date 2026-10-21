@@ -90,7 +90,7 @@ void main() {
     );
     addTearDown(router.dispose);
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
-    router.push('/venta-apliques/registro/3');
+    unawaited(router.push('/venta-apliques/registro/3'));
     if (esperar) await tester.pumpAndSettle();
   }
 

@@ -10,7 +10,7 @@ class _Repo extends FakeTelasRepository {
   _Repo({super.telas});
 
   final List<int> getTelaIds = [];
-  Object? getTelaError;
+  Exception? getTelaError;
 
   @override
   Future<Tela> getTela(int id) async {

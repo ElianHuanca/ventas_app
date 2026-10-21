@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/domain.dart';
 
@@ -30,7 +32,7 @@ class ApliqueColoresCubit extends Cubit<ApliqueColoresState> {
 
   ApliqueColoresCubit({required this.apliquesRepository, required this.idaplique})
       : super(ApliqueColoresState()) {
-    load();
+    unawaited(load());
   }
 
   Future<void> load() async {

@@ -77,11 +77,11 @@ class TelasDatasourceImpl implements TelasDatasource {
     return list
         .map<ColorItem>((e) => ColorItem(
               id: e['id'] as int,
-              nombre: e['nombre'] ?? '',
-              hex: e['hex'] ?? '',
+              nombre: e['nombre'] as String? ?? '',
+              hex: e['hex'] as String? ?? '',
               vinculado: e['tela_colores'] is List &&
-                  (e['tela_colores'] as List)
-                      .any((v) => v is Map && (v['activo'] ?? false)),
+                  (e['tela_colores'] as List).any(
+                      (v) => v is Map && (v['activo'] as bool? ?? false)),
             ))
         .toList();
   }

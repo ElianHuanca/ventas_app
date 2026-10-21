@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/domain.dart';
 
@@ -28,7 +30,7 @@ class SucursalDisponibilidadCubit extends Cubit<SucursalDisponibilidadState> {
     required this.sucursalesRepository,
     required this.idsucursal,
   }) : super(SucursalDisponibilidadState()) {
-    load();
+    unawaited(load());
   }
 
   Future<void> load() async {

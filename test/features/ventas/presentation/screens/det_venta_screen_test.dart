@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -221,7 +223,7 @@ void main() {
     );
     addTearDown(router.dispose);
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
-    router.push('/det_venta/1');
+    unawaited(router.push('/det_venta/1'));
     await tester.pumpAndSettle();
     await anadirLinea(tester, tela: 'Lino', precio: '100', cantidad: '2');
 

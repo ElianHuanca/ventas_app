@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:textiles_app/features/dashboard/domain/domain.dart';
 
@@ -62,7 +64,7 @@ class DashboardCubit extends Cubit<DashboardState> {
           desde: DateTime(DateTime.now().year, DateTime.now().month, 1),
           hasta: DateTime.now(),
         )) {
-    cargar();
+    unawaited(cargar());
   }
 
   /// Carga el ranking y el resumen de [linea] (sus dos RPC, juntas).

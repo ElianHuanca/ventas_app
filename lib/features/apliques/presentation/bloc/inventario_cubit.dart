@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:textiles_app/features/apliques/domain/domain.dart';
 
@@ -58,7 +60,7 @@ class InventarioCubit extends Cubit<InventarioState> {
     DateTime Function()? hoy,
   })  : _hoy = hoy ?? DateTime.now,
         super(InventarioState(fecha: (hoy ?? DateTime.now)())) {
-    cargar();
+    unawaited(cargar());
   }
 
   /// Las ventas de las últimas [ReglaReposicion.semanasVentana] semanas,

@@ -10,7 +10,7 @@ class _RepoSucursal extends FakeSucursalesRepository {
   _RepoSucursal({super.sucursales});
 
   final List<int> idsPedidos = [];
-  Object? errorGetSucursal;
+  Exception? errorGetSucursal;
 
   @override
   Future<Sucursal> getSucursal(int id) async {

@@ -19,7 +19,7 @@ class DetalleVentasDatasourceImpl extends DetalleVentasDatasource {
     // Upsert atómico en la DB (RPC registrar_detalle_venta) por
     // idventa + idtelas + precio (UNIQUE): si la línea existe suma
     // cantidad/total/ganancias; si no, inserta.
-    final rows = await _db.rpc('registrar_detalle_venta', params: {
+    final rows = await _db.rpc<List<dynamic>>('registrar_detalle_venta', params: {
       'p_idventa': idventas,
       'p_detalles': detalleVentasLike
           .map((item) => {
@@ -31,7 +31,7 @@ class DetalleVentasDatasourceImpl extends DetalleVentasDatasource {
                 'ganancias': item['ganancias'],
               })
           .toList(),
-    }) as List;
+    });
     return rows
         .map((e) => DetalleVentaMapper.jsonToEntity(e as Map<String, dynamic>))
         .toList();

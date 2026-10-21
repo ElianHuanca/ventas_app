@@ -90,7 +90,7 @@ class TelasBloc extends Bloc<TelasEvent, TelasState> {
   Future<bool> updateTela(Map<String, dynamic> telaLike) async {
     try {
       final tela =
-          await telasRepository.updateTela(telaLike, telaLike['id']);
+          await telasRepository.updateTela(telaLike, telaLike['id'] as int);
       add(TelasUpdateRequested(tela));
       return true;
     } catch (_) {

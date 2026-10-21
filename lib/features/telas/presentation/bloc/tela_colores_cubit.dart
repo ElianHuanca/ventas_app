@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:textiles_app/features/apliques/domain/entities/color_item.dart';
 import '../../domain/domain.dart';
@@ -31,7 +33,7 @@ class TelaColoresCubit extends Cubit<TelaColoresState> {
 
   TelaColoresCubit({required this.telasRepository, required this.idtela})
       : super(TelaColoresState()) {
-    load();
+    unawaited(load());
   }
 
   Future<void> load() async {

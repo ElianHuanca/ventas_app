@@ -14,7 +14,7 @@ import 'package:textiles_app/features/ventas/domain/domain.dart';
 /// métodos lo lanzan después de registrar la llamada.
 abstract class FakeDatasource {
   final List<List<Object?>> llamadas = [];
-  Object? error;
+  Exception? error;
 
   T registrar<T>(String metodo, List<Object?> argumentos, T respuesta) {
     llamadas.add([metodo, ...argumentos]);

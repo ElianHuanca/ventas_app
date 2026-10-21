@@ -48,7 +48,8 @@ void main() {
     expect(tela.idtela, fila['id']);
     expect(tela.nombre, fila['nombre']);
     expect(tela.disponible,
-        (fila['tela_sucursales'] as List).any((v) => v['activo'] == true));
+        (fila['tela_sucursales'] as List)
+            .any((v) => (v as Map)['activo'] == true));
   });
 
   propiedad('ApliqueMapper: dimensiones null siguen null', _filaAplique,
@@ -83,10 +84,13 @@ void main() {
 
     expect(produccion.id, fila['id']);
     expect(produccion.fecha, cabecera['fecha']);
-    expect(produccion.sucursalNombre, cabecera['sucursales']['nombre']);
-    expect(produccion.apliqueNombre, fila['apliques']['nombre']);
-    expect(produccion.colorNombre, fila['colores']['nombre']);
-    expect(produccion.hex, fila['colores']['hex'] ?? '');
+    final sucursal = cabecera['sucursales'] as Map;
+    final aplique = fila['apliques'] as Map;
+    final color = fila['colores'] as Map;
+    expect(produccion.sucursalNombre, sucursal['nombre']);
+    expect(produccion.apliqueNombre, aplique['nombre']);
+    expect(produccion.colorNombre, color['nombre']);
+    expect(produccion.hex, color['hex'] ?? '');
     expect(produccion.cantidad, (fila['cantidad'] as num).toDouble());
   });
 

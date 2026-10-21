@@ -142,7 +142,9 @@ class _RangoFechas extends StatelessWidget {
             ),
           );
           if (rango != null && context.mounted) {
-            context.read<DashboardCubit>().cambiarRango(rango.start, rango.end);
+            await context
+                .read<DashboardCubit>()
+                .cambiarRango(rango.start, rango.end);
           }
         },
         child: Container(

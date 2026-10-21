@@ -72,7 +72,7 @@ void ventaApliquesTests() {
       final lineas = await db
           .from('detalle_ventas_apliques')
           .select('idapliques, idcolor, cantidad, precio')
-          .eq('idventa', ventas.single['id']);
+          .eq('idventa', ventas.single['id'] as int);
       expect(lineas, hasLength(1));
       expect(lineas.single['idapliques'], aplique.id);
       expect(lineas.single['idcolor'], color.id);
@@ -138,7 +138,7 @@ void ventaApliquesTests() {
       final lineas = await db
           .from('detalle_ventas_apliques')
           .select('idcolor, cantidad')
-          .eq('idventa', venta['id']);
+          .eq('idventa', venta['id'] as int);
       expect(lineas, hasLength(1));
       expect(lineas.single['idcolor'], color.id);
       expect(numero(lineas.single['cantidad']), 2);
@@ -165,7 +165,7 @@ void ventaApliquesTests() {
       final lineas = await db
           .from('detalle_ventas_apliques')
           .select('cantidad')
-          .eq('idventa', ventas.single['id']);
+          .eq('idventa', ventas.single['id'] as int);
       expect(lineas, hasLength(1), reason: 'mismo aplique, color y precio');
       expect(numero(lineas.single['cantidad']), 5);
       expect(await stockDe(sucursal, aplique, color), 5);

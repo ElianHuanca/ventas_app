@@ -32,7 +32,7 @@ class FakeVentasRepository implements VentasRepository {
   final List<int> ventasEliminadas = [];
   List<Map<String, dynamic>> actualizaciones = [];
   List<int> idsActualizados = [];
-  Object? error;
+  Exception? error;
 
   void _throwIfError() {
     if (error != null) throw error!;
@@ -130,7 +130,7 @@ class FakeDetalleVentasRepository implements DetalleVentasRepository {
   final List<int> idsVentaUsados = [];
   final List<int> detallesEliminados = [];
   int? lastGetDetalleIdventa;
-  Object? error;
+  Exception? error;
 
   @override
   Future<List<DetalleVenta>> createDetalleVenta(
@@ -176,7 +176,7 @@ class FakeVentasApliquesRepository implements VentasApliquesRepository {
   List<Map<String, dynamic>>? lastDetalles;
   int? lastGetVentasApliquesSucursalId;
   int? lastGetDetalleIdventa;
-  Object? error;
+  Exception? error;
 
   @override
   Future<int> createVentaAplique({
@@ -255,8 +255,8 @@ class FakeApliquesRepository implements ApliquesRepository {
   final List<Map<String, dynamic>> produccionesCreadas = [];
   final List<List<int>> inventarioAgregado = [];
   final List<List<int>> inventarioRemovido = [];
-  Object? error;
-  Object? removeInventarioError;
+  Exception? error;
+  Exception? removeInventarioError;
 
   void _throwIfError() {
     if (error != null) throw error!;
@@ -343,11 +343,11 @@ class FakeApliquesRepository implements ApliquesRepository {
     _throwIfError();
     return Aplique(
       id: 99,
-      nombre: apliqueLike['nombre'] ?? '',
+      nombre: apliqueLike['nombre'] as String? ?? '',
       costoFabricacion:
           (apliqueLike['costo_fabricacion'] as num?)?.toDouble() ?? 0,
-      tamanio: apliqueLike['tamanio'] ?? '',
-      activo: apliqueLike['activo'] ?? true,
+      tamanio: apliqueLike['tamanio'] as String? ?? '',
+      activo: apliqueLike['activo'] as bool? ?? true,
     );
   }
 
@@ -357,11 +357,11 @@ class FakeApliquesRepository implements ApliquesRepository {
     _throwIfError();
     return Aplique(
       id: id,
-      nombre: apliqueLike['nombre'] ?? '',
+      nombre: apliqueLike['nombre'] as String? ?? '',
       costoFabricacion:
           (apliqueLike['costo_fabricacion'] as num?)?.toDouble() ?? 0,
-      tamanio: apliqueLike['tamanio'] ?? '',
-      activo: apliqueLike['activo'] ?? true,
+      tamanio: apliqueLike['tamanio'] as String? ?? '',
+      activo: apliqueLike['activo'] as bool? ?? true,
     );
   }
 }
@@ -377,7 +377,7 @@ class FakeTelasRepository implements TelasRepository {
   int? lastIdsucursal;
   bool? lastSoloActivos;
   final List<List<dynamic>> setColorTelaCalls = [];
-  Object? error;
+  Exception? error;
 
   void _throwIfError() {
     if (error != null) throw error!;
@@ -406,13 +406,13 @@ class FakeTelasRepository implements TelasRepository {
   @override
   Future<Tela> createTela(Map<String, dynamic> telaLike) async {
     _throwIfError();
-    return Tela(id: 99, nombre: telaLike['nombre'] ?? '');
+    return Tela(id: 99, nombre: telaLike['nombre'] as String? ?? '');
   }
 
   @override
   Future<Tela> updateTela(Map<String, dynamic> telaLike, int id) async {
     _throwIfError();
-    return Tela(id: id, nombre: telaLike['nombre'] ?? '');
+    return Tela(id: id, nombre: telaLike['nombre'] as String? ?? '');
   }
 
   @override
@@ -439,7 +439,7 @@ class FakeSucursalesRepository implements SucursalesRepository {
 
   final List<List<dynamic>> setTelaSucursalCalls = [];
   bool deleteResult = true;
-  Object? error;
+  Exception? error;
 
   void _throwIfError() {
     if (error != null) throw error!;
@@ -459,14 +459,14 @@ class FakeSucursalesRepository implements SucursalesRepository {
   @override
   Future<Sucursal> createSucursal(Map<String, dynamic> sucursalLike) async {
     _throwIfError();
-    return Sucursal(id: 99, nombre: sucursalLike['nombre'] ?? '');
+    return Sucursal(id: 99, nombre: sucursalLike['nombre'] as String? ?? '');
   }
 
   @override
   Future<Sucursal> updateSucursal(
       Map<String, dynamic> sucursalLike, int id) async {
     _throwIfError();
-    return Sucursal(id: id, nombre: sucursalLike['nombre'] ?? '');
+    return Sucursal(id: id, nombre: sucursalLike['nombre'] as String? ?? '');
   }
 
   @override
@@ -498,7 +498,7 @@ class FakeColoresRepository implements ColoresRepository {
   Map<String, dynamic>? actualizado;
   int? eliminado;
   bool deleteResult = true;
-  Object? error;
+  Exception? error;
 
   void _throwIfError() {
     if (error != null) throw error!;
@@ -515,7 +515,7 @@ class FakeColoresRepository implements ColoresRepository {
     _throwIfError();
     creado = colorLike;
     return ColorItem(
-        id: 99, nombre: colorLike['nombre'] ?? '', hex: colorLike['hex'] ?? '');
+        id: 99, nombre: colorLike['nombre'] as String? ?? '', hex: colorLike['hex'] as String? ?? '');
   }
 
   @override
@@ -523,7 +523,7 @@ class FakeColoresRepository implements ColoresRepository {
     _throwIfError();
     actualizado = colorLike;
     return ColorItem(
-        id: id, nombre: colorLike['nombre'] ?? '', hex: colorLike['hex'] ?? '');
+        id: id, nombre: colorLike['nombre'] as String? ?? '', hex: colorLike['hex'] as String? ?? '');
   }
 
   @override

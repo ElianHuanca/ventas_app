@@ -4,7 +4,7 @@ class MiTextField extends StatelessWidget {
   final int? flex;
   final String label;
   final String? initialValue;
-  final Function(String)? onChanged;
+  final ValueChanged<String>? onChanged;
   final String? errorMessage;
   final TextEditingController? controller;
   final TextInputType? keyboardType;

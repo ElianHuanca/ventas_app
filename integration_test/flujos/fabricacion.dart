@@ -53,7 +53,7 @@ void fabricacionTests() {
       final lineas = await db
           .from('detalle_produccion')
           .select('cantidad')
-          .eq('idproduccion', producciones.single['id']);
+          .eq('idproduccion', producciones.single['id'] as int);
       expect(lineas, hasLength(1));
       expect(numero(lineas.single['cantidad']), 10);
 
@@ -117,7 +117,7 @@ void fabricacionTests() {
       final lineas = await db
           .from('detalle_produccion')
           .select('idcolor, cantidad')
-          .eq('idproduccion', producciones.single['id']);
+          .eq('idproduccion', producciones.single['id'] as int);
       expect(lineas, hasLength(1));
       expect(lineas.single['idcolor'], rojo.id);
 

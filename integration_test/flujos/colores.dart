@@ -27,7 +27,7 @@ void coloresTests() {
           await db.from('colores').select('id, hex').eq('nombre', nombre);
       expect(creado, hasLength(1));
       expect(creado.single['hex'], 'FF7F50');
-      final id = creado.single['id'];
+      final id = creado.single['id'] as int;
 
       await esperarHasta(tester, find.byIcon(Icons.add));
       await tocarHasta(tester, find.text(nombre), find.text('Editar Color'));

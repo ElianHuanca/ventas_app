@@ -6,7 +6,7 @@ class ItemDashboard extends StatelessWidget {
   final String title;
   final IconData iconData;
   //final Color background;
-  final Function onTap;
+  final VoidCallback onTap;
 
   const ItemDashboard(
       {super.key,

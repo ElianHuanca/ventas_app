@@ -1,29 +1,113 @@
-# This file configures the analyzer, which statically analyzes Dart code to
-# check for errors, warnings, and lints.
+# Configuración del analizador (`flutter analyze`). Tiene que quedar limpio:
+# `flutter analyze` falla también con los avisos de nivel "info".
 #
-# The issues identified by the analyzer are surfaced in the UI of Dart-enabled
-# IDEs (https://dart.dev/tools#ides-and-editors). The analyzer can also be
-# invoked from the command line by running `flutter analyze`.
-
-# The following line activates a set of recommended lints for Flutter apps,
-# packages, and plugins designed to encourage good coding practices.
+# Base: el set recomendado de Flutter (flutter_lints, que ya trae
+# `use_build_context_synchronously`, `avoid_print`, `empty_catches`,
+# `unrelated_type_equality_checks`, `control_flow_in_finally`, etc.).
+# Encima, un conjunto curado de reglas que detectan errores reales; las de
+# estilo puro quedaron afuera a propósito (ver "Descartadas" al final).
+#
+# Para silenciar un caso puntual que está bien: `// ignore: regla` en esa
+# línea con un comentario del porqué. No apagar una regla para todo el repo
+# por un solo caso.
 include: package:flutter_lints/flutter.yaml
 
-linter:
-  # The lint rules applied to this project can be customized in the
-  # section below to disable rules from the `package:flutter_lints/flutter.yaml`
-  # included above or to enable additional rules. A list of all available lints
-  # and their documentation is published at
-  # https://dart-lang.github.io/linter/lints/index.html.
-  #
-  # Instead of disabling a lint rule for the entire project in the
-  # section below, it can also be suppressed for a single line of code
-  # or a specific dart file by using the `// ignore: name_of_lint` and
-  # `// ignore_for_file: name_of_lint` syntax on the line or in the file
-  # producing the lint.
-  rules:
-    # avoid_print: false  # Uncomment to disable the `avoid_print` rule
-    # prefer_single_quotes: true  # Uncomment to enable the `prefer_single_quotes` rule
+analyzer:
+  language:
+    # Sin conversiones implícitas desde `dynamic`. Las filas de Supabase llegan
+    # como Map<String, dynamic>: sin esto, `json['nombre']` se convierte solo a
+    # String y el error de tipo aparece recién en el celular. Con esto el cast
+    # queda escrito donde puede fallar. Destapó TelaMapper y SucursalMapper sin
+    # tipo de retorno (devolvían `dynamic` a todo el que los usaba).
+    strict-casts: true
+    # Que el analizador no rellene con `dynamic` lo que no puede inferir
+    # (`rpc(...)` o `showDialog(...)` sin tipo, parámetros sin tipo).
+    strict-inference: true
+    # `List`, `Map`, `Future` sin argumento de tipo son `dynamic` escondido.
+    strict-raw-types: true
 
-# Additional information about this file can be found at
-# https://dart.dev/guides/language/analysis-options
+linter:
+  rules:
+    # ===== Futures y async =====
+    # Un Future sin `await` dentro de una función async: su error no lo
+    # atrapa ningún try/catch y se pierde (o salta como no manejado). Si es a
+    # propósito (p. ej. `router.push`, que termina recién al volver), envolverlo
+    # en `unawaited(...)` de dart:async.
+    - unawaited_futures
+    # Lo mismo en funciones que no son async (constructores de cubits que
+    # disparan la carga, `dispose` que cancela una suscripción).
+    - discarded_futures
+    # `void f() async`: quien la llama no puede esperarla ni ver su error.
+    - avoid_void_async
+    # Un `throw` en un `finally` reemplaza la excepción original.
+    - throw_in_finally
+    # File.exists()/stat() async son mucho más lentos que los sync (scripts de
+    # tool/, helpers de tests y benchmarks).
+    - avoid_slow_async_io
+
+    # ===== Recursos sin liberar =====
+    # Suscripción a un Stream que nunca se cancela: sigue viva y recibiendo.
+    - cancel_subscriptions
+    # StreamController que nunca se cierra.
+    - close_sinks
+
+    # ===== Tipos y dynamic =====
+    # Llamar métodos o leer propiedades de un `dynamic` (filas JSON): si la
+    # columna no es lo que se cree, falla en ejecución sin aviso del compilador.
+    - avoid_dynamic_calls
+    # Un método sin tipo de retorno devuelve `dynamic` (pasó con los mappers).
+    - always_declare_return_types
+    # `runtimeType.toString()` cambia con el código ofuscado/minificado.
+    - avoid_type_to_string
+    # `case int:` compara contra el objeto Type, no contra los enteros.
+    - type_literal_in_constant_pattern
+    # Patrones de `case` que en Dart 3 significan otra cosa que en Dart 2.
+    - invalid_case_patterns
+    # `list.contains(x)` / `map[x]` con un x de tipo que nunca puede estar:
+    # siempre da false/null.
+    - collection_methods_unrelated_type
+
+    # ===== Errores de tipeo que compilan =====
+    # Dos strings pegados en una lista: casi siempre es una coma que falta
+    # (se concatenan en un solo elemento).
+    - no_adjacent_strings_in_list
+    # 'Hola' 'mundo' → 'Holamundo' en un mensaje al usuario.
+    - missing_whitespace_between_adjacent_strings
+    # `x = x;`
+    - no_self_assignments
+    # Expresiones sin efecto (`a == b;`, `lista;`).
+    - unnecessary_statements
+    # `if (true)` / `while (false)`: código muerto o de debug que quedó.
+    - literal_only_boolean_expressions
+    # Usar `_` como si fuera una variable.
+    - no_wildcard_variable_uses
+    # Parámetro de constructor que se recibe y se ignora.
+    - avoid_unused_constructor_parameters
+    # Variable local que no se reasigna: `final` evita pisarla por error.
+    - prefer_final_locals
+
+    # ===== Excepciones =====
+    # Tirar algo que no es Exception/Error (un String, un Object): un
+    # `on Exception catch` no lo atrapa y no trae stack útil.
+    - only_throw_errors
+    # `on Error catch`: los Error son bugs de programación, no se atrapan.
+    - avoid_catching_errors
+    # `operator ==` sin chequear el tipo del otro lado.
+    - test_types_in_equals
+
+    # ===== Tests =====
+    # try { ...; fail() } catch: si el catch es muy amplio se traga el fail y
+    # el test pasa sin verificar nada. Usar `throwsA(...)`.
+    - use_test_throws_matchers
+
+# ===== Descartadas (con su porqué) =====
+# - directives_ordering: solo ordena imports (estilo). Tocaba 36 archivos y con
+#   varias ramas en paralelo generaba conflictos de merge sin arreglar nada.
+# - unnecessary_await_in_return: estilo; y un `return await` dentro de un try
+#   es necesario para que el catch atrape el error.
+# - cast_nullable_to_non_nullable, unnecessary_null_checks: estilo (`as T` vs `!`).
+# - strict_top_level_inference: la cubren always_declare_return_types y
+#   strict-inference.
+# - unreachable_from_main: solo mira archivos con `main`; acá no aporta.
+# - avoid_print ya viene de flutter_lints: los scripts de tool/ escriben con
+#   stdout/stderr.

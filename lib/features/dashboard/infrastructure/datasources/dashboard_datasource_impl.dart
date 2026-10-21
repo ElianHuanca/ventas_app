@@ -23,12 +23,13 @@ class DashboardDatasourceImpl extends DashboardDatasource {
       {required DateTime desde, required DateTime hasta}) async {
     final hastaFin = _finDelDia(hasta);
 
-    final rows = await _db.rpc(rpc, params: {
+    final rows = await _db.rpc<List<dynamic>>(rpc, params: {
       'desde': desde.toIso8601String(),
       'hasta': hastaFin.toIso8601String(),
-    }) as List;
+    });
 
     return rows
+        .cast<Map<String, dynamic>>()
         .map((row) => TopProducto(
               nombre: row['nombre'] as String? ?? 'Sin nombre',
               totalVendido: (row['total_vendido'] as num?)?.toDouble() ?? 0.0,
@@ -55,13 +56,13 @@ class DashboardDatasourceImpl extends DashboardDatasource {
       {required DateTime desde, required DateTime hasta}) async {
     final hastaFin = _finDelDia(hasta);
 
-    final result = await _db.rpc(rpc, params: {
+    final result = await _db.rpc<dynamic>(rpc, params: {
       'desde': desde.toIso8601String(),
       'hasta': hastaFin.toIso8601String(),
     });
 
     // La función devuelve una sola fila (puede llegar como lista o como mapa).
-    final row = result is List ? result.first : result;
+    final row = (result is List ? result.first : result) as Map<String, dynamic>;
     return ResumenVentas(
       total: (row['total'] as num?)?.toDouble() ?? 0.0,
       ganancias: (row['ganancias'] as num?)?.toDouble() ?? 0.0,
