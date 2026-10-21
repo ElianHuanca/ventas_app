@@ -8,7 +8,7 @@ class Screen1 extends StatelessWidget {
   final bool isGridview;
   final FloatingActionButton? floatingActionButton;
   final bool backRoute;
-  final Function? onTap;
+  final VoidCallback? onTap;
 
   /// Lo que lee TalkBack (y el tooltip) del botón "+" de [onTap].
   final String tooltipAgregar;

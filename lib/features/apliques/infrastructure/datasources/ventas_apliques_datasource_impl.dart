@@ -19,7 +19,7 @@ class VentasApliquesDatasourceImpl implements VentasApliquesDatasource {
     required double descuento,
     required List<Map<String, dynamic>> detalles,
   }) async {
-    final idventa = await _db.rpc('crear_venta_apliques', params: {
+    final idventa = await _db.rpc<dynamic>('crear_venta_apliques', params: {
       'p_idsucursales': idsucursales,
       'p_fecha': DateTime.now().toIso8601String(),
       'p_total': total,

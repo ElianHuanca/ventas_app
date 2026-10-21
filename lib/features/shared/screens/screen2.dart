@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -43,7 +45,7 @@ class Screen2 extends StatelessWidget {
                   backgroundColor: Colors.white,
                   elevation: 4,
                   onPressed: () {
-                    context.push('/det_venta');
+                    unawaited(context.push('/det_venta'));
                   },
                   child: const Icon(Icons.add),
                 ),

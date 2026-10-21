@@ -26,7 +26,7 @@ Future<int> venderApliques(
 }) async {
   final total = cantidad * precio;
   final ganancias = (precio - costo) * cantidad;
-  final idventa = await db.rpc('crear_venta_apliques', params: {
+  final idventa = await db.rpc<dynamic>('crear_venta_apliques', params: {
     'p_idsucursales': sucursal,
     'p_fecha': fecha.toIso8601String(),
     'p_total': total - descuento,
@@ -57,7 +57,7 @@ Future<int> fabricar(
   required num cantidad,
   required DateTime fecha,
 }) async {
-  final idproduccion = await db.rpc('registrar_produccion', params: {
+  final idproduccion = await db.rpc<dynamic>('registrar_produccion', params: {
     'p_sucursal_id': sucursal,
     'p_fecha': dia(fecha),
     'p_lineas': [

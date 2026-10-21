@@ -14,9 +14,11 @@ String mensajeFaltantes({
   return [
     '*Huantex – Faltantes $sucursal* ($dia)',
     '',
+    // Entre paréntesis: es UNA línea partida en dos strings, no una coma que
+    // falta (no_adjacent_strings_in_list)
     for (final r in faltantes)
-      '• ${r.item.aplique} – ${r.item.color}: hacer *${r.hacer}* '
-          '(quedan ${cantidadLegible(r.item.stock)})',
+      ('• ${r.item.aplique} – ${r.item.color}: hacer *${r.hacer}* '
+          '(quedan ${cantidadLegible(r.item.stock)})'),
     '',
     'Total a hacer: $total',
   ].join('\n');

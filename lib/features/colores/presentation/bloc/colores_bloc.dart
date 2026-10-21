@@ -98,7 +98,7 @@ class ColoresBloc extends Bloc<ColoresEvent, ColoresState> {
   Future<bool> updateColor(Map<String, dynamic> colorLike) async {
     try {
       final color =
-          await coloresRepository.updateColor(colorLike, colorLike['id']);
+          await coloresRepository.updateColor(colorLike, colorLike['id'] as int);
       add(ColoresUpdateRequested(color));
       return true;
     } catch (_) {

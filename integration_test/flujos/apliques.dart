@@ -51,7 +51,7 @@ void apliquesTests() {
       final fila = await db
           .from('apliques')
           .select('costo_fabricacion, activo')
-          .eq('id', creado.single['id'])
+          .eq('id', creado.single['id'] as int)
           .single();
       expect(numero(fila['costo_fabricacion']), 7.5);
       expect(fila['activo'], isFalse);

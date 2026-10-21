@@ -74,9 +74,9 @@ void main() {
 
         final enviadas = prueba.detalles.detallesCreados.single;
         final venta = prueba.ventas.actualizaciones.single;
-        expect(_sumaCentavos(enviadas, 'total'), centavos(venta['total']));
+        expect(_sumaCentavos(enviadas, 'total'), centavos(venta['total'] as num));
         expect(
-            _sumaCentavos(enviadas, 'ganancias'), centavos(venta['ganancias']));
+            _sumaCentavos(enviadas, 'ganancias'), centavos(venta['ganancias'] as num));
       } finally {
         prueba.cerrar();
       }
@@ -90,9 +90,9 @@ void main() {
       try {
         carrito.pasos.forEach(prueba.aplicar);
         for (final linea in prueba.cubit.state.detVentas) {
-          final cantidad = centavos(linea['cantidad']);
-          final precio = centavos(linea['precio']);
-          expect(centavos(linea['total']),
+          final cantidad = centavos(linea['cantidad'] as num);
+          final precio = centavos(linea['precio'] as num);
+          expect(centavos(linea['total'] as num),
               diezmilesimosACentavos(cantidad * precio),
               reason: '$cantidad centésimos × $precio centavos');
         }
@@ -186,9 +186,9 @@ void main() {
       try {
         carrito.pasos.forEach(prueba.aplicar);
         for (final linea in prueba.cubit.state.detalles) {
-          final cantidad = centavos(linea['cantidad']);
-          final precio = centavos(linea['precio']);
-          expect(centavos(linea['total']),
+          final cantidad = centavos(linea['cantidad'] as num);
+          final precio = centavos(linea['precio'] as num);
+          expect(centavos(linea['total'] as num),
               diezmilesimosACentavos(cantidad * precio),
               reason: '$cantidad centésimos × $precio centavos');
         }
@@ -264,7 +264,7 @@ void main() {
         expect({
           for (final l in lineas)
             (l['idaplique'] as int, l['idcolor'] as int):
-                centavos(l['cantidad'])
+                centavos(l['cantidad'] as num)
         }, prueba.modelo);
         expect(prueba.cubit.state.detProducciones, isEmpty);
       } finally {
@@ -496,7 +496,7 @@ class _PruebaTelas {
       (linea['cantidad'] as num).toDouble(),
       (linea['precio'] as num).toDouble(),
     );
-    modelo.remove((linea['idtelas'] as int, centavos(linea['precio'])));
+    modelo.remove((linea['idtelas'] as int, centavos(linea['precio'] as num)));
   }
 
   void quitarTodo(int mezcla) {
@@ -510,7 +510,7 @@ class _PruebaTelas {
     expect(state.detVentas.length, modelo.length,
         reason: 'una línea por tela+precio');
     for (final l in state.detVentas) {
-      final clave = (l['idtelas'] as int, centavos(l['precio']));
+      final clave = (l['idtelas'] as int, centavos(l['precio'] as num));
       expect(modelo, contains(clave), reason: 'línea inesperada $l');
       expect(l['cantidad'], modelo[clave]! / 100,
           reason: 'cantidad = suma de lo agregado, sin ruido: $l');
@@ -626,7 +626,7 @@ class _PruebaApliques {
     modelo.remove((
       linea['idapliques'] as int,
       linea['idcolor'] as int,
-      centavos(linea['precio'])
+      centavos(linea['precio'] as num)
     ));
   }
 
@@ -642,7 +642,7 @@ class _PruebaApliques {
         reason: 'una línea por aplique+color+precio');
     for (final l in state.detalles) {
       final clave =
-          (l['idapliques'] as int, l['idcolor'] as int, centavos(l['precio']));
+          (l['idapliques'] as int, l['idcolor'] as int, centavos(l['precio'] as num));
       expect(modelo, contains(clave), reason: 'línea inesperada $l');
       expect(l['cantidad'], modelo[clave]! / 100,
           reason: 'cantidad = suma de lo agregado, sin ruido: $l');
@@ -652,7 +652,7 @@ class _PruebaApliques {
       for (var c = 0; c < _colores; c++) {
         final enCarrito = state.detalles
             .where((l) => l['idapliques'] == p + 1 && l['idcolor'] == c + 1)
-            .fold(0, (suma, l) => suma + centavos(l['cantidad']));
+            .fold(0, (suma, l) => suma + centavos(l['cantidad'] as num));
         expect(enCarrito, lessThanOrEqualTo(carrito.stock[p][c].centesimos),
             reason: 'stock del aplique ${p + 1} color ${c + 1}');
       }
@@ -751,7 +751,7 @@ class _PruebaProduccion {
 
   Map<Object, Object> foto() => {
         for (final l in cubit.state.detProducciones)
-          (l['idaplique'], l['idcolor']): l['cantidad'],
+          (l['idaplique'], l['idcolor']): l['cantidad'] as Object,
       };
 
   Future<void> cerrar() async {

@@ -19,7 +19,7 @@ class _RepoRegistrador extends FakeSucursalesRepository {
   final List<Map<String, dynamic>> creadas = [];
   final List<List<dynamic>> actualizadas = [];
   final List<int> eliminadas = [];
-  Object? errorGetSucursal;
+  Exception? errorGetSucursal;
 
   /// Si no es null, getSucursal espera a que se complete.
   Completer<void>? esperaGetSucursal;
@@ -101,7 +101,7 @@ void main() {
       child: MaterialApp.router(routerConfig: router),
     ));
     await tester.pumpAndSettle();
-    router.push('/sucursal/$id');
+    unawaited(router.push('/sucursal/$id'));
     await tester.pumpAndSettle();
   }
 

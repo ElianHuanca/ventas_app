@@ -87,8 +87,8 @@ class ApliquesDatasourceImpl implements ApliquesDatasource {
     return list
         .map<ColorItem>((e) => ColorItem(
               id: e['id'] as int,
-              nombre: e['nombre'] ?? '',
-              hex: e['hex'] ?? '',
+              nombre: e['nombre'] as String? ?? '',
+              hex: e['hex'] as String? ?? '',
             ))
         .toList();
   }
@@ -104,11 +104,11 @@ class ApliquesDatasourceImpl implements ApliquesDatasource {
     final colores = list
         .map<ColorItem>((e) => ColorItem(
               id: e['id'] as int,
-              nombre: e['nombre'] ?? '',
-              hex: e['hex'] ?? '',
+              nombre: e['nombre'] as String? ?? '',
+              hex: e['hex'] as String? ?? '',
               vinculado: e['aplique_colores'] is List &&
-                  (e['aplique_colores'] as List)
-                      .any((v) => v is Map && (v['activo'] ?? false)),
+                  (e['aplique_colores'] as List).any(
+                      (v) => v is Map && (v['activo'] as bool? ?? false)),
             ))
         .toList();
     // Postgres ordena distinguiendo mayúsculas; se reordena sin distinguir
@@ -191,13 +191,13 @@ class ApliquesDatasourceImpl implements ApliquesDatasource {
     required DateTime desde,
     required DateTime hasta,
   }) async {
-    final rows = await _db.rpc('inventario_con_ventas', params: {
+    final rows = await _db.rpc<List<dynamic>>('inventario_con_ventas', params: {
       'p_sucursal_id': sucursalId,
       'desde': DateTime(desde.year, desde.month, desde.day).toIso8601String(),
       // Último instante del día: `fecha` lleva fracción de segundo
       'hasta': DateTime(hasta.year, hasta.month, hasta.day, 23, 59, 59, 999, 999)
           .toIso8601String(),
-    }) as List;
+    });
     return rows
         .map<StockConVentas>((e) =>
             StockConVentasMapper.jsonToEntity(e as Map<String, dynamic>))
@@ -219,7 +219,8 @@ class ApliquesDatasourceImpl implements ApliquesDatasource {
         '${fecha.month.toString().padLeft(2, '0')}-'
         '${fecha.day.toString().padLeft(2, '0')}';
 
-    await _db.rpc('registrar_produccion', params: {
+    // Devuelve el id de la producción del día; acá no se usa
+    await _db.rpc<dynamic>('registrar_produccion', params: {
       'p_sucursal_id': sucursalId,
       'p_fecha': fechaStr,
       'p_lineas': lineas

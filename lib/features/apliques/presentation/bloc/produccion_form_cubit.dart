@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/domain.dart';
 
@@ -85,7 +87,7 @@ class ProduccionFormCubit extends Cubit<ProduccionFormState> {
     required this.apliquesRepository,
     required this.idsucursal,
   }) : super(ProduccionFormState(idsucursal: idsucursal)) {
-    load();
+    unawaited(load());
   }
 
   Future<void> load() async {

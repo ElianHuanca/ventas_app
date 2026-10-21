@@ -4,7 +4,7 @@ import 'package:textiles_app/features/shared/shared.dart';
 
 void main() {
   group('ItemDashboard', () {
-    Future<void> montar(WidgetTester tester, {required Function onTap}) =>
+    Future<void> montar(WidgetTester tester, {required VoidCallback onTap}) =>
         tester.pumpWidget(MaterialApp(
           home: Scaffold(
             body: SizedBox.square(

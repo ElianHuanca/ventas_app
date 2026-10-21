@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -91,7 +93,7 @@ void main() {
       await tester.pumpWidget(MaterialApp.router(routerConfig: router));
       await tester.pumpAndSettle();
       if (anterior) {
-        router.push('/form');
+        unawaited(router.push('/form'));
         await tester.pumpAndSettle();
       }
     }

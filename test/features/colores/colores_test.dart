@@ -42,7 +42,7 @@ void main() {
             return true;
           },
           onUpdateCallback: (m) async {
-            await repo.updateColor(m, m['id']);
+            await repo.updateColor(m, m['id'] as int);
             return true;
           },
           onDeleteCallback: repo.deleteColor,

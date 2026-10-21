@@ -75,7 +75,7 @@ class VentasDatasourceImpl extends VentasDatasource {
     // DELTAS y se suman al valor actual; `fecha` se asigna directamente.
     // La suma la hace la DB en un solo UPDATE (RPC incrementar_venta), así
     // dos dispositivos vendiendo a la vez no pisan el total del otro.
-    final row = await _db.rpc('incrementar_venta', params: {
+    final row = await _db.rpc<Map<String, dynamic>?>('incrementar_venta', params: {
       'p_id': id,
       'p_total': ventaLike['total'] ?? 0,
       'p_ganancias': ventaLike['ganancias'] ?? 0,
@@ -86,6 +86,6 @@ class VentasDatasourceImpl extends VentasDatasource {
     if (row == null || row['id'] == null) {
       throw Exception('Venta no encontrada');
     }
-    return VentaMapper.jsonToEntity(row as Map<String, dynamic>);
+    return VentaMapper.jsonToEntity(row);
   }
 }
