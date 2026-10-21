@@ -1,34 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:textiles_app/features/apliques/domain/domain.dart';
 import 'package:textiles_app/features/shared/shared.dart';
 import 'package:textiles_app/features/sucursales/presentation/bloc/bloc.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../bloc/inventario_cubit.dart';
 
-/// Abre una URL fuera de la app (WhatsApp). Se inyecta para los tests.
-typedef AbrirUrl = Future<bool> Function(Uri url);
+/// Abre la hoja de compartir del sistema con un PDF (el usuario elige
+/// WhatsApp y el contacto). Se inyecta para los tests.
+typedef CompartirPdf = Future<bool> Function(Uint8List pdf, String nombre);
 
-Future<bool> abrirUrlExterna(Uri url) async {
+Future<bool> compartirPdfSistema(Uint8List pdf, String nombre) async {
   try {
-    return await launchUrl(url, mode: LaunchMode.externalApplication);
+    await SharePlus.instance.share(ShareParams(
+      files: [XFile.fromData(pdf, mimeType: 'application/pdf')],
+      fileNameOverrides: [nombre],
+    ));
+    return true;
   } on PlatformException {
     return false;
   }
 }
 
 /// Inventario de apliques de una sucursal: qué falta, cuánto hacer de cada
-/// uno, y la lista para mandarle al fabricante.
+/// uno, y la lista (PDF o texto) para mandarle al fabricante.
 class InventarioScreen extends StatelessWidget {
   final int idsucursal;
-  final AbrirUrl abrirUrl;
+  final CompartirPdf compartirPdf;
 
   const InventarioScreen({
     super.key,
     required this.idsucursal,
-    this.abrirUrl = abrirUrlExterna,
+    this.compartirPdf = compartirPdfSistema,
   });
 
   @override
@@ -44,10 +49,11 @@ class InventarioScreen extends StatelessWidget {
     return BlocBuilder<InventarioCubit, InventarioState>(
       builder: (context, state) {
         final hayFaltantes = !state.isLoading && state.faltantes.isNotEmpty;
+        final nombre = sucursal.isEmpty ? 'sucursal $idsucursal' : sucursal;
         String mensaje() => mensajeFaltantes(
-              sucursal: sucursal.isEmpty ? 'sucursal $idsucursal' : sucursal,
+              sucursal: nombre,
               fecha: state.fecha,
-              faltantes: state.faltantes,
+              faltantes: ordenParaFabricante(state.faltantes),
             );
 
         return Scaffold(
@@ -72,9 +78,8 @@ class InventarioScreen extends StatelessWidget {
               IconButton(
                 tooltip: 'Copiar lista',
                 icon: const Icon(Icons.copy_rounded),
-                onPressed: hayFaltantes
-                    ? () => _copiar(context, mensaje())
-                    : null,
+                onPressed:
+                    hayFaltantes ? () => _copiar(context, mensaje()) : null,
               ),
             ],
           ),
@@ -83,10 +88,10 @@ class InventarioScreen extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
               child: FilledButton.icon(
-                icon: const Icon(Icons.send_rounded),
-                label: const Text('Enviar por WhatsApp'),
+                icon: const Icon(Icons.picture_as_pdf_rounded),
+                label: const Text('Compartir PDF'),
                 onPressed: hayFaltantes
-                    ? () => _enviar(context, mensaje())
+                    ? () => _compartir(context, nombre, state)
                     : null,
               ),
             ),
@@ -96,12 +101,17 @@ class InventarioScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _enviar(BuildContext context, String mensaje) async {
-    // wa.me sin número: WhatsApp pide a quién mandarlo
-    final abrio = await abrirUrl(
-        Uri.parse('https://wa.me/?text=${Uri.encodeComponent(mensaje)}'));
-    if (!abrio && context.mounted) {
-      showSnackbar(context, 'No se pudo abrir WhatsApp: usá "Copiar lista"');
+  Future<void> _compartir(
+      BuildContext context, String sucursal, InventarioState state) async {
+    final pdf = await pdfFaltantes(
+      sucursal: sucursal,
+      fecha: state.fecha,
+      faltantes: state.faltantes,
+    );
+    final compartio = await compartirPdf(
+        pdf, nombrePdfFaltantes(sucursal: sucursal, fecha: state.fecha));
+    if (!compartio && context.mounted) {
+      showSnackbar(context, 'No se pudo compartir el PDF: usá "Copiar lista"');
     }
   }
 

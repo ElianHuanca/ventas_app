@@ -16,24 +16,29 @@ class ReglaReposicion {
   const ReglaReposicion._();
 
   /// Aplica la regla al inventario de una sucursal: primero los faltantes,
-  /// del que se termina antes al que dura más; después el resto, por nombre.
+  /// después el resto; cada parte en el orden de [porAplique].
   /// Si la sucursal no vendió nada en la ventana (recién empieza), estima con
   /// lo que venden las otras.
   static List<Reposicion> aplicar(List<StockConVentas> inventario) {
     final estimada = inventario.every((s) => s.vendidas == 0);
     return [for (final s in inventario) Reposicion.de(s, estimada: estimada)]
-      ..sort(_porUrgencia);
+      ..sort(_faltantesPrimero);
   }
 
-  static int _porUrgencia(Reposicion a, Reposicion b) {
+  static int _faltantesPrimero(Reposicion a, Reposicion b) {
     if (a.faltante != b.faltante) return a.faltante ? -1 : 1;
-    if (a.faltante) {
-      final porCobertura = a.semanasDeStock.compareTo(b.semanasDeStock);
-      if (porCobertura != 0) return porCobertura;
-    }
-    final porAplique =
+    return porAplique(a, b);
+  }
+
+  /// Como lo lee el fabricante: por aplique (A→Z) y, dentro de cada uno, de
+  /// lo que más hay que hacer a lo que menos; a igual cantidad, por color.
+  /// Sin distinguir mayúsculas.
+  static int porAplique(Reposicion a, Reposicion b) {
+    final porNombre =
         a.item.aplique.toLowerCase().compareTo(b.item.aplique.toLowerCase());
-    if (porAplique != 0) return porAplique;
+    if (porNombre != 0) return porNombre;
+    final porCantidad = b.hacer.compareTo(a.hacer);
+    if (porCantidad != 0) return porCantidad;
     return a.item.color.toLowerCase().compareTo(b.item.color.toLowerCase());
   }
 }
