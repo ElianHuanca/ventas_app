@@ -1,0 +1,53 @@
+# Supabase local (Docker) para los jobs que corren contra la base: aplica
+# supabase/migrations/ (sin seed: supabase/seed.sql está en .gitignore, la CLI
+# avisa y sigue) y reescribe env/local.json y env/local-android.json con la URL
+# y la clave publicable de ESTA base, por si la CLI cambia las claves por
+# defecto (avisa si no coinciden con las del repo).
+#
+# Solo en runners Linux (Docker con contenedores Linux).
+name: Supabase local
+description: Levanta el Supabase local con las migraciones y escribe env/local*.json.
+
+inputs:
+  excluir:
+    description: Servicios que no se levantan (-x de supabase start).
+    required: false
+    default: realtime,storage-api,imgproxy,edge-runtime,logflare,vector,supavisor,mailpit,studio
+
+runs:
+  using: composite
+  steps:
+    # La misma versión que se usó en la PC (npx supabase@latest, 2026-10-20).
+    - uses: supabase/setup-cli@v1
+      with:
+        version: 2.121.0
+
+    - name: supabase start
+      shell: bash
+      env:
+        EXCLUIR: ${{ inputs.excluir }}
+      run: supabase start -x "$EXCLUIR"
+
+    - name: Escribir env/local.json y env/local-android.json
+      shell: bash
+      run: |
+        set -euo pipefail
+        estado="$(supabase status -o env)"
+        url="$(sed -n 's/^API_URL="\(.*\)"$/\1/p' <<<"$estado")"
+        clave="$(sed -n 's/^PUBLISHABLE_KEY="\(.*\)"$/\1/p' <<<"$estado")"
+        if [ -z "$url" ] || [ -z "$clave" ]; then
+          echo "::error::supabase status no devolvió API_URL o PUBLISHABLE_KEY"
+          exit 1
+        fi
+        if ! grep -qF "\"$clave\"" env/local.json; then
+          echo "::warning::La clave publicable del Supabase de la CI no es la de env/local.json: se usa la de la CI. Actualizar env/*.json si cambió también en la PC."
+        fi
+        # El emulador llega a la máquina por 10.0.2.2.
+        url_android="${url/127.0.0.1/10.0.2.2}"
+        url_android="${url_android/localhost/10.0.2.2}"
+        # Las claves locales no llevan comillas ni barras: alcanza con printf.
+        printf '{\n  "SUPABASE_URL": "%s",\n  "SUPABASE_KEY": "%s"\n}\n' \
+          "$url" "$clave" > env/local.json
+        printf '{\n  "SUPABASE_URL": "%s",\n  "SUPABASE_KEY": "%s"\n}\n' \
+          "$url_android" "$clave" > env/local-android.json
+        echo "Supabase local en $url (emulador: $url_android)"

@@ -1,0 +1,30 @@
+# Flutter fijo (la versión con la que se generaron las capturas golden y se
+# calibraron los benchmarks) con cache del SDK y del pub cache, más
+# `flutter pub get`. Lo usan todos los jobs de .github/workflows/: para subir de
+# versión se cambia solo acá (y se regeneran las capturas en Windows).
+name: Flutter
+description: Instala Flutter 3.38.9 stable con cache y corre flutter pub get.
+
+inputs:
+  pub-get:
+    description: Correr flutter pub get después de instalar.
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - uses: subosito/flutter-action@v2
+      with:
+        channel: stable
+        flutter-version: 3.38.9
+        cache: true
+
+    - name: Versión de Flutter
+      shell: bash
+      run: flutter --version
+
+    - name: flutter pub get
+      if: inputs.pub-get == 'true'
+      shell: bash
+      run: flutter pub get
