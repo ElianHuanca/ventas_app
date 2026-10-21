@@ -255,8 +255,18 @@ void main() {
         idventa: idventa,
       );
       addTearDown(detalleBloc.close);
-      await ventaBloc.stream.firstWhere((s) => !s.isLoading);
-      await detalleBloc.stream.firstWhere((s) => !s.isLoading);
+      // Si la carga ya terminó, el stream no repite el estado: esperar solo
+      // si sigue cargando (con una base vacía, como en la CI, termina antes
+      // de que el test se suscriba y firstWhere esperaba para siempre).
+      const espera = Duration(seconds: 30);
+      if (ventaBloc.state.isLoading) {
+        await ventaBloc.stream.firstWhere((s) => !s.isLoading).timeout(espera);
+      }
+      if (detalleBloc.state.isLoading) {
+        await detalleBloc.stream
+            .firstWhere((s) => !s.isLoading)
+            .timeout(espera);
+      }
       expect(detalleBloc.state.detalleVentas, hasLength(2));
 
       final lineaB = detalleBloc.state.detalleVentas

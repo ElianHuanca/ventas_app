@@ -48,7 +48,13 @@ void main() {
     );
     addTearDown(cubit.close);
     // El constructor ya lanzó load() (apliques y stock de la sucursal)
-    await cubit.stream.firstWhere((s) => !s.isLoading);
+    // Si ya terminó, el stream no repite el estado: firstWhere esperaría
+    // para siempre (pasa con una base vacía, como en la CI).
+    if (cubit.state.isLoading) {
+      await cubit.stream
+          .firstWhere((s) => !s.isLoading)
+          .timeout(const Duration(seconds: 30));
+    }
     await cubit.onApliqueChanged(
         cubit.state.apliques.singleWhere((a) => a.id == p.aplique));
     cubit
