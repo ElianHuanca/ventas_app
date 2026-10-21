@@ -21,7 +21,7 @@ class DetalleVentasRepositoryImpl extends DetalleVentasRepository {
   }
   
   @override
-  Future<DetalleVenta> deleteDetalleVenta(int id) {
-    return datasource.deleteDetalleVenta(id);
+  Future<Venta?> borrarDetalleVenta(int id) {
+    return datasource.borrarDetalleVenta(id);
   }
 }

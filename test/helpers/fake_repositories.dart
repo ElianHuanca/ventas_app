@@ -117,14 +117,43 @@ class FakeVentasRepository implements VentasRepository {
     _throwIfError();
     ventasEliminadas.add(id);
   }
+
+  /// Cada registrarVentaTelas (idsucursal, fecha, detalles, descuento,
+  /// idOperacion), en orden. Se anota antes de fallar con [error]: así se
+  /// compara la clave de un intento fallido con la del reintento.
+  final List<Map<String, dynamic>> ventasRegistradas = [];
+
+  /// Como la RPC `registrar_venta_telas`: devuelve el id de la venta del día
+  /// ([nextVentaId], sin avanzarlo).
+  @override
+  Future<int> registrarVentaTelas({
+    required int idsucursal,
+    required DateTime fecha,
+    required List<Map<String, dynamic>> detalles,
+    required double descuento,
+    String? idOperacion,
+  }) async {
+    ventasRegistradas.add({
+      'idsucursal': idsucursal,
+      'fecha': fecha,
+      'detalles': detalles.map((e) => Map<String, dynamic>.from(e)).toList(),
+      'descuento': descuento,
+      'idOperacion': idOperacion,
+    });
+    _throwIfError();
+    return nextVentaId;
+  }
 }
 
 class FakeDetalleVentasRepository implements DetalleVentasRepository {
-  /// Respuesta de getDetalleVenta; deleteDetalleVenta devuelve la línea de
-  /// acá con ese id (como la fila borrada que devuelve Supabase).
+  /// Respuesta de getDetalleVenta.
   List<DetalleVenta> detalles;
 
-  FakeDetalleVentasRepository({this.detalles = const []});
+  /// Respuesta de borrarDetalleVenta: la venta con los totales ya
+  /// descontados (null = la línea ya no estaba).
+  Venta? ventaTrasBorrar;
+
+  FakeDetalleVentasRepository({this.detalles = const [], this.ventaTrasBorrar});
 
   final List<List<Map<String, dynamic>>> detallesCreados = [];
   final List<int> idsVentaUsados = [];
@@ -151,11 +180,10 @@ class FakeDetalleVentasRepository implements DetalleVentasRepository {
   }
 
   @override
-  Future<DetalleVenta> deleteDetalleVenta(int id) async {
+  Future<Venta?> borrarDetalleVenta(int id) async {
     if (error != null) throw error!;
     detallesEliminados.add(id);
-    return detalles.firstWhere((d) => d.id == id,
-        orElse: () => DetalleVenta(id: id, precio: 0, cantidad: 0, idtelas: 0));
+    return ventaTrasBorrar;
   }
 }
 
@@ -178,6 +206,11 @@ class FakeVentasApliquesRepository implements VentasApliquesRepository {
   int? lastGetDetalleIdventa;
   Exception? error;
 
+  /// La clave de cada createVentaAplique, en orden. Se anota antes de fallar
+  /// con [error]: así se compara la de un intento fallido con la del
+  /// reintento.
+  final List<String?> idsOperacion = [];
+
   @override
   Future<int> createVentaAplique({
     required int idsucursales,
@@ -185,7 +218,9 @@ class FakeVentasApliquesRepository implements VentasApliquesRepository {
     required double ganancias,
     required double descuento,
     required List<Map<String, dynamic>> detalles,
+    String? idOperacion,
   }) async {
+    idsOperacion.add(idOperacion);
     if (error != null) throw error!;
     createCalls++;
     lastIdsucursales = idsucursales;
@@ -258,6 +293,14 @@ class FakeApliquesRepository implements ApliquesRepository {
   Exception? error;
   Exception? removeInventarioError;
 
+  /// Error solo de createProduccion / solo de getStock (p. ej. el registro
+  /// sale bien y falla el refresco del stock).
+  Exception? createProduccionError;
+  Exception? getStockError;
+
+  /// La clave de cada createProduccion, en orden (también las que fallaron).
+  final List<String?> idsOperacion = [];
+
   void _throwIfError() {
     if (error != null) throw error!;
   }
@@ -272,6 +315,7 @@ class FakeApliquesRepository implements ApliquesRepository {
   @override
   Future<List<StockAplique>> getStock(int sucursalId) async {
     _throwIfError();
+    if (getStockError != null) throw getStockError!;
     getStockCalls++;
     lastGetStockSucursalId = sucursalId;
     return stock;
@@ -313,8 +357,11 @@ class FakeApliquesRepository implements ApliquesRepository {
     required int sucursalId,
     required DateTime fecha,
     required List<Map<String, dynamic>> lineas,
+    String? idOperacion,
   }) async {
+    idsOperacion.add(idOperacion);
     _throwIfError();
+    if (createProduccionError != null) throw createProduccionError!;
     produccionesCreadas.add({
       'sucursalId': sucursalId,
       'fecha': fecha,

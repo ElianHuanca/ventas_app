@@ -10,7 +10,9 @@ class VentasApliquesDatasourceImpl implements VentasApliquesDatasource {
   // Venta + detalles + descuento de stock en una sola transacción (RPC
   // crear_venta_apliques): si alguna línea no tiene stock suficiente, falla
   // entera y no queda nada guardado. Dos dispositivos vendiendo el mismo
-  // aplique+color a la vez se serializan en la DB.
+  // aplique+color a la vez se serializan en la DB. Con [idOperacion] ya
+  // aplicada (reintento tras una respuesta perdida) devuelve la venta de la
+  // primera vez sin descontar el stock de nuevo.
   @override
   Future<int> createVentaAplique({
     required int idsucursales,
@@ -18,6 +20,7 @@ class VentasApliquesDatasourceImpl implements VentasApliquesDatasource {
     required double ganancias,
     required double descuento,
     required List<Map<String, dynamic>> detalles,
+    String? idOperacion,
   }) async {
     final idventa = await _db.rpc<dynamic>('crear_venta_apliques', params: {
       'p_idsucursales': idsucursales,
@@ -36,6 +39,7 @@ class VentasApliquesDatasourceImpl implements VentasApliquesDatasource {
                 'ganancias': item['ganancias'],
               })
           .toList(),
+      if (idOperacion != null) 'p_id_operacion': idOperacion,
     });
     return idventa as int;
   }

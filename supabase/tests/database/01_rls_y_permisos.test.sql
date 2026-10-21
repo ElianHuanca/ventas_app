@@ -1,8 +1,9 @@
 -- =====================================================================
 -- RLS y permisos
 --
--- Regla (migraciones 20261003000100_integridad_stock_y_ventas.sql y
--- 20261004000000_solo_usuarios_logueados.sql):
+-- Regla (migraciones 20261003000100_integridad_stock_y_ventas.sql,
+-- 20261004000000_solo_usuarios_logueados.sql y
+-- 20261020000000_idempotencia_y_venta_telas.sql):
 --   * toda tabla de public tiene RLS y su política solo_logueados_<tabla>
 --     (FOR ALL TO authenticated USING true WITH CHECK true);
 --   * anon (la web, sin login) no lee ni escribe tablas ni ejecuta RPC:
@@ -13,7 +14,7 @@
 -- Corre en una transacción con rollback: no deja datos.
 -- =====================================================================
 begin;
-select plan(189);
+select plan(202);
 
 -- ---------------------------------------------------------------------
 -- Datos de apoyo (solo viven en esta transacción)
@@ -24,7 +25,7 @@ create function pg_temp.id(p_clave text) returns bigint
   language sql stable
   as $$ select id from pg_temp._ids where clave = p_clave $$;
 
--- Las 16 tablas conocidas. Por cada una: cómo encontrar la fila que crea
+-- Las 17 tablas conocidas. Por cada una: cómo encontrar la fila que crea
 -- este test y un cambio que authenticated tiene que poder hacer (el mismo
 -- texto sirve de SET y de WHERE para verificarlo).
 create temp table _tablas (
@@ -42,6 +43,7 @@ insert into _tablas values
   ('detalle_ventas',          $f$idventa = pg_temp.id('venta')$f$,          'cantidad = 7'),
   ('detalle_ventas_apliques', $f$idventa = pg_temp.id('venta_aplique')$f$,  'cantidad = 7'),
   ('inventario',              $f$sucursal_id = pg_temp.id('sucursal')$f$,   'stock = 7'),
+  ('operaciones_aplicadas',   $f$id = '00000000-0000-4000-8000-0000000000a1'$f$, 'resultado = 7'),
   ('producciones',            $f$id = pg_temp.id('produccion')$f$,          $c$fecha = '2187-03-11'$c$),
   ('sucursales',              $f$id = pg_temp.id('sucursal')$f$,            'activo = false'),
   ('tela_colores',            $f$idtela = pg_temp.id('tela')$f$,            'activo = false'),
@@ -55,10 +57,14 @@ insert into _tablas values
 create temp table _rpc (firma regprocedure primary key, llamada text not null) on commit drop;
 grant select on _rpc to public;
 insert into _rpc values
-  ('public.crear_venta_apliques(bigint,text,numeric,numeric,numeric,jsonb)',
+  ('public.crear_venta_apliques(bigint,text,numeric,numeric,numeric,jsonb,uuid)',
    $q$select public.crear_venta_apliques(1, '2187-01-01T10:00:00', 1, 0, 0, '[{"idapliques":1,"idcolor":1,"nombre":"x","precio":1,"cantidad":1,"total":1,"ganancias":0}]')$q$),
-  ('public.registrar_produccion(bigint,date,jsonb)',
+  ('public.registrar_produccion(bigint,date,jsonb,uuid)',
    $q$select public.registrar_produccion(1, '2187-01-01', '[{"idaplique":1,"idcolor":1,"cantidad":1}]')$q$),
+  ('public.registrar_venta_telas(bigint,text,jsonb,numeric,uuid)',
+   $q$select public.registrar_venta_telas(1, '2187-01-01T10:00:00', '[{"idtelas":1,"nombre":"x","precio":1,"cantidad":1,"total":1,"ganancias":0}]', 0)$q$),
+  ('public.borrar_detalle_venta(bigint)',
+   $q$select public.borrar_detalle_venta(-1)$q$),
   ('public.registrar_detalle_venta(bigint,jsonb)',
    $q$select * from public.registrar_detalle_venta(1, '[{"idtelas":1,"nombre":"x","precio":1,"cantidad":1,"total":1,"ganancias":0}]')$q$),
   ('public.incrementar_venta(bigint,numeric,numeric,numeric,text)',
@@ -79,7 +85,7 @@ insert into _rpc values
 -- =====================================================================
 select tables_are(
   'public', array(select nombre::name from _tablas),
-  'public tiene las 16 tablas conocidas (una nueva necesita RLS, su política solo_logueados_* y revisar permisos)'
+  'public tiene las 17 tablas conocidas (una nueva necesita RLS, su política solo_logueados_* y revisar permisos)'
 );
 select views_are(
   'public', array['catalogo_apliques_web', 'catalogo_telas_web', 'sucursales_web', 'top_telas_web']::name[],
@@ -184,7 +190,7 @@ select set_eq($$
   from pg_proc p
   where p.pronamespace = 'public'::regnamespace and p.proname <> 'rls_auto_enable'
 $$, $$ select firma::text from _rpc $$,
-'las funciones de public son las 9 RPC conocidas (más el event trigger rls_auto_enable)');
+'las funciones de public son las 11 RPC conocidas (más el event trigger rls_auto_enable)');
 
 select todo('bug: 20261004000000_solo_usuarios_logueados.sql:40 — el REVOKE ... FROM anon no saca el EXECUTE que PUBLIC tiene por defecto: anon todavía puede ejecutar top_productos, resumen_ventas y resumen_ventas_apliques (no leen datos porque anon no tiene SELECT en las tablas, pero la RPC no debería ser ejecutable)', 1);
 select is_empty($$
@@ -306,6 +312,8 @@ select lives_ok($$
       returning id into v_produccion;
     insert into public.detalle_produccion (idproduccion, idaplique, idcolor, cantidad)
       values (v_produccion, v_aplique, v_color, 2);
+    insert into public.operaciones_aplicadas (id, rpc, resultado)
+      values ('00000000-0000-4000-8000-0000000000a1', 'pgtap', v_venta);
 
     insert into pg_temp._ids values
       ('categoria', v_categoria), ('sucursal', v_sucursal), ('color', v_color),
@@ -313,7 +321,7 @@ select lives_ok($$
       ('venta_aplique', v_venta_aplique), ('produccion', v_produccion);
   end
   $do$
-$$, 'authenticated puede insertar en las 16 tablas');
+$$, 'authenticated puede insertar en las 17 tablas');
 
 -- Sin política, PostgREST devuelve [] en silencio: hay que poder releerlo
 select results_eq(

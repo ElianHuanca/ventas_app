@@ -87,8 +87,18 @@ void main() {
       await repo.createProduccion(sucursalId: 9, fecha: fecha, lineas: lineas);
 
       expect(ds.llamadas, [
-        ['createProduccion', 9, fecha, lineas],
+        ['createProduccion', 9, fecha, lineas, null],
       ]);
+    });
+
+    test('createProduccion pasa la clave de operación del envío', () async {
+      await repo.createProduccion(
+          sucursalId: 9,
+          fecha: DateTime(2026, 10, 5),
+          lineas: const [],
+          idOperacion: 'clave-1');
+
+      expect(ds.llamadas.single.last, 'clave-1');
     });
 
     test('getProducciones y getDetalleProduccion', () async {

@@ -62,7 +62,7 @@ void main() {
 
     propiedad(
         'lo que se envía a la base cuadra: la suma de las líneas es '
-        'el total y las ganancias de la venta',
+        'el total y las ganancias que muestra el carrito',
         _carrito(cantidad: any.decimal(1, 1001)), (carrito) async {
       final prueba = _PruebaTelas(carrito);
       try {
@@ -72,11 +72,14 @@ void main() {
 
         expect(await prueba.cubit.onFormSubmit(), isTrue);
 
-        final enviadas = prueba.detalles.detallesCreados.single;
-        final venta = prueba.ventas.actualizaciones.single;
-        expect(_sumaCentavos(enviadas, 'total'), centavos(venta['total'] as num));
-        expect(
-            _sumaCentavos(enviadas, 'ganancias'), centavos(venta['ganancias'] as num));
+        // registrar_venta_telas suma la venta desde estas líneas: tiene que
+        // dar lo mismo que el total que vio el usuario
+        final enviadas = prueba.ventas.ventasRegistradas.single['detalles']
+            as List<Map<String, dynamic>>;
+        expect(_sumaCentavos(enviadas, 'total'),
+            centavos(prueba.cubit.state.total));
+        expect(_sumaCentavos(enviadas, 'ganancias'),
+            centavos(prueba.cubit.state.ganancias));
       } finally {
         prueba.cerrar();
       }
@@ -446,7 +449,6 @@ class _PruebaTelas {
   _PruebaTelas(this.carrito)
       : cubit = DetalleVentaFormCubit(
           ventasRepository: FakeVentasRepository(),
-          detalleVentasRepository: FakeDetalleVentasRepository(),
           idsucursal: 1,
         );
 
@@ -454,8 +456,6 @@ class _PruebaTelas {
   final DetalleVentaFormCubit cubit;
   FakeVentasRepository get ventas =>
       cubit.ventasRepository as FakeVentasRepository;
-  FakeDetalleVentasRepository get detalles =>
-      cubit.detalleVentasRepository as FakeDetalleVentasRepository;
 
   /// (idtelas, precio en centavos) → cantidad en centésimos.
   final modelo = <(int, int), int>{};

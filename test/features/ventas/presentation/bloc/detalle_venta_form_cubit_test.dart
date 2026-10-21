@@ -1,35 +1,45 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:textiles_app/features/ventas/domain/domain.dart';
 import 'package:textiles_app/features/ventas/presentation/bloc/detalle_venta_form_cubit.dart';
 
 import '../../../../helpers/fake_repositories.dart';
 
-/// Guarda las líneas recién cuando se completa [registro]: deja ver qué pasa
+/// Registra la venta recién cuando se completa [registro]: deja ver qué pasa
 /// si se vuelve a tocar "Guardar" mientras tanto.
-class _DetalleLento extends FakeDetalleVentasRepository {
+class _VentasLento extends FakeVentasRepository {
   final registro = Completer<void>();
 
   @override
-  Future<List<DetalleVenta>> createDetalleVenta(
-      List<Map<String, dynamic>> detalleVentasLike, int idventas) async {
+  Future<int> registrarVentaTelas({
+    required int idsucursal,
+    required DateTime fecha,
+    required List<Map<String, dynamic>> detalles,
+    required double descuento,
+    String? idOperacion,
+  }) async {
     await registro.future;
-    return super.createDetalleVenta(detalleVentasLike, idventas);
+    return super.registrarVentaTelas(
+        idsucursal: idsucursal,
+        fecha: fecha,
+        detalles: detalles,
+        descuento: descuento,
+        idOperacion: idOperacion);
   }
 }
 
+/// Un uuid v4 como lo acepta Postgres
+final _uuid = RegExp(
+    r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$');
+
 void main() {
   late FakeVentasRepository ventasRepo;
-  late FakeDetalleVentasRepository detalleRepo;
   late DetalleVentaFormCubit cubit;
 
   setUp(() {
     ventasRepo = FakeVentasRepository();
-    detalleRepo = FakeDetalleVentasRepository();
     cubit = DetalleVentaFormCubit(
       ventasRepository: ventasRepo,
-      detalleVentasRepository: detalleRepo,
       idsucursal: 1,
     );
   });
@@ -265,10 +275,9 @@ void main() {
   group('onFormSubmit', () {
     test('un segundo envío mientras se guarda no registra la venta dos veces',
         () async {
-      final lento = _DetalleLento();
+      final lento = _VentasLento();
       final cubitLento = DetalleVentaFormCubit(
-        ventasRepository: ventasRepo,
-        detalleVentasRepository: lento,
+        ventasRepository: lento,
         idsucursal: 1,
       );
       addTearDown(cubitLento.close);
@@ -292,18 +301,15 @@ void main() {
       }
 
       expect(await primero, isTrue);
-      expect(lento.detallesCreados, hasLength(1));
-      expect(ventasRepo.actualizaciones, hasLength(1));
+      expect(lento.ventasRegistradas, hasLength(1));
       expect(cubitLento.enviando, isFalse);
     });
 
-    test('sin items devuelve false y no toca los repositorios', () async {
+    test('sin items devuelve false y no toca el repositorio', () async {
       final ok = await cubit.onFormSubmit();
 
       expect(ok, false);
-      expect(ventasRepo.createVentaCalls, 0);
-      expect(detalleRepo.detallesCreados, isEmpty);
-      expect(ventasRepo.actualizaciones, isEmpty);
+      expect(ventasRepo.ventasRegistradas, isEmpty);
     });
 
     test('descuento inválido devuelve false', () async {
@@ -314,7 +320,7 @@ void main() {
       final ok = await cubit.onFormSubmit();
 
       expect(ok, false);
-      expect(detalleRepo.detallesCreados, isEmpty);
+      expect(ventasRepo.ventasRegistradas, isEmpty);
     });
 
     test('descuento NaN devuelve false sin escribir nada', () async {
@@ -325,15 +331,13 @@ void main() {
       final ok = await cubit.onFormSubmit();
 
       expect(ok, false);
-      expect(detalleRepo.detallesCreados, isEmpty);
-      expect(ventasRepo.actualizaciones, isEmpty);
+      expect(ventasRepo.ventasRegistradas, isEmpty);
     });
 
     test(
-        'flujo completo con venta inexistente: crea venta, detalles y actualiza',
-        () async {
-      ventasRepo.ventaByFecha = null; // no hay venta para la fecha
-      cubit.onFechaChanged(DateTime(2024, 6, 10));
+        'registra el carrito en una sola llamada: sucursal, fecha elegida, '
+        'líneas, descuento y una clave de operación', () async {
+      cubit.onFechaChanged(DateTime(2024, 6, 10, 9, 30));
       cargarLinea(cantidad: '2', precio: '100', precxcompra: 60);
       cubit.addDetalleVenta();
       cubit.onDescuentoChanged('15');
@@ -341,37 +345,21 @@ void main() {
       final ok = await cubit.onFormSubmit();
 
       expect(ok, true);
-      expect(ventasRepo.createVentaCalls, 1);
-      expect(detalleRepo.detallesCreados.length, 1);
-      expect(detalleRepo.detallesCreados.first.length, 1);
-      // la venta creada por el fake recibe id 10
-      expect(detalleRepo.idsVentaUsados, [10]);
-      expect(ventasRepo.idsActualizados, [10]);
-      final update = ventasRepo.actualizaciones.single;
-      expect(update['total'], 200.0);
-      expect(update['ganancias'], 80.0);
-      expect(update['descuento'], 15.0);
-      expect(update['fecha'], DateTime(2024, 6, 10).toIso8601String());
-    });
-
-    test('con venta existente no crea una nueva', () async {
-      ventasRepo.ventaByFecha = Venta(
-        id: 42,
-        fecha: DateTime(2024, 6, 10),
-        total: 500,
-        ganancias: 200,
-        descuento: 0,
-        idsucursales: 1,
-      );
-      cargarLinea(cantidad: '1', precio: '100', precxcompra: 60);
-      cubit.addDetalleVenta();
-
-      final ok = await cubit.onFormSubmit();
-
-      expect(ok, true);
-      expect(ventasRepo.createVentaCalls, 0);
-      expect(detalleRepo.idsVentaUsados, [42]);
-      expect(ventasRepo.idsActualizados, [42]);
+      final envio = ventasRepo.ventasRegistradas.single;
+      expect(envio['idsucursal'], 1);
+      expect(envio['fecha'], DateTime(2024, 6, 10, 9, 30));
+      expect(envio['descuento'], 15.0);
+      expect(envio['detalles'], [
+        {
+          'idtelas': 1,
+          'nombre': 'Lino',
+          'cantidad': 2.0,
+          'precio': 100.0,
+          'total': 200.0,
+          'ganancias': 80.0,
+        },
+      ]);
+      expect(envio['idOperacion'], matches(_uuid));
     });
 
     test('descuento vacío se envía como 0', () async {
@@ -381,10 +369,11 @@ void main() {
       final ok = await cubit.onFormSubmit();
 
       expect(ok, true);
-      expect(ventasRepo.actualizaciones.single['descuento'], 0.0);
+      expect(ventasRepo.ventasRegistradas.single['descuento'], 0.0);
     });
 
-    test('error del repositorio devuelve false', () async {
+    test('error del repositorio devuelve false y conserva el carrito',
+        () async {
       cargarLinea();
       cubit.addDetalleVenta();
       ventasRepo.error = Exception('sin conexión');
@@ -392,6 +381,112 @@ void main() {
       final ok = await cubit.onFormSubmit();
 
       expect(ok, false);
+      expect(cubit.state.detVentas, hasLength(1));
+      expect(cubit.state.total, 200);
+    });
+  });
+
+  group('clave de operación', () {
+    String? clave(int envio) =>
+        ventasRepo.ventasRegistradas[envio]['idOperacion'] as String?;
+
+    Future<void> enviarConError() async {
+      ventasRepo.error = Exception('Connection closed while receiving data');
+      expect(await cubit.onFormSubmit(), isFalse);
+      ventasRepo.error = null;
+    }
+
+    test(
+        'el reintento del mismo carrito lleva la misma clave (si la respuesta '
+        'se perdió, la base no lo suma de nuevo)', () async {
+      cargarLinea();
+      cubit.addDetalleVenta();
+      await enviarConError();
+
+      expect(await cubit.onFormSubmit(), isTrue);
+
+      expect(ventasRepo.ventasRegistradas, hasLength(2));
+      expect(clave(1), clave(0));
+    });
+
+    test('después de una venta que salió bien, la próxima lleva otra clave',
+        () async {
+      cargarLinea();
+      cubit.addDetalleVenta();
+      expect(await cubit.onFormSubmit(), isTrue);
+
+      // El mismo carrito otra vez es otra venta
+      expect(await cubit.onFormSubmit(), isTrue);
+
+      expect(clave(1), isNot(clave(0)));
+      expect(clave(1), matches(_uuid));
+    });
+
+    test('si después de la falla cambia el carrito, es otro envío: otra clave',
+        () async {
+      cargarLinea();
+      cubit.addDetalleVenta();
+      await enviarConError();
+
+      cargarLinea(idtelas: 2, cantidad: '1', precio: '50');
+      cubit.addDetalleVenta();
+      await cubit.onFormSubmit();
+
+      expect(clave(1), isNot(clave(0)));
+    });
+
+    test('quitar una línea del carrito también es otro envío', () async {
+      cargarLinea();
+      cubit.addDetalleVenta();
+      cargarLinea(idtelas: 2, cantidad: '1', precio: '50');
+      cubit.addDetalleVenta();
+      await enviarConError();
+
+      cubit.removeDetalleVenta(2, 1, 50);
+      await cubit.onFormSubmit();
+
+      expect(clave(1), isNot(clave(0)));
+    });
+
+    test(
+        'agregar y quitar la misma línea deja el mismo carrito: misma clave '
+        '(si el primero había llegado, no se duplica)', () async {
+      cargarLinea();
+      cubit.addDetalleVenta();
+      await enviarConError();
+
+      cargarLinea(idtelas: 2, cantidad: '1', precio: '50');
+      cubit.addDetalleVenta();
+      cubit.removeDetalleVenta(2, 1, 50);
+      await cubit.onFormSubmit();
+
+      expect(clave(1), clave(0));
+    });
+
+    test('otro descuento es otro envío: otra clave', () async {
+      cargarLinea();
+      cubit.addDetalleVenta();
+      await enviarConError();
+
+      cubit.onDescuentoChanged('5');
+      await cubit.onFormSubmit();
+
+      expect(clave(1), isNot(clave(0)));
+    });
+
+    test('otro día es otro envío; otra hora del mismo día, no', () async {
+      cubit.onFechaChanged(DateTime(2024, 6, 10, 9));
+      cargarLinea();
+      cubit.addDetalleVenta();
+      await enviarConError();
+
+      cubit.onFechaChanged(DateTime(2024, 6, 10, 18));
+      await enviarConError();
+      cubit.onFechaChanged(DateTime(2024, 6, 11, 9));
+      await cubit.onFormSubmit();
+
+      expect(clave(1), clave(0), reason: 'la venta es la del día');
+      expect(clave(2), isNot(clave(0)));
     });
   });
 }

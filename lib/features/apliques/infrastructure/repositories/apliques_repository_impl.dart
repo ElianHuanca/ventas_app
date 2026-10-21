@@ -65,11 +65,13 @@ class ApliquesRepositoryImpl extends ApliquesRepository {
     required int sucursalId,
     required DateTime fecha,
     required List<Map<String, dynamic>> lineas,
+    String? idOperacion,
   }) {
     return datasource.createProduccion(
       sucursalId: sucursalId,
       fecha: fecha,
       lineas: lineas,
+      idOperacion: idOperacion,
     );
   }
 

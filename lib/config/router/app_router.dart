@@ -359,7 +359,7 @@ GoRouter createAppRouter({required AuthRepository authRepository}) {
               BlocProvider(
                 create: (ctx) => DetalleVentasBloc(
                   detalleVentasRepository: detVentasRepo,
-                  updateVenta: ctx.read<VentaBloc>().actualizarVenta,
+                  ventaActualizada: ctx.read<VentaBloc>().mostrarVenta,
                   idventa: idventa,
                 ),
               ),
@@ -373,14 +373,11 @@ GoRouter createAppRouter({required AuthRepository authRepository}) {
         builder: (context, state) {
           final idsucursal = _pathParamInt(state, 'idsucursal');
           final ventasRepo = VentasRepositoryImpl(VentasDatasourceImpl());
-          final detVentasRepo =
-              DetalleVentasRepositoryImpl(DetalleVentasDatasourceImpl());
           return MultiBlocProvider(
             providers: [
               BlocProvider(
                 create: (_) => DetalleVentaFormCubit(
                   ventasRepository: ventasRepo,
-                  detalleVentasRepository: detVentasRepo,
                   idsucursal: idsucursal,
                 ),
               ),

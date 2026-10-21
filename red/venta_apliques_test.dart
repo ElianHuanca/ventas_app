@@ -2,6 +2,7 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:textiles_app/config/supabase/supabase_config.dart';
 import 'package:textiles_app/features/apliques/infrastructure/infrastructure.dart';
 import 'package:textiles_app/features/apliques/presentation/bloc/bloc.dart';
 
@@ -16,6 +17,9 @@ import 'red_con_fallas.dart';
 /// `/venta-apliques/registro/:idsucursal`. La única diferencia con la app es
 /// la fecha: el datasource manda `DateTime.now()` y la red la reemplaza por
 /// [fechaRD] (`RedConFallas.fijarParametro`) para no meterse en el dashboard.
+/// El cubit manda una clave de operación por envío (la misma en los
+/// reintentos del mismo carrito): con la respuesta perdida, el reintento no
+/// vende dos veces. Las llamadas sin clave (apps viejas) siguen andando.
 void main() {
   late Celular celular;
   late DatosRD datos;
@@ -130,12 +134,83 @@ void main() {
     // Volvió la señal: el mismo carrito, "Guardar" otra vez.
     expect(await cubit.onFormSubmit(), isTrue);
 
+    // El reintento lleva la misma clave de operación: la base devuelve la
+    // venta de la primera vez sin descontar nada
     expect(red().llegaron,
         ['rpc/crear_venta_apliques', 'rpc/crear_venta_apliques']);
     await verificarVendidoUnaVez(p);
-  },
-      // bug: supabase/migrations/20261007000000_venta_apliques_colores_vinculados.sql:40 — crear_venta_apliques no es idempotente: el reintento (lib/features/apliques/presentation/bloc/venta_apliques_form_cubit.dart:192 manda el mismo carrito sin id de operación) vuelve a sumar la venta del día, la línea y a descontar el stock (queda 6 en vez de 8, total 48 en vez de 24)
-      skip: bugConocido);
+  });
+
+  test(
+      'respuesta perdida dos veces seguidas y un tercer Guardar: el stock se '
+      'descuenta una sola vez', () async {
+    final (p, cubit) = await carritoListo();
+    red().perderRespuesta(cuando: Cuando.rpc('crear_venta_apliques'), veces: 2);
+    expect(await cubit.onFormSubmit(), isFalse);
+    expect(await cubit.onFormSubmit(), isFalse);
+
+    expect(await cubit.onFormSubmit(), isTrue);
+
+    expect(red().perdidas, hasLength(2));
+    await verificarVendidoUnaVez(p);
+  });
+
+  group('app vieja (sin p_id_operacion: los Flutter anteriores, Android, iOS)',
+      () {
+    /// Lo que mandaba `VentasApliquesDatasourceImpl.createVentaAplique` antes
+    /// de la clave (y lo que mandan hoy Android e iOS): los 6 parámetros de
+    /// siempre, por nombre, sin `p_id_operacion`.
+    Future<int> venderComoAppVieja(ApliqueEnSucursal p) async {
+      final idventa = await SupabaseConfig.client
+          .rpc<dynamic>('crear_venta_apliques', params: {
+        'p_idsucursales': p.sucursal,
+        'p_fecha': DateTime.now().toIso8601String(),
+        'p_total': cantidad * precio,
+        'p_ganancias': cantidad * (precio - costo),
+        'p_descuento': 0,
+        'p_detalles': [
+          {
+            'idapliques': p.aplique,
+            'idcolor': p.color,
+            'nombre': 'RD app vieja',
+            'precio': precio,
+            'cantidad': cantidad,
+            'total': cantidad * precio,
+            'ganancias': cantidad * (precio - costo),
+          },
+        ],
+      });
+      return idventa as int;
+    }
+
+    test('la llamada sigue resolviendo a la función nueva y vende', () async {
+      final (p, _) = await carritoListo();
+
+      expect(await venderComoAppVieja(p), isA<int>());
+
+      await verificarVendidoUnaVez(p);
+    });
+
+    test(
+        'sin clave el reintento tras una respuesta perdida vende de nuevo '
+        '(como siempre: hasta que Android e iOS manden la clave)', () async {
+      final (p, _) = await carritoListo();
+      red().perderRespuesta(cuando: Cuando.rpc('crear_venta_apliques'));
+      await expectLater(venderComoAppVieja(p), throwsA(isA<Exception>()));
+
+      await venderComoAppVieja(p);
+
+      final ventas =
+          await ventasApliquesDelDia(celular.base, p.sucursal, fechaRD);
+      expect({
+        'stock': await stockDe(celular.base, p),
+        'total de la venta': sumaCentavos(ventas, 'total') / 100,
+      }, {
+        'stock': stockInicial - 2 * cantidad,
+        'total de la venta': 2 * cantidad * precio,
+      });
+    });
+  });
 
   test(
       'sin conexión: falla limpia (no llega nada a la base), conserva el '

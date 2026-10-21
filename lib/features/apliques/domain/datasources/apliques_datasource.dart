@@ -30,11 +30,14 @@ abstract class ApliquesDatasource {
   });
 
   /// Registra una producción (lote de líneas) y sube el stock en inventario.
-  /// Cada línea es {idaplique, idcolor, cantidad}.
+  /// Cada línea es {idaplique, idcolor, cantidad}. [idOperacion]: clave de
+  /// idempotencia del envío (`ClaveDeOperacion`); con la misma, un reintento
+  /// no vuelve a sumar el stock.
   Future<void> createProduccion({
     required int sucursalId,
     required DateTime fecha,
     required List<Map<String, dynamic>> lineas,
+    String? idOperacion,
   });
   Future<List<ProduccionCabecera>> getProducciones(int sucursalId);
   Future<List<Produccion>> getDetalleProduccion(int idproduccion);

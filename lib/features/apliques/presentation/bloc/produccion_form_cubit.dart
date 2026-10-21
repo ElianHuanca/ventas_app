@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:textiles_app/features/shared/clave_de_operacion.dart';
 import '../../domain/domain.dart';
 
 class ProduccionFormState {
@@ -82,6 +83,10 @@ class ProduccionFormState {
 class ProduccionFormCubit extends Cubit<ProduccionFormState> {
   final ApliquesRepository apliquesRepository;
   final int idsucursal;
+
+  /// Clave de idempotencia del envío: la misma en los reintentos del mismo
+  /// listado (si se perdió la respuesta, la base no suma el stock dos veces).
+  final _clave = ClaveDeOperacion();
 
   ProduccionFormCubit({
     required this.apliquesRepository,
@@ -190,6 +195,12 @@ class ProduccionFormCubit extends Cubit<ProduccionFormState> {
   /// día. Devuelve null si se registró, o el mensaje de error a mostrar.
   /// Con un registro en curso (doble toque en "Guardar") no hace nada: no es
   /// null porque todavía no se registró.
+  ///
+  /// Si falla el registro, el listado queda para volver a tocar Guardar: el
+  /// reintento del mismo listado lleva la misma clave de operación y, si el
+  /// primero había llegado (respuesta perdida), la base no lo suma de nuevo.
+  /// La clave se renueva cuando cambia el listado o el día, y después de un
+  /// registro que salió bien.
   Future<String?> onFormSubmit() async {
     if (state.isSubmitting) return 'Ya se está registrando la producción';
     if (state.detProducciones.isEmpty) {
@@ -205,19 +216,36 @@ class ProduccionFormCubit extends Cubit<ProduccionFormState> {
                 'cantidad': (e['cantidad'] as num).toDouble(),
               })
           .toList();
+      final idOperacion = _clave.para({
+        'lineas': lineas,
+        // La producción es la del día: la hora no la cambia
+        'dia': state.fecha.toIso8601String().substring(0, 10),
+      });
       await apliquesRepository.createProduccion(
         sucursalId: state.idsucursal,
         fecha: state.fecha,
         lineas: lineas,
+        idOperacion: idOperacion,
       );
-      final stock = await apliquesRepository.getStock(state.idsucursal);
-      emit(state.copyWith(stock: stock, detProducciones: []));
-      return null;
+      _clave.descartar();
     } catch (e) {
+      emit(state.copyWith(isSubmitting: false));
       return e.toString().replaceFirst('Exception: ', '');
+    }
+
+    // Ya quedó registrada: el listado se vacía aunque falle el refresco del
+    // stock. Antes un getStock fallido devolvía el error con el listado
+    // lleno y el usuario volvía a registrar lo mismo.
+    emit(state.copyWith(detProducciones: []));
+    try {
+      final stock = await apliquesRepository.getStock(state.idsucursal);
+      emit(state.copyWith(stock: stock));
+    } catch (_) {
+      // El stock que muestra la pantalla queda viejo hasta la próxima carga
     } finally {
       emit(state.copyWith(isSubmitting: false));
     }
+    return null;
   }
 }
 

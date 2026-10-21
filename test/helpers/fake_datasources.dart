@@ -111,8 +111,10 @@ class FakeApliquesDatasource extends FakeDatasource
     required int sucursalId,
     required DateTime fecha,
     required List<Map<String, dynamic>> lineas,
+    String? idOperacion,
   }) async =>
-      registrar('createProduccion', [sucursalId, fecha, lineas], null);
+      registrar(
+          'createProduccion', [sucursalId, fecha, lineas, idOperacion], null);
 
   @override
   Future<List<ProduccionCabecera>> getProducciones(int sucursalId) async =>
@@ -139,9 +141,12 @@ class FakeVentasApliquesDatasource extends FakeDatasource
     required double ganancias,
     required double descuento,
     required List<Map<String, dynamic>> detalles,
+    String? idOperacion,
   }) async =>
-      registrar('createVentaAplique',
-          [idsucursales, total, ganancias, descuento, detalles], idventa);
+      registrar(
+          'createVentaAplique',
+          [idsucursales, total, ganancias, descuento, detalles, idOperacion],
+          idventa);
 
   @override
   Future<List<VentaAplique>> getVentasApliques(int idsucursal) async =>
@@ -326,6 +331,22 @@ class FakeVentasDatasource extends FakeDatasource implements VentasDatasource {
   @override
   Future<void> deleteVenta(int id) async =>
       registrar('deleteVenta', [id], null);
+
+  /// Respuesta de registrarVentaTelas (id de la venta del día).
+  int idventaRegistrada = 77;
+
+  @override
+  Future<int> registrarVentaTelas({
+    required int idsucursal,
+    required DateTime fecha,
+    required List<Map<String, dynamic>> detalles,
+    required double descuento,
+    String? idOperacion,
+  }) async =>
+      registrar(
+          'registrarVentaTelas',
+          [idsucursal, fecha, detalles, descuento, idOperacion],
+          idventaRegistrada);
 }
 
 class FakeDetalleVentasDatasource extends FakeDatasource
@@ -333,8 +354,16 @@ class FakeDetalleVentasDatasource extends FakeDatasource
   List<DetalleVenta> detalles = const [
     DetalleVenta(id: 1, precio: 25, cantidad: 2, total: 50, idtelas: 3),
   ];
-  DetalleVenta borrado =
-      const DetalleVenta(id: 9, precio: 30, cantidad: 1, total: 30, idtelas: 4);
+
+  /// Respuesta de borrarDetalleVenta (la venta con el total descontado).
+  Venta? ventaTrasBorrar = Venta(
+    id: 5,
+    fecha: DateTime(2026, 10, 1),
+    total: 20,
+    ganancias: 6,
+    descuento: 0,
+    idsucursales: 1,
+  );
 
   @override
   Future<List<DetalleVenta>> getDetalleVenta(int idventas) async =>
@@ -346,6 +375,6 @@ class FakeDetalleVentasDatasource extends FakeDatasource
       registrar('createDetalleVenta', [detalleVentasLike, idventas], detalles);
 
   @override
-  Future<DetalleVenta> deleteDetalleVenta(int id) async =>
-      registrar('deleteDetalleVenta', [id], borrado);
+  Future<Venta?> borrarDetalleVenta(int id) async =>
+      registrar('borrarDetalleVenta', [id], ventaTrasBorrar);
 }

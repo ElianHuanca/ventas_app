@@ -72,7 +72,7 @@ void main() {
     final ventaBloc = VentaBloc(ventasRepository: ventasRepo, id: 7);
     final detalleBloc = DetalleVentasBloc(
       detalleVentasRepository: detalleRepo,
-      updateVenta: ventaBloc.actualizarVenta,
+      ventaActualizada: ventaBloc.mostrarVenta,
       idventa: 7,
     );
     addTearDown(ventaBloc.close);

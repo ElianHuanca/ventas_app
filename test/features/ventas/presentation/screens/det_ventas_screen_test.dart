@@ -72,7 +72,7 @@ void main() {
     final ventaBloc = VentaBloc(ventasRepository: ventasRepo, id: 7);
     final detalleBloc = DetalleVentasBloc(
       detalleVentasRepository: detalleRepo,
-      updateVenta: ventaBloc.actualizarVenta,
+      ventaActualizada: ventaBloc.mostrarVenta,
       idventa: 7,
     );
     addTearDown(ventaBloc.close);
@@ -142,8 +142,17 @@ void main() {
   });
 
   testWidgets(
-      'borrar una línea pide confirmación, la quita y descuenta el total',
-      (tester) async {
+      'borrar una línea pide confirmación, la quita y muestra el total que '
+      'dejó la base', (tester) async {
+    // Lo que devuelve borrar_detalle_venta: la venta sin los 200 Bs del Lino
+    detalleRepo.ventaTrasBorrar = Venta(
+      id: 7,
+      fecha: DateTime(2024, 5, 10),
+      total: 195,
+      ganancias: 65,
+      descuento: 10,
+      idsucursales: 1,
+    );
     await montar(tester);
 
     await tester.tap(find.byIcon(Icons.delete_forever_rounded).first);
@@ -154,10 +163,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(detalleRepo.detallesEliminados, [1]);
-    // A la venta le llegan deltas negativos (convención incremental)
-    expect(ventasRepo.actualizaciones.single,
-        {'total': -200.0, 'ganancias': -80.0});
-    expect(ventasRepo.idsActualizados, [7]);
+    // El total lo descontó la base en la misma llamada: la app no manda
+    // deltas aparte
+    expect(ventasRepo.actualizaciones, isEmpty);
     expect(enTabla('Lino'), findsNothing);
     expect(find.byIcon(Icons.delete_forever_rounded), findsNWidgets(2));
     expect(enTabla('195.0 Bs'), findsOneWidget);
@@ -179,6 +187,23 @@ void main() {
     expect(find.text('Lista Vacia'), findsOneWidget);
   });
 
+  testWidgets(
+      'si borrar falla (sin señal) la línea sigue en la tabla con el total de '
+      'antes, para volver a borrarla', (tester) async {
+    await montar(tester);
+    detalleRepo.error = Exception('sin conexión');
+
+    await tester.tap(find.byIcon(Icons.delete_forever_rounded).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Eliminar'));
+    await tester.pumpAndSettle();
+
+    expect(detalleRepo.detallesEliminados, isEmpty);
+    expect(enTabla('Lino'), findsOneWidget);
+    expect(find.byIcon(Icons.delete_forever_rounded), findsNWidgets(3));
+    expect(enTabla('395.0 Bs'), findsOneWidget);
+  });
+
   testWidgets('Cancelar en la confirmación no borra nada', (tester) async {
     await montar(tester);
 
@@ -188,7 +213,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(detalleRepo.detallesEliminados, isEmpty);
-    expect(ventasRepo.actualizaciones, isEmpty);
     expect(enTabla('Lino'), findsOneWidget);
     expect(enTabla('395.0 Bs'), findsOneWidget);
   });

@@ -208,12 +208,14 @@ class ApliquesDatasourceImpl implements ApliquesDatasource {
   // por sucursal+fecha, UNIQUE en la DB), líneas acumuladas por
   // (idproduccion, idaplique, idcolor) y suma al stock de inventario (crea o
   // reactiva la fila). Si ya se fabricó ese aplique+color ese día, se suma
-  // la cantidad en vez de crear una línea duplicada.
+  // la cantidad en vez de crear una línea duplicada. Con [idOperacion] ya
+  // aplicada (reintento tras una respuesta perdida) la base no suma nada.
   @override
   Future<void> createProduccion({
     required int sucursalId,
     required DateTime fecha,
     required List<Map<String, dynamic>> lineas,
+    String? idOperacion,
   }) async {
     final fechaStr = '${fecha.year.toString().padLeft(4, '0')}-'
         '${fecha.month.toString().padLeft(2, '0')}-'
@@ -230,6 +232,7 @@ class ApliquesDatasourceImpl implements ApliquesDatasource {
                 'cantidad': linea['cantidad'],
               })
           .toList(),
+      if (idOperacion != null) 'p_id_operacion': idOperacion,
     });
   }
 

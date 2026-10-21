@@ -42,4 +42,21 @@ class VentasRepositoryImpl extends VentasRepository {
   Future<void> deleteVenta(int id) {
     return datasource.deleteVenta(id);
   }
+
+  @override
+  Future<int> registrarVentaTelas({
+    required int idsucursal,
+    required DateTime fecha,
+    required List<Map<String, dynamic>> detalles,
+    required double descuento,
+    String? idOperacion,
+  }) {
+    return datasource.registrarVentaTelas(
+      idsucursal: idsucursal,
+      fecha: fecha,
+      detalles: detalles,
+      descuento: descuento,
+      idOperacion: idOperacion,
+    );
+  }
 }

@@ -48,7 +48,6 @@ void main() {
     );
     cubit = DetalleVentaFormCubit(
       ventasRepository: FakeVentasRepository(),
-      detalleVentasRepository: FakeDetalleVentasRepository(),
       idsucursal: 1,
     )..onFechaChanged(DateTime(2026, 10, 10));
     final telasBloc = TelasBloc(telasRepository: telasRepo, idsucursal: 1);

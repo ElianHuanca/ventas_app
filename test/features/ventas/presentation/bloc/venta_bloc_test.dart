@@ -52,31 +52,47 @@ void main() {
     });
   });
 
-  group('actualizarVenta', () {
-    test('envía el map y el id al repositorio y refleja la venta devuelta',
+  group('mostrarVenta', () {
+    final descontada = Venta(
+      id: 7,
+      fecha: DateTime(2024, 5, 10),
+      total: 200,
+      ganancias: 80,
+      descuento: 10,
+      idsucursales: 1,
+    );
+
+    test('muestra la venta que devolvió la base sin volver a leerla',
         () async {
       final bloc = await crearBloc();
+      // Si la releyera, mostraría esta
+      repo.venta = venta;
 
-      final ok = await bloc.actualizarVenta({'total': -100, 'ganancias': -40});
+      bloc.mostrarVenta(descontada);
       await pumpEventQueue();
 
-      expect(ok, true);
-      expect(repo.actualizaciones.single, {'total': -100, 'ganancias': -40});
-      expect(repo.idsActualizados, [7]);
-      expect(bloc.state.venta!.total, 200);
-      expect(bloc.state.venta!.ganancias, 80);
-      expect(bloc.state.venta!.descuento, 10);
+      expect(bloc.state.venta, same(descontada));
+      expect(bloc.state.isLoading, false);
     });
 
-    test('si el repositorio falla devuelve false y conserva la venta',
-        () async {
+    test('sin venta (la línea ya no estaba) la vuelve a leer', () async {
+      final bloc = await crearBloc();
+      repo.venta = descontada;
+
+      bloc.mostrarVenta(null);
+      await pumpEventQueue();
+
+      expect(bloc.state.venta, same(descontada));
+      expect(bloc.state.isLoading, false);
+    });
+
+    test('si la relectura falla conserva la venta que mostraba', () async {
       final bloc = await crearBloc();
       repo.error = Exception('sin conexión');
 
-      final ok = await bloc.actualizarVenta({'total': -100});
+      bloc.mostrarVenta(null);
       await pumpEventQueue();
 
-      expect(ok, false);
       expect(bloc.state.venta, same(venta));
     });
   });

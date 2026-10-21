@@ -88,4 +88,36 @@ class VentasDatasourceImpl extends VentasDatasource {
     }
     return VentaMapper.jsonToEntity(row);
   }
+
+  @override
+  Future<int> registrarVentaTelas({
+    required int idsucursal,
+    required DateTime fecha,
+    required List<Map<String, dynamic>> detalles,
+    required double descuento,
+    String? idOperacion,
+  }) async {
+    // Una transacción (RPC registrar_venta_telas): venta del día + líneas +
+    // totales. Antes eran tres llamadas (getVentaByFecha/createVenta →
+    // registrar_detalle_venta → incrementar_venta) y una falla en el medio
+    // dejaba el total de la venta distinto de la suma de sus líneas. La
+    // fecha de una venta del día que ya existe no se toca.
+    final idventa = await _db.rpc<dynamic>('registrar_venta_telas', params: {
+      'p_idsucursales': idsucursal,
+      'p_fecha': fecha.toIso8601String(),
+      'p_detalles': detalles
+          .map((item) => {
+                'idtelas': item['idtelas'],
+                'nombre': item['nombre'],
+                'precio': item['precio'],
+                'cantidad': item['cantidad'],
+                'total': item['total'],
+                'ganancias': item['ganancias'],
+              })
+          .toList(),
+      'p_descuento': descuento,
+      if (idOperacion != null) 'p_id_operacion': idOperacion,
+    });
+    return idventa as int;
+  }
 }

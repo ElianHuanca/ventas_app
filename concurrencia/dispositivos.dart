@@ -67,7 +67,12 @@ Future<List<SupabaseClient>> abrirDispositivos(
         SupabaseConfig.url,
         SupabaseConfig.publishableKey,
         // Sin el timer de refresco: una corrida dura mucho menos que el token.
-        authOptions: const AuthClientOptions(autoRefreshToken: false),
+        // Flujo implicit: el PKCE por defecto pide un asyncStorage para el
+        // signUp, y en una base nueva (la CI) el usuario de prueba no existe.
+        authOptions: const AuthClientOptions(
+          autoRefreshToken: false,
+          authFlowType: AuthFlowType.implicit,
+        ),
       );
       dispositivos.add(dispositivo);
       final guardada = guardadas['$i'];

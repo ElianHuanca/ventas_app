@@ -65,13 +65,9 @@ class VentaBloc extends Bloc<VentaEvent, VentaState> {
     emit(state.copyWith(venta: event.venta));
   }
 
-  Future<bool> actualizarVenta(Map<String, dynamic> ventaLike) async {
-    try {
-      final venta = await ventasRepository.actualizarVenta(ventaLike, state.id);
-      add(VentaUpdateRequested(venta));
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
+  /// Muestra la venta que devolvió la base (al borrar una línea, con los
+  /// totales ya descontados). Sin venta (la línea ya no estaba) la vuelve a
+  /// leer: puede haberla cambiado otro dispositivo.
+  void mostrarVenta(Venta? venta) =>
+      add(venta == null ? VentaLoadRequested() : VentaUpdateRequested(venta));
 }

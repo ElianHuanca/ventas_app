@@ -269,7 +269,7 @@ void main() {
         crear: () => DetalleVentasBloc(
           detalleVentasRepository:
               FakeDetalleVentasRepository(detalles: _detalleVentas(n)),
-          updateVenta: (_) async => true,
+          ventaActualizada: (_) {},
           idventa: 1,
         ),
         recargar: (b) => b.add(DetalleVentasLoadRequested()),

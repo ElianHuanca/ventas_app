@@ -1,7 +1,9 @@
 -- =====================================================================
 -- RPC registrar_produccion (fabricación de apliques)
 --
--- Migración 20261003000100_integridad_stock_y_ventas.sql:
+-- Migración 20261003000100_integridad_stock_y_ventas.sql (la clave
+-- p_id_operacion de 20261020000000_idempotencia_y_venta_telas.sql se prueba
+-- en 10_idempotencia.test.sql; acá todo va sin clave):
 --   * una cabecera (producciones) por sucursal+fecha: la usa o la crea;
 --   * upsert de líneas por (idproduccion, idaplique, idcolor): suma cantidad;
 --   * suma la cantidad al stock de inventario (crea la fila o la reactiva);
@@ -98,8 +100,8 @@ set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-0000000000a3", 
 -- Firma
 -- =====================================================================
 select function_returns(
-  'public', 'registrar_produccion', array['bigint', 'date', 'jsonb'], 'bigint',
-  'registrar_produccion(bigint, date, jsonb) devuelve el id de la producción'
+  'public', 'registrar_produccion', array['bigint', 'date', 'jsonb', 'uuid'], 'bigint',
+  'registrar_produccion(bigint, date, jsonb, uuid) devuelve el id de la producción'
 );
 
 -- =====================================================================
@@ -246,7 +248,7 @@ select is(pg_temp.estado(), (select valor from pg_temp._estado where clave = 'an
   'ninguna fabricación rechazada dejó cabecera, líneas ni stock (tampoco las líneas válidas que venían antes)');
 
 -- Va al final: mientras el bug exista, las llamadas SÍ escriben
-select todo('bug (menor): 20261003000100_integridad_stock_y_ventas.sql:158 — registrar_produccion no valida p_lineas: con [] o NULL crea una producción del día vacía (crear_venta_apliques sí rechaza una venta sin líneas)', 2);
+select todo('bug (menor): 20261020000000_idempotencia_y_venta_telas.sql:213 — registrar_produccion no valida p_lineas: con [] o NULL crea una producción del día vacía (crear_venta_apliques sí rechaza una venta sin líneas)', 2);
 select throws_ok($$
   select public.registrar_produccion(pg_temp.id('sucursal'), '2187-03-13', '[]'::jsonb)
 $$, null::char(5), null,

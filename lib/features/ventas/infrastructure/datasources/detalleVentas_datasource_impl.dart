@@ -2,6 +2,7 @@
 import 'package:textiles_app/config/supabase/supabase_config.dart';
 import 'package:textiles_app/features/ventas/domain/domain.dart';
 import 'package:textiles_app/features/ventas/infrastructure/mappers/detalleVenta_mapper.dart';
+import 'package:textiles_app/features/ventas/infrastructure/mappers/venta_mapper.dart';
 
 class DetalleVentasDatasourceImpl extends DetalleVentasDatasource {
   final _db = SupabaseConfig.client;
@@ -18,7 +19,9 @@ class DetalleVentasDatasourceImpl extends DetalleVentasDatasource {
       List<Map<String, dynamic>> detalleVentasLike, int idventas) async {
     // Upsert atómico en la DB (RPC registrar_detalle_venta) por
     // idventa + idtelas + precio (UNIQUE): si la línea existe suma
-    // cantidad/total/ganancias; si no, inserta.
+    // cantidad/total/ganancias; si no, inserta. No toca los totales de la
+    // venta: la venta de la app va por VentasDatasource.registrarVentaTelas
+    // (todo junto); esto queda para armar datos (integración, benchmarks).
     final rows = await _db.rpc<List<dynamic>>('registrar_detalle_venta', params: {
       'p_idventa': idventas,
       'p_detalles': detalleVentasLike
@@ -38,11 +41,13 @@ class DetalleVentasDatasourceImpl extends DetalleVentasDatasource {
   }
 
   @override
-  Future<DetalleVenta> deleteDetalleVenta(int id) async {
-    final row = await _db.from(_table).select().eq('id', id).maybeSingle();
-    if (row == null) throw Exception('Detalle no encontrado');
-    final deleted = DetalleVentaMapper.jsonToEntity(row);
-    await _db.from(_table).delete().eq('id', id);
-    return deleted;
+  Future<Venta?> borrarDetalleVenta(int id) async {
+    // Una transacción (RPC borrar_detalle_venta): borrar la línea y restar
+    // su total de la venta ya no pueden quedar a medias. Sin la línea (ya
+    // borrada) PostgREST devuelve el compuesto con todos los campos en null.
+    final row = await _db.rpc<Map<String, dynamic>?>('borrar_detalle_venta',
+        params: {'p_id': id});
+    if (row == null || row['id'] == null) return null;
+    return VentaMapper.jsonToEntity(row);
   }
 }

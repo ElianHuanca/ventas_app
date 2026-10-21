@@ -37,15 +37,21 @@ void main() {
     ]);
   });
 
-  test('deleteDetalleVenta devuelve la línea borrada (para descontar el total)',
+  test('borrarDetalleVenta devuelve la venta con el total ya descontado',
       () async {
-    final borrada = await repo.deleteDetalleVenta(9);
+    final venta = await repo.borrarDetalleVenta(9);
 
-    expect(borrada, same(ds.borrado));
-    expect(borrada.total, 30);
+    expect(venta, same(ds.ventaTrasBorrar));
     expect(ds.llamadas, [
-      ['deleteDetalleVenta', 9],
+      ['borrarDetalleVenta', 9],
     ]);
+  });
+
+  test('borrarDetalleVenta de una línea que ya no estaba devuelve null',
+      () async {
+    ds.ventaTrasBorrar = null;
+
+    expect(await repo.borrarDetalleVenta(9), isNull);
   });
 
   test('no traga los errores del datasource', () async {
@@ -55,6 +61,6 @@ void main() {
     await expectLater(repo.getDetalleVenta(1), throwsA(same(error)));
     await expectLater(
         repo.createDetalleVenta(const [], 1), throwsA(same(error)));
-    await expectLater(repo.deleteDetalleVenta(1), throwsA(same(error)));
+    await expectLater(repo.borrarDetalleVenta(1), throwsA(same(error)));
   });
 }

@@ -65,10 +65,24 @@ void inventarioTests() {
       expect(avisoEstimada, findsNothing,
           reason: 'la sucursal vendió: usa sus propias ventas');
 
+      // Se captura lo que la app manda al portapapeles en vez de leerlo del
+      // sistema: en el emulador sin ventana de la CI, Clipboard.getData a
+      // veces devuelve null (el portapapeles compartido con el host lo pisa).
+      String? copiado;
+      final mensajero = tester.binding.defaultBinaryMessenger;
+      mensajero.setMockMethodCallHandler(SystemChannels.platform,
+          (llamada) async {
+        if (llamada.method == 'Clipboard.setData') {
+          final args = llamada.arguments as Map<Object?, Object?>;
+          copiado = args['text'] as String?;
+        }
+        return null;
+      });
+      addTearDown(() =>
+          mensajero.setMockMethodCallHandler(SystemChannels.platform, null));
       await tester.tap(find.byTooltip('Copiar lista'));
       await esperarHasta(
           tester, find.text('Lista copiada: pegala en WhatsApp'));
-      final copiado = (await Clipboard.getData(Clipboard.kTextPlain))?.text;
       expect(copiado, isNotNull);
       expect(copiado, contains(sucursal.nombre));
       final linea = copiado!

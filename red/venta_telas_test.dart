@@ -10,15 +10,18 @@ import '../concurrencia/datos.dart';
 import 'celular.dart';
 import 'red_con_fallas.dart';
 
-/// Venta de telas con la red cortándose. Registrar es una cadena de llamadas
-/// separadas (`DetalleVentaFormCubit.onFormSubmit`): buscar la venta del día
-/// (GET `ventas`) → crearla si no hay (POST `ventas`) → las líneas (RPC
-/// `registrar_detalle_venta`) → los totales (RPC `incrementar_venta`). Borrar
-/// una línea (`DetalleVentasBloc.deleteDetVenta`) es otra: leer la línea →
-/// DELETE → `incrementar_venta` con el delta negativo. Una falla en el medio
-/// las deja a medias. Mismos objetos que las rutas `/det_venta/:idsucursal` y
-/// `/det_ventas/:idventa`, con la fecha elegida en el formulario
-/// ([fechaRD], como "fecha anterior").
+/// Venta de telas con la red cortándose. Registrar es UNA llamada
+/// (`DetalleVentaFormCubit.onFormSubmit` → RPC `registrar_venta_telas`: la
+/// venta del día, las líneas y los totales en una transacción) con la clave
+/// de operación del envío: el reintento del mismo carrito lleva la misma y la
+/// base no lo suma dos veces. Borrar una línea
+/// (`DetalleVentasBloc.deleteDetVenta`) es otra (RPC `borrar_detalle_venta`:
+/// borra y descuenta el total juntos; si la línea ya no está, no hace nada).
+/// Antes eran 4 y 3 llamadas separadas y una falla en el medio las dejaba a
+/// medias (bugs arreglados en la migración
+/// `20261020000000_idempotencia_y_venta_telas.sql`). Mismos objetos que las
+/// rutas `/det_venta/:idsucursal` y `/det_ventas/:idventa`, con la fecha
+/// elegida en el formulario ([fechaRD], como "fecha anterior").
 void main() {
   late Celular celular;
   late DatosRD datos;
@@ -48,8 +51,6 @@ void main() {
   DetalleVentaFormCubit formulario(int sucursal) {
     final cubit = DetalleVentaFormCubit(
       ventasRepository: VentasRepositoryImpl(VentasDatasourceImpl()),
-      detalleVentasRepository:
-          DetalleVentasRepositoryImpl(DetalleVentasDatasourceImpl()),
       idsucursal: sucursal,
     );
     addTearDown(cubit.close);
@@ -125,92 +126,84 @@ void main() {
 
   group('registrar', () {
     test(
-        'respuesta perdida en registrar_detalle_venta: la app ve un error y '
-        'conserva el carrito, pero la línea ya quedó en la base', () async {
+        'es una sola llamada (registrar_venta_telas): no quedan pasos '
+        'intermedios que puedan fallar', () async {
       final (sucursal, cubit) = await carritoListo();
-      red().perderRespuesta(cuando: Cuando.rpc('registrar_detalle_venta'));
 
-      expect(await cubit.onFormSubmit(), isFalse);
+      expect(await cubit.onFormSubmit(), isTrue);
 
-      expect(red().perdidas, ['rpc/registrar_detalle_venta']);
-      expect(red().llegaron, isNot(contains('rpc/incrementar_venta')));
-      expect(cubit.state.detVentas, hasLength(1));
-      final ventas = await ventasTelasDelDia(celular.base, sucursal, fechaRD);
-      final lineas =
-          await lineasVentaTelas(celular.base, ventas.single['id'] as int);
-      expect(numero(lineas.single['cantidad']), metros);
+      expect(red().llegaron, ['rpc/registrar_venta_telas']);
+      await verificarVendidoUnaVez(sucursal);
     });
 
     test(
-        'respuesta perdida en registrar_detalle_venta y el usuario vuelve a '
-        'tocar Guardar: la línea no se duplica y el total coincide con las '
-        'líneas', () async {
-      final (sucursal, cubit) = await carritoListo();
-      red().perderRespuesta(cuando: Cuando.rpc('registrar_detalle_venta'));
-      expect(await cubit.onFormSubmit(), isFalse);
-
-      expect(await cubit.onFormSubmit(), isTrue);
-
-      await verificarVendidoUnaVez(sucursal);
-    },
-        // bug: supabase/migrations/20261003000100_integridad_stock_y_ventas.sql:199 — registrar_detalle_venta no es idempotente: el reintento (lib/features/ventas/presentation/bloc/detalle_venta_form_cubit.dart:176 manda el mismo carrito sin id de operación) vuelve a sumar la línea (4 m / 100 Bs) mientras la venta suma una sola vez (50 Bs)
-        skip: bugConocido);
-
-    test(
-        'sin conexión justo en incrementar_venta: el total de la venta '
-        'coincide con la suma de sus líneas', () async {
-      final (sucursal, cubit) = await carritoListo();
-      red().cortar(cuando: Cuando.rpc('incrementar_venta'));
-
-      expect(await cubit.onFormSubmit(), isFalse);
-
-      expect(red().cortadas, ['rpc/incrementar_venta']);
-      // Sin reintentar: lo que quedó en la base tiene que cerrar (todo o
-      // nada).
-      final ventas = await ventasTelasDelDia(celular.base, sucursal, fechaRD);
-      final lineas = [
-        for (final v in ventas)
-          ...await lineasVentaTelas(celular.base, v['id'] as int),
-      ];
-      expect({
-        'total de la venta': sumaCentavos(ventas, 'total') / 100,
-        'ganancias de la venta': sumaCentavos(ventas, 'ganancias') / 100,
-      }, {
-        'total de la venta': sumaCentavos(lineas, 'total') / 100,
-        'ganancias de la venta': sumaCentavos(lineas, 'ganancias') / 100,
-      }, reason: 'la venta tiene que sumar lo mismo que sus líneas');
-    },
-        // bug: lib/features/ventas/presentation/bloc/detalle_venta_form_cubit.dart:180 — las líneas (registrar_detalle_venta) y el total (incrementar_venta) van en llamadas separadas: si la segunda falla, la línea de 50 Bs queda en la base y el total de la venta en 0
-        skip: bugConocido);
-
-    test(
-        'sin conexión justo en incrementar_venta y el usuario vuelve a tocar '
-        'Guardar: se vende una sola vez y el total coincide con las líneas',
+        'respuesta perdida: la app ve un error y conserva el carrito, pero la '
+        'venta ya quedó entera en la base (el total coincide con las líneas)',
         () async {
       final (sucursal, cubit) = await carritoListo();
-      red().cortar(cuando: Cuando.rpc('incrementar_venta'), veces: 1);
+      red().perderRespuesta(cuando: Cuando.rpc('registrar_venta_telas'));
+
       expect(await cubit.onFormSubmit(), isFalse);
 
-      expect(await cubit.onFormSubmit(), isTrue);
-
+      expect(red().perdidas, ['rpc/registrar_venta_telas']);
+      expect(cubit.state.detVentas, hasLength(1),
+          reason: 'el carrito queda para volver a tocar Guardar');
+      // Sin reintentar: lo que quedó en la base cierra (todo o nada)
       await verificarVendidoUnaVez(sucursal);
-    },
-        // bug: lib/features/ventas/presentation/bloc/detalle_venta_form_cubit.dart:176 — el reintento vuelve a mandar las líneas que ya se habían registrado: quedan 4 m / 100 Bs en las líneas y 50 Bs en la venta
-        skip: bugConocido);
+    });
 
     test(
-        'respuesta perdida en incrementar_venta y el usuario vuelve a tocar '
-        'Guardar: la venta se cuenta una sola vez', () async {
+        'respuesta perdida y el usuario vuelve a tocar Guardar: la línea no se '
+        'duplica y el total coincide con las líneas', () async {
       final (sucursal, cubit) = await carritoListo();
-      red().perderRespuesta(cuando: Cuando.rpc('incrementar_venta'));
+      red().perderRespuesta(cuando: Cuando.rpc('registrar_venta_telas'));
+      expect(await cubit.onFormSubmit(), isFalse);
+
+      // Volvió la señal: el mismo carrito, "Guardar" otra vez
+      expect(await cubit.onFormSubmit(), isTrue);
+
+      expect(red().llegaron,
+          ['rpc/registrar_venta_telas', 'rpc/registrar_venta_telas']);
+      await verificarVendidoUnaVez(sucursal);
+    });
+
+    test(
+        'respuesta perdida dos veces seguidas y un tercer Guardar: se vende '
+        'una sola vez', () async {
+      final (sucursal, cubit) = await carritoListo();
+      red().perderRespuesta(
+          cuando: Cuando.rpc('registrar_venta_telas'), veces: 2);
+      expect(await cubit.onFormSubmit(), isFalse);
       expect(await cubit.onFormSubmit(), isFalse);
 
       expect(await cubit.onFormSubmit(), isTrue);
 
+      expect(red().perdidas, hasLength(2));
       await verificarVendidoUnaVez(sucursal);
-    },
-        // bug: supabase/migrations/20261003000100_integridad_stock_y_ventas.sql:210 — incrementar_venta y registrar_detalle_venta no son idempotentes: con la respuesta perdida todo ya se había aplicado y el reintento lo suma de nuevo (4 m, 100 Bs en las líneas y en la venta)
-        skip: bugConocido);
+    });
+
+    test(
+        'después del reintento que salió bien, otra venta el mismo día se suma '
+        'aparte (la clave se renueva)', () async {
+      final (sucursal, cubit) = await carritoListo();
+      red().perderRespuesta(cuando: Cuando.rpc('registrar_venta_telas'));
+      expect(await cubit.onFormSubmit(), isFalse);
+      expect(await cubit.onFormSubmit(), isTrue);
+
+      // La pantalla vuelve al listado y el usuario vende lo mismo de nuevo
+      final otra = formulario(sucursal);
+      await agregar(otra, cubit.state.detVentas.single['idtelas'] as int);
+      expect(await otra.onFormSubmit(), isTrue);
+      // El mismo carrito en el mismo formulario, después de un éxito, también
+      // es otra venta (no un reintento)
+      expect(await cubit.onFormSubmit(), isTrue);
+
+      await verificarVenta(sucursal,
+          lineas: 1,
+          metrosVendidos: 3 * metros,
+          total: 3 * metros * precio,
+          ganancias: 3 * metros * (precio - compra));
+    });
 
     test(
         'sin conexión: falla limpia (no llega nada a la base), conserva el '
@@ -218,31 +211,13 @@ void main() {
       final (sucursal, cubit) = await carritoListo();
       red().cortar();
 
-      // getVentaByFecha es un GET: postgrest lo reintenta 3 veces solo
-      // (1 + 2 + 4 s) antes de dar el error.
+      // Es un POST: postgrest no lo reintenta solo, falla enseguida
       expect(await cubit.onFormSubmit(), isFalse);
 
       expect(red().llegaron, isEmpty);
+      expect(red().cortadas, ['rpc/registrar_venta_telas']);
       expect(cubit.state.detVentas, hasLength(1));
       expect(await ventasTelasDelDia(celular.base, sucursal, fechaRD), isEmpty);
-
-      red().restablecer();
-      expect(await cubit.onFormSubmit(), isTrue);
-      await verificarVendidoUnaVez(sucursal);
-    });
-
-    test(
-        'sin conexión al registrar las líneas: queda a lo sumo la venta del '
-        'día vacía (cierra en 0) y el reintento la reusa', () async {
-      final (sucursal, cubit) = await carritoListo();
-      red().cortar(cuando: Cuando.rpc('registrar_detalle_venta'));
-
-      expect(await cubit.onFormSubmit(), isFalse);
-
-      expect(red().llegaron, ['ventas', 'ventas'],
-          reason: 'buscó la venta del día y la creó');
-      await verificarVenta(sucursal,
-          lineas: 0, metrosVendidos: 0, total: 0, ganancias: 0);
 
       red().restablecer();
       expect(await cubit.onFormSubmit(), isTrue);
@@ -256,9 +231,9 @@ void main() {
     const compraB = 12;
 
     /// Venta del día con dos líneas (registrada con la red sana) y los blocs
-    /// de la pantalla de detalle cargados. Devuelve la línea a borrar (la de
-    /// la tela B).
-    Future<(int, DetalleVentasBloc, int)> ventaConDosLineas() async {
+    /// de la pantalla de detalle cargados, cableados como en app_router.
+    /// Devuelve la línea a borrar (la de la tela B).
+    Future<(int, VentaBloc, DetalleVentasBloc, int)> ventaConDosLineas() async {
       final sucursal = await datos.sucursal();
       final telaA = await datos.tela(precio: precio, compra: compra);
       final telaB = await datos.tela(precio: precioB, compra: compraB);
@@ -276,19 +251,29 @@ void main() {
       final detalleBloc = DetalleVentasBloc(
         detalleVentasRepository:
             DetalleVentasRepositoryImpl(DetalleVentasDatasourceImpl()),
-        updateVenta: ventaBloc.actualizarVenta,
+        ventaActualizada: ventaBloc.mostrarVenta,
         idventa: idventa,
       );
       addTearDown(detalleBloc.close);
-      await ventaBloc.stream.firstWhere((s) => !s.isLoading);
-      await detalleBloc.stream.firstWhere((s) => !s.isLoading);
+      // Si la carga ya terminó, el stream no repite el estado: esperar solo
+      // si sigue cargando (con una base vacía, como en la CI, termina antes
+      // de que el test se suscriba y firstWhere esperaba para siempre).
+      const espera = Duration(seconds: 30);
+      if (ventaBloc.state.isLoading) {
+        await ventaBloc.stream.firstWhere((s) => !s.isLoading).timeout(espera);
+      }
+      if (detalleBloc.state.isLoading) {
+        await detalleBloc.stream
+            .firstWhere((s) => !s.isLoading)
+            .timeout(espera);
+      }
       expect(detalleBloc.state.detalleVentas, hasLength(2));
 
       final lineaB = detalleBloc.state.detalleVentas
           .singleWhere((d) => d.idtelas == telaB)
           .id!;
       red().registro.clear();
-      return (sucursal, detalleBloc, lineaB);
+      return (sucursal, ventaBloc, detalleBloc, lineaB);
     }
 
     /// Lo que tiene que quedar después de borrar la línea B: solo la A.
@@ -298,49 +283,78 @@ void main() {
         total: metros * precio,
         ganancias: metros * (precio - compra));
 
-    test(
-        'sin conexión entre el borrado y incrementar_venta: el total de la '
-        'venta coincide con las líneas que quedan', () async {
-      final (sucursal, bloc, lineaB) = await ventaConDosLineas();
-      red().cortar(cuando: Cuando.rpc('incrementar_venta'));
-
-      expect(await bloc.deleteDetVenta(lineaB), isFalse);
-
-      expect(red().llegaron, ['detalle_ventas', 'detalle_ventas'],
-          reason: 'leyó la línea y la borró');
-      expect(red().cortadas, ['rpc/incrementar_venta']);
-      await verificarSoloLineaA(sucursal);
-    },
-        // bug: lib/features/ventas/presentation/bloc/detalle_ventas_bloc.dart:110 — el DELETE (detalleVentas_datasource_impl.dart:45) y el descuento del total (incrementar_venta) van en llamadas separadas: la línea de 60 Bs se borra y la venta sigue sumando 110 Bs con 50 Bs de líneas (y la pantalla ya sacó la línea: no hay cómo reintentar)
-        skip: bugConocido);
-
-    test(
-        'respuesta perdida en el DELETE (aunque el usuario reintente): el '
-        'total de la venta coincide con las líneas que quedan', () async {
-      final (sucursal, bloc, lineaB) = await ventaConDosLineas();
-      red().perderRespuesta(
-          cuando: Cuando.tabla('detalle_ventas', metodo: 'DELETE'));
-
-      expect(await bloc.deleteDetVenta(lineaB), isFalse);
-      expect(red().perdidas, ['detalle_ventas']);
-
-      // La pantalla sigue mostrando la línea: el usuario vuelve a borrarla.
-      if (bloc.state.detalleVentas.any((d) => d.id == lineaB)) {
-        await bloc.deleteDetVenta(lineaB);
+    /// Espera a que la pantalla muestre la venta solo con la línea A (los
+    /// blocs procesan sus eventos después de que deleteDetVenta devolvió).
+    Future<void> pantallaSoloConLineaA(
+        VentaBloc ventaBloc, DetalleVentasBloc bloc, int lineaB) async {
+      const espera = Duration(seconds: 30);
+      bool sinB(DetalleVentasState s) =>
+          !s.detalleVentas.any((d) => d.id == lineaB);
+      bool totalA(VentaState s) => s.venta?.total == metros * precio;
+      if (!sinB(bloc.state)) {
+        await bloc.stream.firstWhere(sinB).timeout(espera);
       }
+      if (!totalA(ventaBloc.state)) {
+        await ventaBloc.stream.firstWhere(totalA).timeout(espera);
+      }
+    }
+
+    test(
+        'es una sola llamada (borrar_detalle_venta): la pantalla muestra el '
+        'total que dejó la base', () async {
+      final (sucursal, ventaBloc, bloc, lineaB) = await ventaConDosLineas();
+
+      expect(await bloc.deleteDetVenta(lineaB), isTrue);
+      await pantallaSoloConLineaA(ventaBloc, bloc, lineaB);
+
+      // La venta con el total descontado vino en la misma respuesta
+      expect(red().llegaron, ['rpc/borrar_detalle_venta']);
       await verificarSoloLineaA(sucursal);
-    },
-        // bug: lib/features/ventas/presentation/bloc/detalle_ventas_bloc.dart:104 — con la respuesta del DELETE perdida la línea ya no existe pero incrementar_venta nunca se llama; al reintentar, deleteDetalleVenta no la encuentra ("Detalle no encontrado") y la venta queda en 110 Bs con 50 Bs de líneas
-        skip: bugConocido);
+    });
+
+    test(
+        'respuesta perdida (sin reintentar): la línea y su total salieron '
+        'juntos de la base, y la pantalla todavía la muestra para reintentar',
+        () async {
+      final (sucursal, _, bloc, lineaB) = await ventaConDosLineas();
+      red().perderRespuesta(cuando: Cuando.rpc('borrar_detalle_venta'));
+
+      expect(await bloc.deleteDetVenta(lineaB), isFalse);
+
+      expect(red().perdidas, ['rpc/borrar_detalle_venta']);
+      expect(bloc.state.detalleVentas.map((d) => d.id), contains(lineaB),
+          reason: 'sale de la pantalla recién cuando la base respondió');
+      await verificarSoloLineaA(sucursal);
+    });
+
+    test(
+        'respuesta perdida y el usuario vuelve a borrarla: no descuenta dos '
+        'veces, la línea sale de la pantalla y se ve el total de la base',
+        () async {
+      final (sucursal, ventaBloc, bloc, lineaB) = await ventaConDosLineas();
+      red().perderRespuesta(cuando: Cuando.rpc('borrar_detalle_venta'));
+      expect(await bloc.deleteDetVenta(lineaB), isFalse);
+
+      // La pantalla sigue mostrando la línea: el usuario vuelve a borrarla
+      expect(await bloc.deleteDetVenta(lineaB), isTrue);
+      await pantallaSoloConLineaA(ventaBloc, bloc, lineaB);
+
+      // La base ya no la tenía (devolvió null): la venta se volvió a leer
+      expect(red().llegaron, [
+        'rpc/borrar_detalle_venta',
+        'rpc/borrar_detalle_venta',
+        'ventas',
+      ]);
+      await verificarSoloLineaA(sucursal);
+    });
 
     test(
         'sin conexión: no borra nada, el total queda igual y el reintento con '
         'señal la borra y descuenta el total', () async {
-      final (sucursal, bloc, lineaB) = await ventaConDosLineas();
+      final (sucursal, _, bloc, lineaB) = await ventaConDosLineas();
       red().cortar();
 
-      // El primer pedido es un GET (leer la línea): postgrest lo reintenta
-      // 3 veces solo antes de dar el error.
+      // Es un POST: postgrest no lo reintenta solo, falla enseguida
       expect(await bloc.deleteDetVenta(lineaB), isFalse);
 
       expect(red().llegaron, isEmpty);

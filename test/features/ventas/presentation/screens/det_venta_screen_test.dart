@@ -13,7 +13,6 @@ import '../../../../helpers/fake_repositories.dart';
 
 void main() {
   late FakeVentasRepository ventasRepo;
-  late FakeDetalleVentasRepository detalleRepo;
   late FakeTelasRepository telasRepo;
   late DetalleVentaFormCubit cubit;
   late TelasBloc telasBloc;
@@ -25,7 +24,6 @@ void main() {
 
   setUp(() {
     ventasRepo = FakeVentasRepository();
-    detalleRepo = FakeDetalleVentasRepository();
     telasRepo = FakeTelasRepository(telas: telas);
   });
 
@@ -44,7 +42,6 @@ void main() {
     addTearDown(tester.view.reset);
     cubit = DetalleVentaFormCubit(
       ventasRepository: ventasRepo,
-      detalleVentasRepository: detalleRepo,
       idsucursal: 1,
     );
     telasBloc = TelasBloc(telasRepository: telasRepo, idsucursal: 1);
@@ -158,8 +155,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Realizado correctamente'), findsOneWidget);
-    expect(ventasRepo.createVentaCalls, 1);
-    expect(detalleRepo.detallesCreados.single, [
+    // Una sola llamada (registrar_venta_telas) con todo el carrito
+    final envio = ventasRepo.ventasRegistradas.single;
+    expect(envio['idsucursal'], 1);
+    expect(envio['fecha'], DateTime(2024, 6, 10));
+    expect(envio['descuento'], 15.0);
+    expect(envio['detalles'], [
       {
         'idtelas': 1,
         'nombre': 'Lino',
@@ -170,15 +171,7 @@ void main() {
         'ganancias': 80.0,
       },
     ]);
-    // La venta creada por el fake recibe id 10
-    expect(detalleRepo.idsVentaUsados, [10]);
-    expect(ventasRepo.idsActualizados, [10]);
-    expect(ventasRepo.actualizaciones.single, {
-      'total': 200.0,
-      'descuento': 15.0,
-      'ganancias': 80.0,
-      'fecha': DateTime(2024, 6, 10).toIso8601String(),
-    });
+    expect(envio['idOperacion'], isNotNull);
   });
 
   testWidgets('Guardar sin líneas avisa "Hubo un error" y no llama repos',
@@ -189,9 +182,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Hubo un error'), findsOneWidget);
-    expect(ventasRepo.createVentaCalls, 0);
-    expect(detalleRepo.detallesCreados, isEmpty);
-    expect(ventasRepo.actualizaciones, isEmpty);
+    expect(ventasRepo.ventasRegistradas, isEmpty);
   });
 
   testWidgets('Guardar con descuento inválido avisa "Hubo un error"',
@@ -204,8 +195,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Hubo un error'), findsOneWidget);
-    expect(ventasRepo.createVentaCalls, 0);
-    expect(detalleRepo.detallesCreados, isEmpty);
+    expect(ventasRepo.ventasRegistradas, isEmpty);
   });
 
   testWidgets('al guardar con éxito vuelve a la pantalla anterior',

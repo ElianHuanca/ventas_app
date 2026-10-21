@@ -73,7 +73,7 @@ void main() {
             idtelas: 2,
           ),
         ]),
-        updateVenta: ventaBloc.actualizarVenta,
+        ventaActualizada: ventaBloc.mostrarVenta,
         idventa: 7,
       );
       addTearDown(ventaBloc.close);
@@ -95,7 +95,6 @@ void main() {
     Future<void> montar(WidgetTester tester) {
       final cubit = DetalleVentaFormCubit(
         ventasRepository: FakeVentasRepository(),
-        detalleVentasRepository: FakeDetalleVentasRepository(),
         idsucursal: 1,
       )..onFechaChanged(DateTime(2026, 10, 10));
       final telasBloc = TelasBloc(

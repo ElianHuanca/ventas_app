@@ -123,7 +123,6 @@ Future<DashboardCubit> _dashboard(int n) async {
 DetalleVentaFormCubit _carrito(List<Tela> telas, int lineas) {
   final cubit = DetalleVentaFormCubit(
     ventasRepository: FakeVentasRepository(),
-    detalleVentasRepository: FakeDetalleVentasRepository(),
     idsucursal: 1,
   );
   for (final tela in telas.take(lineas)) {

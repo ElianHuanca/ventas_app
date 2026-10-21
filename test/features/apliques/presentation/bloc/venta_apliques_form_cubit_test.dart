@@ -18,6 +18,7 @@ class _VentaLenta extends FakeVentasApliquesRepository {
     required double ganancias,
     required double descuento,
     required List<Map<String, dynamic>> detalles,
+    String? idOperacion,
   }) async {
     await registro.future;
     return super.createVentaAplique(
@@ -26,9 +27,14 @@ class _VentaLenta extends FakeVentasApliquesRepository {
       ganancias: ganancias,
       descuento: descuento,
       detalles: detalles,
+      idOperacion: idOperacion,
     );
   }
 }
+
+/// Un uuid v4 como lo acepta Postgres
+final _uuid = RegExp(
+    r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$');
 
 void main() {
   late FakeVentasApliquesRepository repo;
@@ -388,6 +394,7 @@ void main() {
       expect(repo.lastGanancias, 30.0);
       expect(repo.lastDescuento, 5.0);
       expect(repo.lastDetalles!.single['cantidad'], 2.0);
+      expect(repo.idsOperacion.single, matches(_uuid));
     });
 
     test('descuento vacío se envía como 0', () async {
@@ -403,7 +410,8 @@ void main() {
       expect(repo.lastTotal, 50.0);
     });
 
-    test('error del repositorio devuelve false', () async {
+    test('error del repositorio devuelve false y conserva el carrito',
+        () async {
       seleccionar();
       cubit.onCantidadChanged('1');
       cubit.onPrecioChanged('25');
@@ -411,6 +419,97 @@ void main() {
       repo.error = Exception('fallo');
 
       expect(await cubit.onFormSubmit(), false);
+      expect(cubit.state.detalles, hasLength(1));
+    });
+  });
+
+  group('clave de operación', () {
+    void agregar({int aplique = 1, String cantidad = '2', String precio = '25'}) {
+      cubit.onApliqueChanged(
+          Aplique(id: aplique, nombre: 'Aplique $aplique', costoFabricacion: 10));
+      cubit.onColorChanged(StockAplique(
+        apliqueId: aplique,
+        colorId: 5,
+        colorNombre: 'Rojo',
+        hex: '#FF0000',
+        stock: 10,
+      ));
+      cubit.onCantidadChanged(cantidad);
+      cubit.onPrecioChanged(precio);
+      expect(cubit.addDetalle(), isNull);
+    }
+
+    Future<void> enviarConError() async {
+      repo.error = Exception('Connection closed while receiving data');
+      expect(await cubit.onFormSubmit(), isFalse);
+      repo.error = null;
+    }
+
+    test(
+        'el reintento del mismo carrito lleva la misma clave (si la respuesta '
+        'se perdió, la base no descuenta el stock de nuevo)', () async {
+      agregar();
+      await enviarConError();
+
+      expect(await cubit.onFormSubmit(), isTrue);
+
+      expect(repo.idsOperacion, hasLength(2));
+      expect(repo.idsOperacion[1], repo.idsOperacion[0]);
+      expect(repo.idsOperacion[0], matches(_uuid));
+    });
+
+    test('después de una venta que salió bien, la próxima lleva otra clave',
+        () async {
+      agregar();
+      expect(await cubit.onFormSubmit(), isTrue);
+
+      expect(await cubit.onFormSubmit(), isTrue);
+
+      expect(repo.idsOperacion[1], isNot(repo.idsOperacion[0]));
+    });
+
+    test('si después de la falla cambia el carrito, es otro envío: otra clave',
+        () async {
+      agregar();
+      await enviarConError();
+
+      agregar(aplique: 2, cantidad: '1', precio: '30');
+      await cubit.onFormSubmit();
+
+      expect(repo.idsOperacion[1], isNot(repo.idsOperacion[0]));
+    });
+
+    test('quitar una línea del carrito también es otro envío', () async {
+      agregar();
+      agregar(aplique: 2, cantidad: '1', precio: '30');
+      await enviarConError();
+
+      cubit.removeDetalle(2, 5, 1, 30);
+      await cubit.onFormSubmit();
+
+      expect(repo.idsOperacion[1], isNot(repo.idsOperacion[0]));
+    });
+
+    test('agregar y quitar la misma línea deja el mismo carrito: misma clave',
+        () async {
+      agregar();
+      await enviarConError();
+
+      agregar(aplique: 2, cantidad: '1', precio: '30');
+      cubit.removeDetalle(2, 5, 1, 30);
+      await cubit.onFormSubmit();
+
+      expect(repo.idsOperacion[1], repo.idsOperacion[0]);
+    });
+
+    test('otro descuento es otro envío: otra clave', () async {
+      agregar();
+      await enviarConError();
+
+      cubit.onDescuentoChanged('5');
+      await cubit.onFormSubmit();
+
+      expect(repo.idsOperacion[1], isNot(repo.idsOperacion[0]));
     });
   });
 
