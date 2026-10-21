@@ -38,7 +38,8 @@ Una sola DB Postgres en Supabase alimenta estas aplicaciones:
 | **ventas_app** (este) | Flutter | Punto de venta de **telas y apliques**. Dueño del esquema → `github.com/ElianHuanca/ventas_app` |
 | ~~**textiles**~~ | PHP 8.2 MVC | **Eliminado** de GitHub; queda solo la carpeta local `F:\Elian\textiles`. Era el módulo de apliques; lo absorbió este repo |
 | **sitio** | Next.js 16 | Landing pública de solo lectura → `github.com/ElianHuanca/sitio` |
-| **ventas_app_android** | Kotlin + Compose | Port nativo Android (por ahora solo telas: sucursales, telas, ventas, dashboard) → `github.com/ElianHuanca/ventas_app_android` (privado). Su build type `local` usa el mismo Supabase de Docker que este repo (ver "Entorno local") |
+| **ventas_app_android** | Kotlin + Compose | Port nativo Android: telas y apliques (ventas de telas y de apliques, fabricación, colores, dashboard) → `github.com/ElianHuanca/ventas_app_android` (privado). Su build type `local` usa el mismo Supabase de Docker que este repo (ver "Entorno local") |
+| **ventas_app_ios** | Swift + SwiftUI | Port nativo iOS, solo local (`F:\Elian\ventas_app_ios`). Usa las mismas tablas y RPC salvo `top_apliques` e `inventario_con_ventas` |
 
 En disco son carpetas hermanas (`F:\Elian\ventas_app`, `F:\Elian\ventas_app_android`, `F:\Elian\sitio`); el vault de notas está en `F:\Elian\notas`.
 
@@ -48,7 +49,7 @@ En disco son carpetas hermanas (`F:\Elian\ventas_app`, `F:\Elian\ventas_app_andr
 - **`supabase/landing.sql`** — las vistas públicas que consume la web (`sitio`). Es `CREATE OR REPLACE`, re-aplicable. Las vistas `catalogo_*_web` también están copiadas en `migrations/20261003000000_vistas_catalogo_web.sql`: si se cambian, actualizar ambos.
 - ⚠️ **`supabase/schema.sql` está obsoleto** (no describe producción; re-aplicarlo rompe cosas). Solo referencia histórica. Lo mismo los `.sql` sueltos de `supabase/` (ya aplicados, no re-ejecutables).
 
-Al cambiar el esquema: migración nueva → `npx supabase@latest db reset` en local → anotarla en el registro de migraciones del vault → aplicarla en el SQL Editor. **Antes de renombrar o borrar una columna, revisar si `sitio`, `ventas_app_android` o `ventas_app_ios` la usan.**
+Al cambiar el esquema: migración nueva → `npx supabase@latest db reset` en local → anotarla en el registro de migraciones del vault → aplicarla en el SQL Editor. **Antes de renombrar o borrar una columna o un parámetro de una RPC, correr `npx supabase@latest test db`**: `09_contrato.test.sql` fija lo que usan Flutter, Android, iOS y la web, y su mensaje dice qué app se rompe.
 
 ### ⚠️ Tablas compartidas: cuidado al tocarlas
 
@@ -114,6 +115,8 @@ Las tablas nuevas (`categorias`, `colores`, `tela_colores`, `tela_fotos`) y las 
 ### Escrituras multi-tabla → RPC transaccionales
 
 Todo lo que antes era "leer → sumar en Dart → escribir" en varias llamadas HTTP ahora es una RPC (migración `20261003000100_integridad_stock_y_ventas.sql`). **No volver al patrón leer-y-escribir desde el cliente**: con dos dispositivos pierde unidades.
+
+Son atómicas pero **no idempotentes**: si se pierde la respuesta después del commit y el usuario vuelve a tocar Guardar, se aplican dos veces. Y la venta de telas y el borrado de una línea siguen siendo varias llamadas: una falla en el medio deja el total de la venta distinto de la suma de sus líneas. Son bugs conocidos (omitidos) de `red/`.
 
 | Datasource | RPC | Qué hace en una transacción |
 |---|---|---|
@@ -241,11 +244,13 @@ Ambas con `GRANT SELECT ... TO anon`. Si se cambia una columna que estas vistas 
 flutter pub get          # instalar dependencias
 flutter run              # correr en debug
 flutter build apk        # build Android APK
-flutter analyze          # lint check
-flutter test             # 873 unitarios/de widget + 168 capturas golden (sin omitidos)
+flutter analyze          # lints estrictos (ver "Lints"): tiene que quedar limpio
+flutter test             # 878 unitarios/de widget + 168 capturas golden (sin omitidos)
 flutter test --exclude-tags golden          # sin las capturas (p. ej. fuera de Windows)
 flutter test test/goldens --update-goldens  # regenerar capturas tras un cambio visual buscado
 flutter test benchmark/micro                # 176 micro-benchmarks (~1 min)
+flutter test --exclude-tags golden --coverage && dart run tool/cobertura.dart --minimo 83   # cobertura (CI)
+flutter test red --dart-define-from-file=env/local.json --concurrency=1   # fallas de red (Supabase local)
 flutter clean            # limpiar build
 ```
 
@@ -263,7 +268,9 @@ flutter clean            # limpiar build
 | Fugas de memoria | todos los `testWidgets` de `test/` (`test/flutter_test_config.dart`) | leak_tracker: falla si un controller/notifier/FocusNode quedó sin `dispose()` |
 | Accesibilidad | `test/accesibilidad/` (todas las pantallas, en sus estados principales) | fakes; guías de flutter_test: toque ≥ 48 dp (Android) / 44 (iOS), etiquetas para lector de pantalla, contraste WCAG |
 | Concurrencia | `concurrencia/` | 8 clientes Supabase a la vez contra el **Supabase local**: las RPC no pierden unidades ni duplican cabeceras |
-| Base de datos (pgTAP) | `supabase/tests/database/` | la **base local** en SQL: RLS y permisos, RPC, restricciones, dashboard, vistas web |
+| Base de datos (pgTAP) | `supabase/tests/database/` | la **base local** en SQL: RLS y permisos, RPC, restricciones, dashboard, vistas web y el **contrato** con las otras apps |
+| Red (fallas de conexión) | `red/` | la app (cubits y datasources reales vía `SupabaseConfig.client`) con la red de `RedConFallas` contra el **Supabase local**: respuesta perdida después del commit, sin conexión, falla en la llamada N o en una RPC |
+| Firma, actualización y monkey | `tool/*.dart` | el APK (certificado oficial), y la app instalada en el **emulador**: actualizar encima de la versión de `main`, y miles de toques al azar |
 | Mutación | `mutacion/*.xml` (carritos y formularios; mappers, utilidades y dashboard; router y listados) | mutation_test: altera `lib/` línea por línea y verifica que algún test de `test/` lo detecte |
 
 Cada flujo (login, sucursales y su disponibilidad, telas, colores, apliques, fabricación, venta de apliques, venta de telas, dashboard, inventario, menú) tiene los seis tipos. Los tests de `test/` siguen la estructura de `lib/` (los de `features/shared/` van sueltos en `test/features/shared/`). Los fakes no se pisan entre tests: si uno necesita otro comportamiento, se hace una subclase local en ese archivo.
@@ -379,15 +386,57 @@ flutter test concurrencia --dart-define-from-file=env/local.json --concurrency=1
 - Cada escenario se repite `CC_REPETICIONES` veces (5 por defecto; `--dart-define=CC_REPETICIONES=20` para más cruces) con una sucursal nueva y fecha 2001-01-01, fuera de los rangos del dashboard y de la integración. Dejan filas con prefijo `CC `: se limpian con `db reset`.
 - Son `test()` simples, sin `TestWidgetsFlutterBinding` (reemplaza el `HttpClient` y toda request devuelve 400). Las sesiones se guardan en `build/concurrencia/sesiones.json`: el auth local acepta 30 logins cada 5 minutos.
 
+### Red (respuestas perdidas y reintentos)
+
+```bash
+npx supabase@latest start -x realtime,storage-api,imgproxy,edge-runtime,logflare,vector,supavisor,mailpit
+flutter test red --dart-define-from-file=env/local.json --concurrency=1
+# los omitidos (bugs conocidos) también: --dart-define=RED_CORRER_BUGS=true
+```
+
+- `RedConFallas` (`red/red_con_fallas.dart`) es un `http.Client`: **respuesta perdida** (manda el pedido, espera la respuesta entera —la base ya hizo commit— y lanza `ClientException: Connection closed while receiving data`) y **sin conexión** (falla antes de mandar); a qué pedidos alcanza: `Cuando.rpc`, `Cuando.tabla`, `Cuando.llamada(n)`, `Cuando.desdeLlamada(n)`, con `veces`. `red.registro` dice qué llegó a la base.
+- `Celular.abrir()` (`red/celular.dart`) inicializa `Supabase.instance` con ese `httpClient` (misma URL y clave que `SupabaseConfig.init()`): los cubits y datasources reales se crean después y salen por esa red sin tocar `lib/`. `celular.base` es un cliente sano para preparar y verificar la base. Reusa las sesiones de `concurrencia/` (`abrirDispositivos(2)`).
+- `test()` simples con `WidgetsFlutterBinding.ensureInitialized()` (lo pide `Supabase.initialize`), nunca `TestWidgetsFlutterBinding` (toda request devolvería 400).
+- Datos con prefijo `RD ` (`DatosRD`) y fecha 2001-01-02; se limpian con `db reset`. `crear_venta_apliques` recibe `DateTime.now()` del datasource: la red lo cambia por la fecha fija (`fijarParametro`); el resto del cuerpo es el que arma la app.
+- postgrest reintenta solo GET/HEAD (3 veces: 1 + 2 + 4 s) ante un error de red; los POST (todas las RPC) nunca. Un "sin conexión" en un GET tarda ~7 s en fallar.
+- **Bugs conocidos (9 omitidos, 2026-10-20):** las RPC de escritura no son idempotentes (con la respuesta perdida y un segundo toque en Guardar, stock, líneas y totales se aplican dos veces); la venta y el borrado de líneas de telas son varias llamadas y una falla en el medio deja el total distinto de la suma de las líneas (el borrado ya sacó la línea de la pantalla: no hay cómo reintentar); Fabricación da por fallido el registro si falla el refresco del stock y el reintento lo duplica (este se arregla solo en la app). Arreglo propuesto: un `p_id_operacion uuid` por envío (tabla de operaciones aplicadas, en la misma transacción) y una RPC única para la venta de telas y otra para borrar una línea.
+
 ### Base de datos (pgTAP)
 
 ```bash
 npx supabase@latest test db   # con el Supabase local levantado
 ```
 
-- `supabase/tests/database/NN_*.test.sql`: RLS y permisos de `anon`/`authenticated` en cada tabla, vista y RPC (01); `crear_venta_apliques` (02); `registrar_produccion` (03); `registrar_detalle_venta` / `incrementar_venta` (04); restricciones y UNIQUE (05); RPC del dashboard (06); vistas `*_web` (07); `inventario_con_ventas` (08).
+- `supabase/tests/database/NN_*.test.sql`: RLS y permisos de `anon`/`authenticated` en cada tabla, vista y RPC (01); `crear_venta_apliques` (02); `registrar_produccion` (03); `registrar_detalle_venta` / `incrementar_venta` (04); restricciones y UNIQUE (05); RPC del dashboard (06); vistas `*_web` (07); `inventario_con_ventas` (08); **contrato con las otras apps (09)**.
+- **Contrato (`09_contrato.test.sql`, 279 aserciones)**: lo que Flutter, Android (master), iOS y la web leen y escriben. Fija tablas y vistas; por columna, que exista, su tipo base (sin precisión) y NOT NULL donde una app la decodifica no nula (Android: tipo Kotlin no nulo, supabase-kt no usa `coerceInputValues`; Flutter: `as int`); las FK de los embeds (una sola por par de tablas, si no PostgREST da `PGRST201`), las PK de los upserts, que los inserts de las apps no dejen afuera una NOT NULL sin default, y las RPC con los nombres de sus parámetros (PostgREST llama por nombre), su resultado y las claves del JSON. Reemplaza el "revisar a mano si otra app usa la columna". **Al cambiar lo que lee una app, actualizar sus listas** (`_columnas`, `_embeds`, `_inserts`, `_rpcs`) y el `plan(n)`. Su `todo`: `top_productos` suma `detalle_ventas.total`, que admite NULL; una tela cuyas líneas no tengan total saldría con `total_vendido` NULL y Android (`TopProductoRow`) no la decodifica (hoy no hay ninguna así).
 - Cada archivo corre en una transacción con `rollback`: no deja datos. Al agregar una tabla, RPC o vista, sumarla acá (y actualizar el `plan(n)`).
 - **Bugs conocidos = `todo()`**, el equivalente SQL del `skip` con su `bug: archivo:línea — qué pasa`. Al arreglarlo con una migración, sacar el `todo` (el test tiene que pasar).
+
+### Lints
+
+`analysis_options.yaml`: flutter_lints + `strict-casts` / `strict-inference` / `strict-raw-types` + 25 reglas curadas que detectan bugs (futures sin esperar, llamadas dinámicas, throws de algo que no es Exception, strings pegados…), cada una con su porqué; las de estilo puro quedaron afuera con su motivo. `flutter analyze` tiene que quedar limpio (también falla con "info"). Una fila de Supabase es `Map<String, dynamic>`: castear explícito (`json['nombre'] as String? ?? ''`); `rpc<T>` siempre con tipo (`rpc<List<dynamic>>`, `rpc<Map<String, dynamic>?>`, `rpc<dynamic>` si no se usa). Un Future que no se espera a propósito (`router.push` en tests, la carga del constructor de un cubit) va en `unawaited(...)`.
+
+### Firma, actualización y monkey (`tool/`)
+
+- `dart run tool/verificar_firma_apk.dart [apk]` (default `build/app/outputs/flutter-apk/app-release.apk`): compara el SHA-256 del certificado con el oficial (`48e1da98d963f1dddfb0965090b1599a4151cfabc6c5d2999b345d9fc4c47bfb`). Sale 1 si quedó con la clave de debug: `flutter build apk` NO muestra el aviso de `key.properties` faltante (en un worktree nuevo no está: es ignorado por git).
+- Los builds **profile** salen siempre con la clave de debug de la PC (Flutter crea profile con `initWith(debug)` antes de que `build.gradle.kts` asigne la firma): no se instalan encima de la app oficial.
+- `dart run tool/prueba_actualizacion.dart` (solo emulador, Supabase local levantado): compila `origin/main` en un worktree temporal y HEAD (profile + `env/local-android.json`), instala la vieja, inicia sesión, `adb install -r` la nueva y verifica misma firma, que actualiza en el lugar, que abre sin caerse y que la sesión sobrevive. Con poca RAM: `--solo-compilar` con el emulador apagado y después `--sin-compilar`. Logs en `build/actualizacion/`.
+- `dart run tool/monkey.dart [--semillas 1,2,3] [--eventos 2000]` (solo emulador): instala `build/actualizacion/nueva.apk` (o compila con `--compilar`), entra con el usuario de integración y corre `adb shell monkey` por semilla; falla con CRASH, ANR o FATAL EXCEPTION. Logs en `build/monkey/`. ⚠️ Escribe datos al azar en el Supabase local (limpiar con `db reset`); no correrlo junto con la integración. El 2026-10-20: semillas 1, 2 y 3 × 2000 eventos sin fallas.
+- Los scripts rechazan cualquier serial que no sea `emulator-*` (mismo applicationId que la app oficial: nunca en el celular). Con 16 GB y otras cargas el emulador se congela (qemu a 0 % de CPU, `adb shell` no responde) o se cae (`Could not allocated host memory`): matarlo y relanzarlo con `-memory 2048`; Gradle y el emulador no entran juntos.
+
+## CI (GitHub Actions)
+
+El repo es **público** desde el 2026-10-20 (minutos ilimitados en los runners de GitHub). Todo corre en runners de GitHub: **nunca un runner self-hosted** (en un repo público, un PR de un extraño ejecutaría código en esa máquina). Flutter fijo en **3.38.9** en `.github/actions/flutter` (si se sube, regenerar las capturas en Windows). Los jobs con base usan `.github/actions/supabase-local`: CLI 2.121.0, `supabase start -x realtime,storage-api,imgproxy,edge-runtime,logflare,vector,supavisor,mailpit,studio` con las migraciones y **sin seed**, y reescribe `env/local.json` / `env/local-android.json` con la URL y la clave de esa base (avisa si no coinciden con las del repo).
+
+| Workflow | Cuándo | Jobs |
+|---|---|---|
+| `ci.yml` | cada PR y push a `main` (un push nuevo a un PR cancela la corrida anterior) | `analisis-y-tests` (ubuntu: `flutter analyze` + `flutter test --exclude-tags golden --coverage` + `tool/cobertura.dart --minimo 83`, sube `lcov.info`); `capturas` (windows-latest: `flutter test --tags golden`, sube `test/goldens/**/failures/` si falla); `base-de-datos` (pgTAP, incluido el contrato); `build-android` (`flutter build apk --debug`, Java 17) |
+| `noche.yml` | 06:00 UTC diario + a mano | `concurrencia` y `red` contra el Supabase local; `integracion` en emulador Android API 34 (google_apis x86_64, KVM) que llega al Supabase del host por `10.0.2.2`; `micro-benchmarks` (informativo: los presupuestos se calibraron en la PC; sube los JSON) |
+| `semanal.yml` | domingo 07:00 UTC + a mano | `mutacion`: matriz en windows-latest con cada XML de `mutacion/` (los comandos pasan por cmd), `mutation_test 1.8.0`, sube `build/mutacion/<xml>`; un XML que no existe se saltea con aviso (`router_y_listados.xml` todavía no está commiteado) |
+
+- **Cobertura:** `tool/cobertura.dart` lee `coverage/lcov.info`, descarta archivos generados, imprime el % por carpeta (`--profundidad`, 3 por defecto) y el total, y falla si el total < `--minimo`. Medido el 2026-10-20: 84.0 % (lo más flojo: `lib/config/router`, 26.8 %). El mínimo va un punto abajo: si baja, falta un test para lo nuevo. Lista aparte los archivos de `lib/` con código que ningún test importa.
+- `noche.yml` y `semanal.yml` se lanzan a mano desde Actions → Run workflow. Los artifacts (lcov, diferencias de capturas, benchmarks, reportes de mutación) quedan en cada corrida.
+- Los workflows se validan con `actionlint` (binario de su release de GitHub; con `-shellcheck` si está shellcheck).
 
 ## Entorno local (pruebas sin tocar producción)
 
