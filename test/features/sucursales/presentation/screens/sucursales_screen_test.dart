@@ -169,6 +169,12 @@ void main() {
     repo = lento;
     bloc = SucursalesBloc(sucursalesRepository: repo);
     addTearDown(bloc.close);
+    // Corre antes que el close(): si un expect falla antes del complete(),
+    // close() esperaría la carga para siempre y el test se colgaría en vez
+    // de fallar.
+    addTearDown(() {
+      if (!lento.carga.isCompleted) lento.carga.complete(const []);
+    });
     await tester.pumpWidget(BlocProvider.value(
       value: bloc,
       child: const MaterialApp(home: SucursalesScreen(false)),

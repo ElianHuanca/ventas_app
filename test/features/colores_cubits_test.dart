@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:textiles_app/features/apliques/domain/domain.dart';
 import 'package:textiles_app/features/apliques/presentation/bloc/aplique_colores_cubit.dart';
@@ -27,6 +29,21 @@ void main() {
     test('load trae los colores de la tela', () async {
       final cubit = await crearCubit();
       addTearDown(cubit.close);
+
+      expect(cubit.state.isLoading, false);
+      expect(cubit.state.colores, colores);
+    });
+
+    test('isLoading queda en true mientras espera al repositorio', () async {
+      final pendiente = _TelasConColoresPendientes();
+      final cubit = TelaColoresCubit(telasRepository: pendiente, idtela: 7);
+      addTearDown(cubit.close);
+      await pumpEventQueue();
+
+      expect(cubit.state.isLoading, true);
+
+      pendiente.carga.complete(colores);
+      await pumpEventQueue();
 
       expect(cubit.state.isLoading, false);
       expect(cubit.state.colores, colores);
@@ -74,13 +91,14 @@ void main() {
     setUp(() {
       repo = FakeApliquesRepository(
         colores: colores,
-        apliques: [Aplique(id: 3, nombre: 'Flor Petalo Suizo - Bolsa x100 und')],
+        apliques: [
+          Aplique(id: 3, nombre: 'Flor Petalo Suizo - Bolsa x100 und')
+        ],
       );
     });
 
     Future<ApliqueColoresCubit> crearCubit() async {
-      final cubit =
-          ApliqueColoresCubit(apliquesRepository: repo, idaplique: 3);
+      final cubit = ApliqueColoresCubit(apliquesRepository: repo, idaplique: 3);
       await pumpEventQueue();
       return cubit;
     }
@@ -91,6 +109,37 @@ void main() {
 
       expect(cubit.state.isLoading, false);
       expect(cubit.state.colores, colores);
+    });
+
+    test('isLoading queda en true mientras espera al repositorio', () async {
+      final pendiente = _ApliquesConColoresPendientes();
+      final cubit =
+          ApliqueColoresCubit(apliquesRepository: pendiente, idaplique: 3);
+      addTearDown(cubit.close);
+      await pumpEventQueue();
+
+      expect(cubit.state.isLoading, true);
+
+      pendiente.carga.complete(colores);
+      await pumpEventQueue();
+
+      expect(cubit.state.isLoading, false);
+      expect(cubit.state.colores, colores);
+    });
+
+    test('resuelve el nombre de un aplique inactivo', () async {
+      // Como el datasource real: con soloActivos (el default) no trae los
+      // inactivos, y la gestión de colores también es para ellos.
+      final repoReal = _ApliquesQueFiltranInactivos(
+        colores: colores,
+        apliques: [Aplique(id: 3, nombre: 'Luna', activo: false)],
+      );
+      final cubit =
+          ApliqueColoresCubit(apliquesRepository: repoReal, idaplique: 3);
+      addTearDown(cubit.close);
+      await pumpEventQueue();
+
+      expect(cubit.state.nombreAplique, 'Luna');
     });
 
     test('load resuelve el nombre del aplique (incluidos inactivos)', () async {
@@ -149,4 +198,32 @@ void main() {
       expect(cubit.state.colores[1].vinculado, false);
     });
   });
+}
+
+/// Deja la carga de los colores de la tela en espera hasta completar [carga].
+class _TelasConColoresPendientes extends FakeTelasRepository {
+  final carga = Completer<List<ColorItem>>();
+
+  @override
+  Future<List<ColorItem>> getColoresTela(int idtela) => carga.future;
+}
+
+/// Deja la carga de los colores del aplique en espera hasta completar [carga].
+class _ApliquesConColoresPendientes extends FakeApliquesRepository {
+  final carga = Completer<List<ColorItem>>();
+
+  @override
+  Future<List<ColorItem>> getColoresAplique(int idaplique) => carga.future;
+}
+
+/// Como el datasource real: `getApliques()` con soloActivos (el default)
+/// deja afuera los inactivos.
+class _ApliquesQueFiltranInactivos extends FakeApliquesRepository {
+  _ApliquesQueFiltranInactivos({super.apliques, super.colores});
+
+  @override
+  Future<List<Aplique>> getApliques({bool soloActivos = true}) async {
+    final todos = await super.getApliques(soloActivos: soloActivos);
+    return soloActivos ? todos.where((a) => a.activo).toList() : todos;
+  }
 }

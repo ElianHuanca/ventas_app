@@ -184,6 +184,12 @@ void main() {
       final lento = _ApliquesLento();
       apliquesRepo = lento;
       await montar(tester, esperar: false);
+      // Corre antes que el close() del bloc: si un expect falla antes del
+      // complete(), close() esperaría la carga para siempre y el test se
+      // colgaría en vez de fallar.
+      addTearDown(() {
+        if (!lento.carga.isCompleted) lento.carga.complete(const []);
+      });
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
 

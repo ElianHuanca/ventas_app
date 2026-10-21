@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Mutation testing del router, la sesión y los blocs/cubits de listados.
+
+  Correr desde la raíz del repo (con lib/ sin cambios: el comando de cada
+  archivo usa `git diff` para saber cuál está mutado):
+
+    dart pub global run mutation_test mutacion/router_y_listados.xml -o build/mutacion -f all
+
+  `-d` (dry run) cuenta los mutantes sin correr tests (229). Los 19 archivos
+  tardan más de 1 h con la máquina cargada.
+
+  Reglas: las builtin de mutation_test (se suman solas) + tres propias
+  (abajo): literales true/false, negar `if (x) return` sin llaves y borrar
+  llamadas sin argumentos (`load();`, `dispose();`).
+  Cada mutante corre SOLO los tests que ejercitan el archivo mutado: cada
+  comando primero mira con `git diff -\-quiet` si su archivo es el mutado
+  (si no, sale con 0 al toque y pasa al siguiente) y recién entonces corre
+  sus tests. El primer comando que falla mata al mutante.
+
+  `-\-fail-fast -\-timeout=30s`: hay mutantes que dejan un loader girando
+  para siempre (pumpAndSettle no termina); sin esto cada uno se comía el
+  timeout del comando. En Windows, al vencer el timeout mutation_test mata
+  el cmd.exe pero no sus hijos (flutter test / flutter_tester), y espera a
+  que suelten la salida: si pasa, matarlos a mano.
+
+  Correr un subconjunto de archivos: copiar este XML dejando solo esos
+  <file> (los comandos de los demás salen con 0 sin correr nada).
+-->
+<mutations version="1.2">
+  <files>
+    <file>lib/features/auth/presentation/sesion_router.dart</file>
+    <file>lib/config/router/app_router.dart
+      <!-- Solo la lógica. Los builders que crean *DatasourceImpl() necesitan
+           Supabase inicializado (SupabaseConfig.client se lee al construir el
+           datasource): los cubren los tests de integración, no los de test/.
+           `_pathParamInt` (líneas 24-28) solo lo llaman esos builders, así que
+           tampoco se puede ejercitar sin Supabase. -->
+      <!-- createAppRouter: ubicación inicial, SesionListenable y redirect -->
+      <lines begin="32" end="41"/>
+      <!-- builders sin datasources: /login, / y /venta-apliques -->
+      <lines begin="42" end="56"/>
+      <!-- /fabricacion y /sucursales (sin datasources) -->
+      <lines begin="113" end="116"/>
+      <lines begin="226" end="229"/>
+      <!-- _AppRouter.dispose(): libera el SesionListenable y el RoutingConfig
+           (sus constructores solo reenvían parámetros) -->
+      <lines begin="406" end="413"/>
+    </file>
+    <file>lib/features/telas/presentation/bloc/telas_bloc.dart</file>
+    <file>lib/features/telas/presentation/bloc/tela_bloc.dart</file>
+    <file>lib/features/apliques/presentation/bloc/apliques_bloc.dart</file>
+    <file>lib/features/sucursales/presentation/bloc/sucursales_bloc.dart</file>
+    <file>lib/features/sucursales/presentation/bloc/sucursal_bloc.dart</file>
+    <file>lib/features/colores/presentation/bloc/colores_bloc.dart</file>
+    <file>lib/features/ventas/presentation/bloc/ventas_bloc.dart</file>
+    <file>lib/features/ventas/presentation/bloc/venta_bloc.dart</file>
+    <file>lib/features/ventas/presentation/bloc/detalle_ventas_bloc.dart</file>
+    <file>lib/features/apliques/presentation/bloc/ventas_apliques_bloc.dart</file>
+    <file>lib/features/apliques/presentation/bloc/producciones_bloc.dart</file>
+    <file>lib/features/sucursales/presentation/bloc/sucursal_disponibilidad_cubit.dart</file>
+    <file>lib/features/telas/presentation/bloc/tela_colores_cubit.dart</file>
+    <file>lib/features/apliques/presentation/bloc/aplique_colores_cubit.dart</file>
+    <file>lib/features/apliques/presentation/bloc/detalle_produccion_cubit.dart</file>
+    <file>lib/features/apliques/presentation/bloc/detalle_venta_apliques_cubit.dart</file>
+    <file>lib/features/shared/widgets/menu_index_cubit.dart</file>
+  </files>
+
+  <commands>
+    <!-- Dos por archivo, en el mismo orden que <files>: primero los tests
+         unitarios (rápidos: con fail-fast cortan en el primer fallo) y
+         después los de widget (ahí un loader que no para tarda hasta el
+         timeout). `||`: si el archivo no cambió, git diff sale con 0 y el
+         comando no corre tests. -->
+    <command group="sesion_router" timeout="180">git diff --quiet -- lib/features/auth/presentation/sesion_router.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/auth/auth_test.dart test/features/auth/presentation/sesion_router_test.dart</command>
+    <command group="sesion_router" timeout="180">git diff --quiet -- lib/features/auth/presentation/sesion_router.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/config/router/app_router_test.dart test/main_test.dart</command>
+    <command group="app_router" timeout="180">git diff --quiet -- lib/config/router/app_router.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/config/router/app_router_test.dart test/main_test.dart</command>
+    <command group="telas_bloc" timeout="180">git diff --quiet -- lib/features/telas/presentation/bloc/telas_bloc.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/telas/presentation/bloc/telas_bloc_test.dart</command>
+    <command group="telas_bloc" timeout="180">git diff --quiet -- lib/features/telas/presentation/bloc/telas_bloc.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/telas/presentation/screens/telas_screen_test.dart test/features/telas/presentation/screens/tela_screen_test.dart test/features/ventas/presentation/screens/det_venta_screen_test.dart</command>
+    <command group="tela_bloc" timeout="180">git diff --quiet -- lib/features/telas/presentation/bloc/tela_bloc.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/telas/presentation/bloc/tela_bloc_test.dart</command>
+    <command group="tela_bloc" timeout="180">git diff --quiet -- lib/features/telas/presentation/bloc/tela_bloc.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/telas/presentation/screens/tela_screen_test.dart</command>
+    <command group="apliques_bloc" timeout="180">git diff --quiet -- lib/features/apliques/presentation/bloc/apliques_bloc.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/apliques/presentation/bloc/apliques_bloc_test.dart</command>
+    <command group="apliques_bloc" timeout="180">git diff --quiet -- lib/features/apliques/presentation/bloc/apliques_bloc.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/apliques/presentation/screens/apliques_screen_test.dart test/features/apliques/presentation/screens/aplique_screen_test.dart test/features/apliques/presentation/screens/venta_apliques_screen_test.dart test/features/shared/edicion_screens_test.dart</command>
+    <command group="sucursales_bloc" timeout="180">git diff --quiet -- lib/features/sucursales/presentation/bloc/sucursales_bloc.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/sucursales/presentation/bloc/sucursales_bloc_test.dart</command>
+    <command group="sucursales_bloc" timeout="180">git diff --quiet -- lib/features/sucursales/presentation/bloc/sucursales_bloc.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/sucursales/presentation/screens/sucursales_screen_test.dart test/features/sucursales/presentation/screens/sucursal_screen_test.dart test/features/apliques/presentation/screens/fabricacion_sucursales_screen_test.dart test/features/apliques/presentation/screens/venta_apliques_sucursales_screen_test.dart</command>
+    <command group="sucursal_bloc" timeout="180">git diff --quiet -- lib/features/sucursales/presentation/bloc/sucursal_bloc.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/sucursales/presentation/bloc/sucursal_bloc_test.dart</command>
+    <command group="sucursal_bloc" timeout="180">git diff --quiet -- lib/features/sucursales/presentation/bloc/sucursal_bloc.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/sucursales/presentation/screens/sucursal_screen_test.dart</command>
+    <command group="colores_bloc" timeout="180">git diff --quiet -- lib/features/colores/presentation/bloc/colores_bloc.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/colores/colores_test.dart</command>
+    <command group="colores_bloc" timeout="180">git diff --quiet -- lib/features/colores/presentation/bloc/colores_bloc.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/colores/presentation/screens/colores_screen_test.dart test/features/colores/presentation/screens/color_screen_test.dart test/features/shared/edicion_screens_test.dart</command>
+    <command group="ventas_bloc" timeout="180">git diff --quiet -- lib/features/ventas/presentation/bloc/ventas_bloc.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/ventas/presentation/bloc/ventas_bloc_test.dart</command>
+    <command group="ventas_bloc" timeout="180">git diff --quiet -- lib/features/ventas/presentation/bloc/ventas_bloc.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/ventas/presentation/screens/ventas_screen_test.dart</command>
+    <command group="venta_bloc" timeout="180">git diff --quiet -- lib/features/ventas/presentation/bloc/venta_bloc.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/ventas/presentation/bloc/venta_bloc_test.dart</command>
+    <command group="venta_bloc" timeout="180">git diff --quiet -- lib/features/ventas/presentation/bloc/venta_bloc.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/ventas/presentation/screens/det_ventas_screen_test.dart</command>
+    <command group="detalle_ventas_bloc" timeout="180">git diff --quiet -- lib/features/ventas/presentation/bloc/detalle_ventas_bloc.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/ventas/presentation/bloc/detalle_ventas_bloc_test.dart</command>
+    <command group="detalle_ventas_bloc" timeout="180">git diff --quiet -- lib/features/ventas/presentation/bloc/detalle_ventas_bloc.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/ventas/presentation/screens/det_ventas_screen_test.dart</command>
+    <command group="ventas_apliques_bloc" timeout="180">git diff --quiet -- lib/features/apliques/presentation/bloc/ventas_apliques_bloc.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/apliques/presentation/bloc/ventas_apliques_bloc_test.dart</command>
+    <command group="ventas_apliques_bloc" timeout="180">git diff --quiet -- lib/features/apliques/presentation/bloc/ventas_apliques_bloc.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/apliques/presentation/screens/ventas_apliques_screen_test.dart</command>
+    <command group="producciones_bloc" timeout="180">git diff --quiet -- lib/features/apliques/presentation/bloc/producciones_bloc.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/apliques/presentation/bloc/producciones_bloc_test.dart</command>
+    <command group="producciones_bloc" timeout="180">git diff --quiet -- lib/features/apliques/presentation/bloc/producciones_bloc.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/apliques/presentation/screens/producciones_screen_test.dart</command>
+    <command group="sucursal_disponibilidad_cubit" timeout="180">git diff --quiet -- lib/features/sucursales/presentation/bloc/sucursal_disponibilidad_cubit.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/sucursales/presentation/bloc/sucursal_disponibilidad_cubit_test.dart</command>
+    <command group="sucursal_disponibilidad_cubit" timeout="180">git diff --quiet -- lib/features/sucursales/presentation/bloc/sucursal_disponibilidad_cubit.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/sucursales/presentation/screens/sucursal_disponibilidad_screen_test.dart</command>
+    <command group="tela_colores_cubit" timeout="180">git diff --quiet -- lib/features/telas/presentation/bloc/tela_colores_cubit.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/colores_cubits_test.dart</command>
+    <command group="tela_colores_cubit" timeout="180">git diff --quiet -- lib/features/telas/presentation/bloc/tela_colores_cubit.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/telas/presentation/screens/tela_colores_screen_test.dart</command>
+    <command group="aplique_colores_cubit" timeout="180">git diff --quiet -- lib/features/apliques/presentation/bloc/aplique_colores_cubit.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/colores_cubits_test.dart</command>
+    <command group="aplique_colores_cubit" timeout="180">git diff --quiet -- lib/features/apliques/presentation/bloc/aplique_colores_cubit.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/apliques/presentation/screens/aplique_colores_screen_test.dart</command>
+    <command group="detalle_produccion_cubit" timeout="180">git diff --quiet -- lib/features/apliques/presentation/bloc/detalle_produccion_cubit.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/apliques/presentation/bloc/detalle_produccion_cubit_test.dart</command>
+    <command group="detalle_produccion_cubit" timeout="180">git diff --quiet -- lib/features/apliques/presentation/bloc/detalle_produccion_cubit.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/apliques/presentation/screens/produccion_detalle_screen_test.dart</command>
+    <command group="detalle_venta_apliques_cubit" timeout="180">git diff --quiet -- lib/features/apliques/presentation/bloc/detalle_venta_apliques_cubit.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/apliques/presentation/bloc/detalle_venta_apliques_cubit_test.dart</command>
+    <command group="detalle_venta_apliques_cubit" timeout="180">git diff --quiet -- lib/features/apliques/presentation/bloc/detalle_venta_apliques_cubit.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/apliques/presentation/screens/venta_apliques_detalle_screen_test.dart</command>
+    <command group="menu_index_cubit" timeout="180">git diff --quiet -- lib/features/shared/widgets/menu_index_cubit.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/shared/menu_index_cubit_test.dart</command>
+    <command group="menu_index_cubit" timeout="180">git diff --quiet -- lib/features/shared/widgets/menu_index_cubit.dart || flutter test --no-pub --concurrency=1 --fail-fast --timeout=30s test/features/shared/side_menu_test.dart test/config/router/app_router_test.dart test/main_test.dart</command>
+  </commands>
+
+  <rules>
+    <!-- Además de las builtin: los literales booleanos (soloActivos,
+         isLoading, los `return true/false` de create/update). -->
+    <literal text="true" id="propia.true">
+      <mutation text="false"/>
+    </literal>
+    <literal text="false" id="propia.false">
+      <mutation text="true"/>
+    </literal>
+    <!-- `if (x) return ...;` sin llaves: builtin.if solo entiende `if (x) {`
+         (con este caso se estira hasta la próxima llave y no compila). Acá
+         se niega la condición de los guardas (`if (state.isLoading) return;`,
+         `if (!ok) return false;`, el redirect por sesión). -->
+    <regex pattern="(?&lt;=\s)if \(([^\n]*?)\) return" id="propia.if_sin_llaves">
+      <mutation text="if (!($1)) return"/>
+    </regex>
+    <!-- Llamadas sin argumentos como sentencia: builtin.removeVoidCall exige
+         al menos un carácter entre los paréntesis, así que nunca borra
+         `load();` (el arranque de los cubits) ni los `dispose()`/`cancel()`
+         que liberan la sesión y el router. -->
+    <regex pattern="(?&lt;=[{;]\s*)[\w.]+\(\)\s*;" id="propia.quitar_llamada_sin_args">
+      <mutation text=""/>
+    </regex>
+  </rules>
+
+  <exclude>
+    <!-- comentarios -->
+    <token begin="//" end="\n"/>
+    <regex pattern="/[*].*?[*]/" dotAll="true"/>
+    <!-- imports y exports -->
+    <token begin="import &apos;" end="&apos;;"/>
+    <token begin="export &apos;" end="&apos;;"/>
+    <!-- ++ y -: casi siempre falsos positivos -->
+    <regex pattern="\+\+"/>
+    <regex pattern="--"/>
+    <!-- logs: mutar el texto o borrar el debugPrint no cambia nada que se
+         vea (el `\s` final cubre el borrado de la sentencia entera, que
+         termina justo después del `;`; venta_bloc.dart) -->
+    <regex pattern="debugPrint\(.*?\);\s" dotAll="true"/>
+
+    <!-- Mutantes que nunca compilan (no dicen nada de los tests):
+
+         builtin.function.removeVoidCall arranca en el `;` de un campo
+         (`final Tela tela;`) o en la `{` de la clase y borra el constructor
+         que sigue (TelasState(...), TelasCreateRequested(this.tela),
+         TelasBloc({...}) : super(...), MenuIndexCubit() : super(...)). -->
+    <regex pattern="^\s*(?:late )?final [^=;]*;"/>
+    <regex pattern="class [^{]*\{"/>
+    <!-- builtin.if con `if (x) return;` sin llaves: se estira hasta la
+         próxima `{` (ver propia.if_sin_llaves, que lo reemplaza). Se excluye
+         solo el espacio donde arranca ese match, para no perder el resto de
+         la línea. -->
+    <regex pattern="\s(?=if \([^\n]*\) return)"/>
+    <!-- builtin.function.arg2 en llamadas con argumentos de distinto tipo
+         (Map/int, int/DateTime): intercambiarlos no compila. Se excluye solo
+         el espacio donde arranca el match. -->
+    <regex pattern="\s(?=\w+Repository\.(?:updateTela|updateAplique|updateSucursal|updateColor|createVenta|actualizarVenta|createDetalleVenta)\()"/>
+
+    <!-- Mutantes EQUIVALENTES (sobrevivieron y no cambian nada observable):
+
+         1. `isLoading: false` en un emit seguido de `return;` dentro del try
+            (TelaBloc y SucursalBloc con id 0, DetalleVentasBloc sin líneas):
+            el `finally` emite `isLoading: false` en la misma pasada
+            síncrona, así que ponerlo en true solo agrega un estado
+            intermedio que ningún frame llega a dibujar. -->
+    <regex pattern="(?&lt;=isLoading: )false(?=\)\);\s*return;)"/>
+    <!-- 2. Borrar ese mismo emit cuando solo pone isLoading (DetalleVentasBloc,
+            `if (list.isEmpty) { emit(...isLoading: false); return; }`): el
+            finally deja el mismo estado. Se excluye la `{` donde arranca
+            builtin.removeVoidCall. -->
+    <regex pattern="\{(?=\s*emit\(state\.copyWith\(isLoading: false\)\);\s*return;)"/>
+    <!-- 3. El isLoading inicial de los cubits que cargan en el constructor
+            (`load()` emite isLoading: true antes de su primer await, o sea
+            dentro del mismo constructor: el valor inicial nunca se ve). -->
+    <regex pattern="(?&lt;=(?:SucursalDisponibilidad|TelaColores|ApliqueColores|DetalleProduccion|DetalleVentaApliques)State\(\{\s*this\.isLoading = )false"/>
+    <!-- 4. El isLoading inicial de TelasBloc: no tiene la guarda
+            `if (state.isLoading) return;` de los otros listados (en esos
+            el inicial en true sí rompe la carga y el mutante muere), y el
+            constructor ya encola la carga, cuyo primer emit es
+            isLoading: true. El valor inicial solo vive hasta ese evento. -->
+    <regex pattern="(?&lt;=TelasState\(\{this\.isLoading = )false"/>
+  </exclude>
+
+  <threshold failure="80">
+    <rating over="95" name="A"/>
+    <rating over="80" name="B"/>
+    <rating over="60" name="C"/>
+    <rating over="40" name="D"/>
+    <rating over="20" name="E"/>
+    <rating over="0" name="F"/>
+  </threshold>
+</mutations>
