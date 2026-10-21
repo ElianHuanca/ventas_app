@@ -45,21 +45,18 @@ final _ventaDelDia = Venta(
   idsucursales: 1,
 );
 
+/// La venta de telas es una sola llamada (registrar_venta_telas) que devuelve
+/// la venta del día.
 class _VentasRepo extends FakeVentasRepository {
-  _VentasRepo() {
-    ventaByFecha = _ventaDelDia;
-  }
-
   @override
-  Future<Venta> actualizarVenta(Map<String, dynamic> ventaLike, int id) async =>
-      _ventaDelDia;
-}
-
-class _DetalleVentasRepo extends FakeDetalleVentasRepository {
-  @override
-  Future<List<DetalleVenta>> createDetalleVenta(
-          List<Map<String, dynamic>> detalleVentasLike, int idventas) async =>
-      const [];
+  Future<int> registrarVentaTelas({
+    required int idsucursal,
+    required DateTime fecha,
+    required List<Map<String, dynamic>> detalles,
+    required double descuento,
+    String? idOperacion,
+  }) async =>
+      _ventaDelDia.id;
 }
 
 class _VentasApliquesRepo extends FakeVentasApliquesRepository {
@@ -70,6 +67,7 @@ class _VentasApliquesRepo extends FakeVentasApliquesRepository {
     required double ganancias,
     required double descuento,
     required List<Map<String, dynamic>> detalles,
+    String? idOperacion,
   }) async =>
       1;
 }
@@ -82,6 +80,7 @@ class _ApliquesRepo extends FakeApliquesRepository {
     required int sucursalId,
     required DateTime fecha,
     required List<Map<String, dynamic>> lineas,
+    String? idOperacion,
   }) async {}
 
   @override
@@ -134,7 +133,6 @@ class _CarritoTelas extends DetalleVentaFormCubit {
   _CarritoTelas()
       : super(
           ventasRepository: _VentasRepo(),
-          detalleVentasRepository: _DetalleVentasRepo(),
           idsucursal: 1,
         );
 

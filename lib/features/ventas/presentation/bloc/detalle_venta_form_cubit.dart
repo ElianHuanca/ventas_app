@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:textiles_app/features/shared/clave_de_operacion.dart';
 import '../../domain/domain.dart';
 
 class DetalleVentaFormState {
@@ -55,12 +56,14 @@ class DetalleVentaFormState {
 
 class DetalleVentaFormCubit extends Cubit<DetalleVentaFormState> {
   final VentasRepository ventasRepository;
-  final DetalleVentasRepository detalleVentasRepository;
   final int idsucursal;
+
+  /// Clave de idempotencia del envío: la misma en los reintentos del mismo
+  /// carrito (si se perdió la respuesta, la base no lo suma dos veces).
+  final _clave = ClaveDeOperacion();
 
   DetalleVentaFormCubit({
     required this.ventasRepository,
-    required this.detalleVentasRepository,
     required this.idsucursal,
   }) : super(DetalleVentaFormState());
 
@@ -157,6 +160,13 @@ class DetalleVentaFormCubit extends Cubit<DetalleVentaFormState> {
   bool get enviando => _enviando;
   bool _enviando = false;
 
+  /// Registra el carrito en una sola llamada (RPC `registrar_venta_telas`):
+  /// la venta del día de la sucursal, sus líneas y sus totales quedan todos
+  /// o ninguno. Si falla, el carrito queda para volver a tocar Guardar: el
+  /// reintento del mismo carrito lleva la misma clave de operación y, si el
+  /// primero había llegado a la base (respuesta perdida), no se suma de
+  /// nuevo. La clave se renueva cuando cambia el carrito, el descuento o el
+  /// día, y después de un envío que salió bien.
   Future<bool> onFormSubmit() async {
     if (_enviando) return false;
     _enviando = true;
@@ -165,35 +175,29 @@ class DetalleVentaFormCubit extends Cubit<DetalleVentaFormState> {
       if (state.descuento == '') onDescuentoChanged('0');
       if (!_isValidDouble(state.descuento)) return false;
 
-      // Buscar o crear venta para la fecha + sucursal
-      Venta? venta =
-          await ventasRepository.getVentaByFecha(idsucursal, state.fecha);
-      venta ??= await ventasRepository.createVenta(idsucursal, state.fecha);
-
-      final idventa = venta.id;
-
-      // Crear detalles de venta
-      await detalleVentasRepository.createDetalleVenta(
-          state.detVentas, idventa);
-
-      // Actualizar totales de la venta (incremental)
-      await ventasRepository.actualizarVenta(_toMap(), idventa);
-
+      final descuento = _toDouble(state.descuento);
+      final idOperacion = _clave.para({
+        'detalles': state.detVentas,
+        'descuento': descuento,
+        // La venta es la del día: la hora no la cambia
+        'dia': state.fecha.toIso8601String().substring(0, 10),
+      });
+      await ventasRepository.registrarVentaTelas(
+        idsucursal: idsucursal,
+        fecha: state.fecha,
+        detalles: state.detVentas,
+        descuento: descuento,
+        idOperacion: idOperacion,
+      );
+      _clave.descartar();
       return true;
     } catch (e) {
-      debugPrint('Error al crear detalle venta: $e');
+      debugPrint('Error al registrar la venta de telas: $e');
       return false;
     } finally {
       _enviando = false;
     }
   }
-
-  Map<String, dynamic> _toMap() => {
-        'total': state.total,
-        'descuento': _toDouble(state.descuento),
-        'ganancias': state.ganancias,
-        'fecha': state.fecha.toIso8601String(),
-      };
 
   void onIdTelasChanged(int value) => _updateState(idtelas: value);
   void onNombreChanged(String value) => _updateState(nombre: value);

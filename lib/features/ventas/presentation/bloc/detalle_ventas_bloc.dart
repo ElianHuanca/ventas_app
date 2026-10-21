@@ -40,11 +40,15 @@ class DetalleVentasDeleteRequested extends DetalleVentasEvent {
 
 class DetalleVentasBloc extends Bloc<DetalleVentasEvent, DetalleVentasState> {
   final DetalleVentasRepository detalleVentasRepository;
-  final Future<bool> Function(Map<String, dynamic>) updateVenta;
+
+  /// Recibe la venta con los totales que dejó la base después de borrar una
+  /// línea (null si la línea ya no estaba: hay que releerla). En la ruta es
+  /// `VentaBloc.mostrarVenta`.
+  final void Function(Venta?) ventaActualizada;
 
   DetalleVentasBloc({
     required this.detalleVentasRepository,
-    required this.updateVenta,
+    required this.ventaActualizada,
     required int idventa,
   }) : super(DetalleVentasState(idventa: idventa)) {
     on<DetalleVentasLoadRequested>(_onLoadRequested);
@@ -99,15 +103,17 @@ class DetalleVentasBloc extends Bloc<DetalleVentasEvent, DetalleVentasState> {
     }
   }
 
+  /// Borra la línea y descuenta su total de la venta en una sola llamada
+  /// (RPC `borrar_detalle_venta`). La línea sale de la pantalla recién
+  /// cuando la base respondió: si falla (sin señal, respuesta perdida) sigue
+  /// ahí para volver a borrarla, y el reintento de una que ya se había
+  /// borrado no descuenta dos veces.
   Future<bool> deleteDetVenta(int id) async {
     try {
-      final response = await detalleVentasRepository.deleteDetalleVenta(id);
-      final ventaLike = {
-        'total': -(response.total ?? 0),
-        'ganancias': -(response.ganancias ?? 0),
-      };
+      final venta = await detalleVentasRepository.borrarDetalleVenta(id);
       add(DetalleVentasDeleteRequested(id));
-      return await updateVenta(ventaLike);
+      ventaActualizada(venta);
+      return true;
     } catch (_) {
       return false;
     }

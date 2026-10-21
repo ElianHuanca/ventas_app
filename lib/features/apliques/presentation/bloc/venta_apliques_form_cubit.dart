@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:textiles_app/features/shared/clave_de_operacion.dart';
 import '../../domain/domain.dart';
 
 class VentaApliquesFormState {
@@ -68,6 +69,10 @@ class VentaApliquesFormState {
 class VentaApliquesFormCubit extends Cubit<VentaApliquesFormState> {
   final VentasApliquesRepository ventasApliquesRepository;
   final int idsucursal;
+
+  /// Clave de idempotencia del envío: la misma en los reintentos del mismo
+  /// carrito (si se perdió la respuesta, la base no vende dos veces).
+  final _clave = ClaveDeOperacion();
 
   VentaApliquesFormCubit({
     required this.ventasApliquesRepository,
@@ -177,6 +182,12 @@ class VentaApliquesFormCubit extends Cubit<VentaApliquesFormState> {
   bool get enviando => _enviando;
   bool _enviando = false;
 
+  /// Vende el carrito (RPC `crear_venta_apliques`). Si falla, el carrito
+  /// queda para volver a tocar Guardar: el reintento del mismo carrito lleva
+  /// la misma clave de operación y, si el primero había llegado a la base
+  /// (respuesta perdida), no descuenta el stock de nuevo. La clave se
+  /// renueva cuando cambia el carrito o el descuento, y después de una venta
+  /// que salió bien.
   Future<bool> onFormSubmit() async {
     if (_enviando) return false;
     _enviando = true;
@@ -189,13 +200,19 @@ class VentaApliquesFormCubit extends Cubit<VentaApliquesFormState> {
       final total = _centavos(state.total - descuento);
       if (total < 0) return false;
 
+      final idOperacion = _clave.para({
+        'detalles': state.detalles,
+        'descuento': descuento,
+      });
       await ventasApliquesRepository.createVentaAplique(
         idsucursales: idsucursal,
         total: total,
         ganancias: state.ganancias,
         descuento: descuento,
         detalles: state.detalles,
+        idOperacion: idOperacion,
       );
+      _clave.descartar();
 
       return true;
     } catch (e) {

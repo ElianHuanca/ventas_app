@@ -36,8 +36,21 @@ void main() {
 
     expect(id, ds.idventa);
     expect(ds.llamadas, [
-      ['createVentaAplique', 3, 24.0, 14.0, 1.5, detalles],
+      ['createVentaAplique', 3, 24.0, 14.0, 1.5, detalles, null],
     ]);
+  });
+
+  test('createVentaAplique pasa la clave de operación del envío', () async {
+    await repo.createVentaAplique(
+      idsucursales: 3,
+      total: 24,
+      ganancias: 14,
+      descuento: 0,
+      detalles: const [],
+      idOperacion: 'clave-1',
+    );
+
+    expect(ds.llamadas.single.last, 'clave-1');
   });
 
   test('getVentasApliques es de la sucursal pedida', () async {

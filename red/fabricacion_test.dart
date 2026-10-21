@@ -106,12 +106,13 @@ void main() {
 
     expect(await cubit.onFormSubmit(), isNull);
 
+    // El reintento lleva la misma clave de operación: la base devuelve la
+    // producción de la primera vez sin sumar nada
     expect(red().llegaron.where((r) => r == 'rpc/registrar_produccion'),
         hasLength(2));
+    expect(cubit.state.detProducciones, isEmpty);
     await verificarFabricadoUnaVez(p);
-  },
-      // bug: supabase/migrations/20261003000100_integridad_stock_y_ventas.sql:164 — registrar_produccion no es idempotente: el reintento (lib/features/apliques/presentation/bloc/produccion_form_cubit.dart:206 manda el mismo listado sin id de operación) vuelve a sumar la línea y el stock (queda 14 en vez de 7)
-      skip: bugConocido);
+  });
 
   test(
       'se corta la señal justo después del registro (falla el refresco del '
@@ -125,16 +126,15 @@ void main() {
     expect(red().entregadas, ['rpc/registrar_produccion']);
     red().restablecer();
 
-    // Si la pantalla todavía muestra el listado, el usuario vuelve a tocar
-    // Guardar (no tiene cómo saber que ya se registró).
-    if (cubit.state.detProducciones.isNotEmpty) {
-      expect(error, isNotNull);
-      await cubit.onFormSubmit();
-    }
+    // El registro salió bien: no es un error aunque el stock no se haya
+    // podido refrescar, y el listado ya no está para volver a mandarlo
+    expect(error, isNull);
+    expect(cubit.state.detProducciones, isEmpty);
+    expect(cubit.state.isSubmitting, isFalse);
+    // Si igual quedara el listado, el usuario volvería a tocar Guardar
+    if (cubit.state.detProducciones.isNotEmpty) await cubit.onFormSubmit();
     await verificarFabricadoUnaVez(p);
-  },
-      // bug: lib/features/apliques/presentation/bloc/produccion_form_cubit.dart:211 — si falla el getStock posterior, onFormSubmit devuelve el error y no vacía el listado aunque registrar_produccion ya hizo commit; el reintento la registra de nuevo (stock 14 en vez de 7)
-      skip: bugConocido);
+  });
 
   test(
       'sin conexión: falla limpia (no llega nada a la base), conserva el '

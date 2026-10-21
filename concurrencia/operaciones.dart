@@ -134,3 +134,38 @@ Future<void> incrementarVenta(
       'p_descuento': descuento,
       'p_fecha': null,
     });
+
+/// `VentasDatasourceImpl.registrarVentaTelas` (RPC `registrar_venta_telas`,
+/// lo que usa la app desde 20261020000000_idempotencia_y_venta_telas.sql):
+/// la venta del día, una línea y los totales en una transacción, con la
+/// clave de operación [idOperacion] (null = sin clave). Devuelve el id de la
+/// venta.
+Future<int> registrarVentaTelas(
+  SupabaseClient db, {
+  required int sucursal,
+  required int tela,
+  required num precio,
+  required num cantidad,
+  required num compra,
+  required DateTime fecha,
+  num descuento = 0,
+  String? idOperacion,
+}) async {
+  final idventa = await db.rpc<dynamic>('registrar_venta_telas', params: {
+    'p_idsucursales': sucursal,
+    'p_fecha': fecha.toIso8601String(),
+    'p_detalles': [
+      {
+        'idtelas': tela,
+        'nombre': 'CC tela $tela',
+        'precio': precio,
+        'cantidad': cantidad,
+        'total': cantidad * precio,
+        'ganancias': (precio - compra) * cantidad,
+      },
+    ],
+    'p_descuento': descuento,
+    if (idOperacion != null) 'p_id_operacion': idOperacion,
+  });
+  return idventa as int;
+}

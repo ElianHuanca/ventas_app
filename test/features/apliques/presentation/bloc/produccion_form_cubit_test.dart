@@ -31,13 +31,21 @@ class _RegistroLento extends FakeApliquesRepository {
     required int sucursalId,
     required DateTime fecha,
     required List<Map<String, dynamic>> lineas,
+    String? idOperacion,
   }) async {
     llamadas++;
     await registro.future;
-    return super
-        .createProduccion(sucursalId: sucursalId, fecha: fecha, lineas: lineas);
+    return super.createProduccion(
+        sucursalId: sucursalId,
+        fecha: fecha,
+        lineas: lineas,
+        idOperacion: idOperacion);
   }
 }
+
+/// Un uuid v4 como lo acepta Postgres
+final _uuid = RegExp(
+    r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$');
 
 void main() {
   late FakeApliquesRepository repo;
@@ -352,6 +360,27 @@ void main() {
       expect(cubit.state.detProducciones, isEmpty);
       expect(cubit.state.stock, stockActualizado);
       expect(cubit.state.isSubmitting, false);
+      expect(repo.idsOperacion.single, matches(_uuid));
+    });
+
+    test(
+        'si el registro sale bien y falla el refresco del stock, no es un '
+        'error: vacía el listado (no se vuelve a registrar lo mismo)',
+        () async {
+      final cubit = await crearCubit();
+      addTearDown(cubit.close);
+      await seleccionarLinea(cubit);
+      cubit.addDetalleProduccion();
+      repo.getStockError = Exception('Network is unreachable');
+
+      final error = await cubit.onFormSubmit();
+
+      expect(error, isNull);
+      expect(repo.produccionesCreadas, hasLength(1));
+      expect(cubit.state.detProducciones, isEmpty);
+      expect(cubit.state.stock, stockCentro,
+          reason: 'queda el stock de antes hasta la próxima carga');
+      expect(cubit.state.isSubmitting, false);
     });
 
     test(
@@ -397,6 +426,76 @@ void main() {
       expect(error, 'stock negativo');
       expect(cubit.state.isSubmitting, false);
       expect(cubit.state.detProducciones.length, 1);
+    });
+  });
+
+  group('clave de operación', () {
+    Future<ProduccionFormCubit> conLinea({DateTime? fecha}) async {
+      final cubit = await crearCubit();
+      addTearDown(cubit.close);
+      if (fecha != null) cubit.onFechaChanged(fecha);
+      await seleccionarLinea(cubit);
+      cubit.addDetalleProduccion();
+      return cubit;
+    }
+
+    Future<void> registrarConError(ProduccionFormCubit cubit) async {
+      repo.createProduccionError =
+          Exception('Connection closed while receiving data');
+      expect(await cubit.onFormSubmit(), isNotNull);
+      repo.createProduccionError = null;
+    }
+
+    test(
+        'el reintento del mismo listado lleva la misma clave (si la respuesta '
+        'se perdió, la base no suma el stock de nuevo)', () async {
+      final cubit = await conLinea();
+      await registrarConError(cubit);
+
+      expect(await cubit.onFormSubmit(), isNull);
+
+      expect(repo.idsOperacion, hasLength(2));
+      expect(repo.idsOperacion[1], repo.idsOperacion[0]);
+      expect(repo.idsOperacion[0], matches(_uuid));
+    });
+
+    test('después de un registro que salió bien, el próximo lleva otra clave',
+        () async {
+      final cubit = await conLinea();
+      expect(await cubit.onFormSubmit(), isNull);
+
+      await seleccionarLinea(cubit);
+      cubit.addDetalleProduccion();
+      expect(await cubit.onFormSubmit(), isNull);
+
+      expect(repo.idsOperacion[1], isNot(repo.idsOperacion[0]));
+    });
+
+    test('si después de la falla cambia el listado, es otro envío: otra clave',
+        () async {
+      final cubit = await conLinea();
+      await registrarConError(cubit);
+
+      cubit.onColorChanged(colores[2]); // Azul
+      cubit.onCantidadChanged('2');
+      cubit.addDetalleProduccion();
+      await cubit.onFormSubmit();
+
+      expect(repo.idsOperacion[1], isNot(repo.idsOperacion[0]));
+    });
+
+    test('otro día es otro envío; otra hora del mismo día, no', () async {
+      final cubit = await conLinea(fecha: DateTime(2024, 5, 10, 9));
+      await registrarConError(cubit);
+
+      cubit.onFechaChanged(DateTime(2024, 5, 10, 18));
+      await registrarConError(cubit);
+      cubit.onFechaChanged(DateTime(2024, 5, 11, 9));
+      await cubit.onFormSubmit();
+
+      expect(repo.idsOperacion[1], repo.idsOperacion[0],
+          reason: 'la producción es la del día');
+      expect(repo.idsOperacion[2], isNot(repo.idsOperacion[0]));
     });
   });
 }

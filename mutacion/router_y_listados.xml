@@ -42,10 +42,10 @@
       <lines begin="42" end="56"/>
       <!-- /fabricacion y /sucursales (sin datasources) -->
       <lines begin="113" end="116"/>
-      <lines begin="226" end="229"/>
+      <lines begin="249" end="252"/>
       <!-- _AppRouter.dispose(): libera el SesionListenable y el RoutingConfig
            (sus constructores solo reenvían parámetros) -->
-      <lines begin="406" end="413"/>
+      <lines begin="426" end="433"/>
     </file>
     <file>lib/features/telas/presentation/bloc/telas_bloc.dart</file>
     <file>lib/features/telas/presentation/bloc/tela_bloc.dart</file>

@@ -62,6 +62,35 @@ void main() {
     ]);
   });
 
+  test(
+      'registrarVentaTelas pasa sucursal, fecha, líneas, descuento y la clave '
+      'de operación tal cual y devuelve el id de la venta', () async {
+    final fecha = DateTime(2026, 10, 3, 9, 30);
+    final lineas = [
+      {
+        'idtelas': 3,
+        'nombre': 'Lino',
+        'precio': 25.0,
+        'cantidad': 2.0,
+        'total': 50.0,
+        'ganancias': 20.0,
+      },
+    ];
+
+    final id = await repo.registrarVentaTelas(
+      idsucursal: 4,
+      fecha: fecha,
+      detalles: lineas,
+      descuento: 1.5,
+      idOperacion: 'clave-1',
+    );
+
+    expect(id, ds.idventaRegistrada);
+    expect(ds.llamadas, [
+      ['registrarVentaTelas', 4, fecha, lineas, 1.5, 'clave-1'],
+    ]);
+  });
+
   test('no traga los errores del datasource', () async {
     final error = Exception('sin conexión');
     ds.error = error;
@@ -73,6 +102,11 @@ void main() {
       'createVenta': () => repo.createVenta(1, DateTime(2026)),
       'actualizarVenta': () => repo.actualizarVenta({}, 1),
       'deleteVenta': () => repo.deleteVenta(1),
+      'registrarVentaTelas': () => repo.registrarVentaTelas(
+          idsucursal: 1,
+          fecha: DateTime(2026),
+          detalles: const [],
+          descuento: 0),
     };
 
     for (final MapEntry(key: metodo, value: llamar) in metodos.entries) {

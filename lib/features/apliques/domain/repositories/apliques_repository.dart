@@ -27,11 +27,13 @@ abstract class ApliquesRepository {
   });
 
   /// Registra una producción (lote de líneas) y sube el stock en inventario.
-  /// Cada línea es {idaplique, idcolor, cantidad}.
+  /// Cada línea es {idaplique, idcolor, cantidad}. Ver
+  /// [ApliquesDatasource.createProduccion] por [idOperacion].
   Future<void> createProduccion({
     required int sucursalId,
     required DateTime fecha,
     required List<Map<String, dynamic>> lineas,
+    String? idOperacion,
   });
   Future<List<ProduccionCabecera>> getProducciones(int sucursalId);
   Future<List<Produccion>> getDetalleProduccion(int idproduccion);

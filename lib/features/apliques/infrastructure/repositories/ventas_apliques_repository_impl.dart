@@ -12,6 +12,7 @@ class VentasApliquesRepositoryImpl extends VentasApliquesRepository {
     required double ganancias,
     required double descuento,
     required List<Map<String, dynamic>> detalles,
+    String? idOperacion,
   }) {
     return datasource.createVentaAplique(
       idsucursales: idsucursales,
@@ -19,6 +20,7 @@ class VentasApliquesRepositoryImpl extends VentasApliquesRepository {
       ganancias: ganancias,
       descuento: descuento,
       detalles: detalles,
+      idOperacion: idOperacion,
     );
   }
 

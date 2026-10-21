@@ -29,8 +29,16 @@ class _RepoQueDevuelveCreadas extends FakeDetalleVentasRepository {
 
 void main() {
   late FakeDetalleVentasRepository repo;
-  late List<Map<String, dynamic>> actualizacionesVenta;
-  late bool resultadoUpdateVenta;
+  late List<Venta?> ventasRecibidas;
+
+  final ventaDescontada = Venta(
+    id: 5,
+    fecha: DateTime(2024, 6, 10),
+    total: 135,
+    ganancias: 45,
+    descuento: 0,
+    idsucursales: 1,
+  );
 
   const detalles = [
     DetalleVenta(
@@ -52,18 +60,15 @@ void main() {
   ];
 
   setUp(() {
-    repo = _RepoQueDevuelveCreadas(detalles: detalles);
-    actualizacionesVenta = [];
-    resultadoUpdateVenta = true;
+    repo = _RepoQueDevuelveCreadas(detalles: detalles)
+      ..ventaTrasBorrar = ventaDescontada;
+    ventasRecibidas = [];
   });
 
   Future<DetalleVentasBloc> crearBloc() async {
     final bloc = DetalleVentasBloc(
       detalleVentasRepository: repo,
-      updateVenta: (ventaLike) async {
-        actualizacionesVenta.add(ventaLike);
-        return resultadoUpdateVenta;
-      },
+      ventaActualizada: ventasRecibidas.add,
       idventa: 5,
     );
     addTearDown(bloc.close);
@@ -138,8 +143,9 @@ void main() {
   });
 
   group('deleteDetVenta', () {
-    test('borra la línea y descuenta su total y ganancias de la venta (deltas)',
-        () async {
+    test(
+        'borra la línea en una sola llamada, la saca de la pantalla y pasa la '
+        'venta con el total que dejó la base', () async {
       final bloc = await crearBloc();
 
       final ok = await bloc.deleteDetVenta(1);
@@ -147,23 +153,29 @@ void main() {
 
       expect(ok, true);
       expect(repo.detallesEliminados, [1]);
-      // Convención incremental: se envían deltas negativos, no el total nuevo
-      expect(
-          actualizacionesVenta.single, {'total': -200.0, 'ganancias': -80.0});
+      // El total lo descontó la base (borrar_detalle_venta): la pantalla
+      // muestra la venta que devolvió, no resta nada por su cuenta
+      expect(ventasRecibidas, [same(ventaDescontada)]);
       expect(bloc.state.detalleVentas.map((d) => d.id), [2]);
     });
 
-    test('devuelve false si no se pudo actualizar la venta', () async {
+    test(
+        'si la línea ya no estaba (reintento tras una respuesta perdida) la '
+        'saca igual y pide releer la venta (null)', () async {
+      repo.ventaTrasBorrar = null;
       final bloc = await crearBloc();
-      resultadoUpdateVenta = false;
 
       final ok = await bloc.deleteDetVenta(1);
+      await pumpEventQueue();
 
-      expect(ok, false);
-      expect(actualizacionesVenta, hasLength(1));
+      expect(ok, true);
+      expect(ventasRecibidas, [null]);
+      expect(bloc.state.detalleVentas.map((d) => d.id), [2]);
     });
 
-    test('si el repositorio falla devuelve false y no toca la venta', () async {
+    test(
+        'si la llamada falla devuelve false y la línea sigue en la pantalla '
+        'para volver a borrarla', () async {
       final bloc = await crearBloc();
       repo.error = Exception('sin conexión');
 
@@ -171,8 +183,15 @@ void main() {
       await pumpEventQueue();
 
       expect(ok, false);
-      expect(actualizacionesVenta, isEmpty);
+      expect(ventasRecibidas, isEmpty);
       expect(bloc.state.detalleVentas, detalles);
+
+      // Volvió la señal: el reintento la borra
+      repo.error = null;
+      expect(await bloc.deleteDetVenta(1), true);
+      await pumpEventQueue();
+      expect(repo.detallesEliminados, [1]);
+      expect(bloc.state.detalleVentas.map((d) => d.id), [2]);
     });
   });
 }
