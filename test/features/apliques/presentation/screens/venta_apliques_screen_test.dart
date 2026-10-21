@@ -240,6 +240,21 @@ void main() {
       expect(find.text('Verde (stock: 5.0)'), findsNothing);
     });
 
+    testWidgets('los colores del aplique salen en orden alfabético',
+        (tester) async {
+      await montar(tester);
+
+      await seleccionarAplique(tester, 'Flor');
+      final entradas = tester
+          .widget<DropdownMenu<StockAplique>>(
+              find.byType(DropdownMenu<StockAplique>))
+          .dropdownMenuEntries
+          .map((e) => e.value.colorNombre);
+
+      // En el inventario vienen Rojo, Azul
+      expect(entradas, ['Azul', 'Rojo']);
+    });
+
     testWidgets('al cambiar de aplique se reinicia el color elegido',
         (tester) async {
       await montar(tester);

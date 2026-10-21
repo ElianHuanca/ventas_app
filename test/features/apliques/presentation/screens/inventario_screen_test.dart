@@ -50,14 +50,14 @@ void main() {
   ];
 
   late FakeApliquesRepository repo;
-  late List<Uri> abiertas;
-  late bool abreWhatsapp;
+  late List<(Uint8List, String)> compartidos;
+  late bool compartePdf;
   String? copiado;
 
   setUp(() {
     repo = FakeApliquesRepository(inventarioConVentas: inventario);
-    abiertas = [];
-    abreWhatsapp = true;
+    compartidos = [];
+    compartePdf = true;
     copiado = null;
   });
 
@@ -98,9 +98,9 @@ void main() {
       child: MaterialApp(
         home: InventarioScreen(
           idsucursal: 2,
-          abrirUrl: (url) async {
-            abiertas.add(url);
-            return abreWhatsapp;
+          compartirPdf: (pdf, nombre) async {
+            compartidos.add((pdf, nombre));
+            return compartePdf;
           },
         ),
       ),
@@ -124,12 +124,11 @@ void main() {
     expect(find.text('Hacer 53 en total'), findsOneWidget);
     expect(find.text('Faltan (2)'), findsOneWidget);
     expect(find.text('Todos (4)'), findsOneWidget);
-    // El más urgente primero: Celeste ya no tiene, Rojo dura un tercio de
-    // semana
+    // Por aplique, como el PDF: Flor Grande antes que Flor Pequeña
     expect(
-        tester.getTopLeft(find.text('Celeste · vende 2 por semana')).dy,
+        tester.getTopLeft(find.text('Rojo · vende 9.1 por semana')).dy,
         lessThan(
-            tester.getTopLeft(find.text('Rojo · vende 9.1 por semana')).dy));
+            tester.getTopLeft(find.text('Celeste · vende 2 por semana')).dy));
     expect(find.text('43'), findsOneWidget);
     expect(find.text('10'), findsOneWidget);
     expect(find.text('Quedan 3 · mínimo 23'), findsOneWidget);
@@ -152,37 +151,39 @@ void main() {
         reason: 'solo los faltantes dicen cuánto hacer');
   });
 
-  testWidgets('"Enviar por WhatsApp" abre wa.me con la lista', (tester) async {
-    await montar(tester);
-
-    await tester.tap(boton('Enviar por WhatsApp'));
-    await tester.pumpAndSettle();
-
-    final url = abiertas.single;
-    expect(url.host, 'wa.me');
-    final texto = Uri.decodeComponent(url.query.replaceFirst('text=', ''));
-    expect(
-      texto,
-      mensajeFaltantes(
-        sucursal: 'Ramada',
-        fecha: DateTime(2026, 10, 15),
-        faltantes: ReglaReposicion.aplicar(inventario)
-            .where((r) => r.faltante)
-            .toList(),
-      ),
-    );
-    expect(texto, contains('Flor Grande – Rojo: hacer *43*'));
-  });
-
-  testWidgets('si WhatsApp no abre, avisa que se puede copiar',
+  testWidgets('"Compartir PDF" comparte el PDF de faltantes de la sucursal',
       (tester) async {
-    abreWhatsapp = false;
     await montar(tester);
 
-    await tester.tap(boton('Enviar por WhatsApp'));
+    // El PDF se arma de verdad (async real, fuera del reloj falso)
+    await tester.runAsync(() async {
+      await tester.tap(boton('Compartir PDF'));
+      while (compartidos.isEmpty) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+    });
     await tester.pump();
 
-    expect(find.text('No se pudo abrir WhatsApp: usá "Copiar lista"'),
+    final (pdf, nombre) = compartidos.single;
+    expect(nombre, 'faltantes_ramada_2026-10-15.pdf');
+    expect(String.fromCharCodes(pdf.take(5)), '%PDF-');
+    expect(find.textContaining('No se pudo compartir'), findsNothing);
+  });
+
+  testWidgets('si no se puede compartir, avisa que se puede copiar',
+      (tester) async {
+    compartePdf = false;
+    await montar(tester);
+
+    await tester.runAsync(() async {
+      await tester.tap(boton('Compartir PDF'));
+      while (compartidos.isEmpty) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+    });
+    await tester.pump();
+
+    expect(find.text('No se pudo compartir el PDF: usá "Copiar lista"'),
         findsOneWidget);
   });
 
@@ -195,6 +196,9 @@ void main() {
 
     expect(copiado, startsWith('*Huantex – Faltantes Ramada* (15/10/2026)'));
     expect(copiado, contains('Total a hacer: 53'));
+    // Ordenado para el fabricante: por aplique, no por urgencia
+    expect(copiado!.indexOf('Flor Grande – Rojo'),
+        lessThan(copiado!.indexOf('Flor Pequeña – Celeste')));
     expect(find.text('Lista copiada: pegala en WhatsApp'), findsOneWidget);
   });
 
@@ -211,8 +215,8 @@ void main() {
     // La lista de faltantes vacía no queda en blanco
     expect(find.text('Tocá "Todos" para ver el stock de cada color.'),
         findsOneWidget);
-    expect(tester.widget<FilledButton>(boton('Enviar por WhatsApp')).onPressed,
-        isNull);
+    expect(
+        tester.widget<FilledButton>(boton('Compartir PDF')).onPressed, isNull);
     expect(tester.widget<IconButton>(copiar()).onPressed, isNull);
   });
 
@@ -249,8 +253,8 @@ void main() {
     expect(find.text('No se pudo cargar el inventario. Revisá la conexión.'),
         findsOneWidget);
     expect(find.text('No falta nada'), findsNothing);
-    expect(tester.widget<FilledButton>(boton('Enviar por WhatsApp')).onPressed,
-        isNull);
+    expect(
+        tester.widget<FilledButton>(boton('Compartir PDF')).onPressed, isNull);
 
     repo.error = null;
     await tester.tap(find.text('Reintentar'));
@@ -267,8 +271,8 @@ void main() {
     await tester.pump();
 
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    expect(tester.widget<FilledButton>(boton('Enviar por WhatsApp')).onPressed,
-        isNull);
+    expect(
+        tester.widget<FilledButton>(boton('Compartir PDF')).onPressed, isNull);
 
     lento.respuesta.complete();
     await tester.pumpAndSettle();

@@ -177,13 +177,13 @@ Ambas con `GRANT SELECT ... TO anon`. Si se cambia una columna que estas vistas 
 | `/venta-apliques` | VentaApliquesSucursalesScreen (elegir sucursal) |
 | `/venta-apliques/:idsucursal` | VentasApliquesScreen (ventas de la sucursal, una por día) |
 | `/venta-apliques/registro/:idsucursal` | VentaApliquesScreen (form con stock por color) |
-| `/venta-apliques/detalle/:idventa?fecha=` | VentaApliquesDetalleScreen (líneas de la venta del día) |
+| `/venta-apliques/detalle/:idventa?fecha=` | VentaApliquesDetalleScreen (líneas de la venta del día, por aplique y de más a menos unidades, como el inventario) |
 | `/fabricacion` | FabricacionSucursalesScreen (elegir sucursal) |
 | `/fabricacion/:idsucursal` | ProduccionesScreen (producciones de la sucursal, una por día) |
 | `/fabricacion/registro/:idsucursal` | ProduccionScreen (registrar producción → sube stock; una fila por aplique+color+sucursal+día, se acumula si ya hay una de ese día) |
 | `/fabricacion/detalle/:idproduccion` | ProduccionDetalleScreen (líneas de la producción) |
 | `/inventario` | InventarioSucursalesScreen (elegir sucursal) |
-| `/inventario/:idsucursal` | InventarioScreen (faltantes de apliques y cuánto hacer; los manda al fabricante por WhatsApp o los copia) |
+| `/inventario/:idsucursal` | InventarioScreen (faltantes de apliques y cuánto hacer; los comparte en PDF o los copia como texto) |
 | `/sucursales` | SucursalesScreen (gestión) |
 | `/sucursal/:idsucursal` | SucursalScreen (form + botón a disponibilidad) |
 | `/sucursal-disponibilidad/:idsucursal` | SucursalDisponibilidadScreen (qué telas se venden en la sucursal) |
@@ -220,9 +220,10 @@ Ambas con `GRANT SELECT ... TO anon`. Si se cambia una columna que estas vistas 
 
 ## Inventario (faltantes para el fabricante)
 
-- Menú "Inventario" (después de Fabricación) → elegir sucursal → `/inventario/:idsucursal`. Lista cada aplique+color del inventario con su stock, lo que vende por semana y cuánto hacer; por defecto solo los faltantes ("Faltan | Todos"). **"Enviar por WhatsApp"** abre `https://wa.me/?text=…` (sin número: WhatsApp pregunta a quién) con `url_launcher`; **"Copiar lista"** deja el mismo texto en el portapapeles. El texto lo arma `mensajeFaltantes` (`domain/mensaje_faltantes.dart`).
+- Menú "Inventario" (después de Fabricación) → elegir sucursal → `/inventario/:idsucursal`. Lista cada aplique+color del inventario con su stock, lo que vende por semana y cuánto hacer; por defecto solo los faltantes ("Faltan | Todos"). **"Compartir PDF"** arma el PDF con `pdfFaltantes` (`domain/pdf_faltantes.dart`, paquete `pdf`) y abre la hoja de compartir del sistema con `share_plus` (el usuario elige WhatsApp y el contacto); **"Copiar lista"** deja la misma lista como texto en el portapapeles (`mensajeFaltantes`, `domain/mensaje_faltantes.dart`). Los dos van en el **orden para el fabricante** (`ordenParaFabricante`): por aplique A→Z y, dentro de cada uno, de lo que más hay que hacer a lo que menos — el mismo que la pantalla.
+- El PDF usa Helvetica (no embebe fuentes): solo dibuja Latin-1, así que `latin1Pdf` cambia guiones largos, comillas tipográficas o emojis de los nombres por su equivalente o `?`. `share_plus` quedó en **11.x** (la 12+ pide AGP ≥ 8.12.1) y `image` fijado `<4.11` (lo trae `pdf`; la 4.11 no compila con el `archive` < 4.1 que exige `pdf` 3.12).
 - Datos: RPC **`inventario_con_ventas(p_sucursal_id, desde, hasta)`** (migración `20261015000000_inventario_con_ventas.sql`, solo lectura): filas de `inventario` activas con aplique, color y vínculo `aplique_colores` activos (lo mismo que ofrece la venta), con `vendidas` (esa sucursal, en el rango) y `vendidas_otras` (promedio de las otras sucursales que vendieron).
-- **Regla** (`ReglaReposicion` en `domain/reposicion.dart`, pura y testeada; la RPC no decide nada): venta semanal = lo vendido en las últimas **4 semanas** / 4; **mínimo** = ⌈venta semanal × 2.5⌉ (el fabricante tarda 3–6 días hábiles —lun, mar, jue, vie—: 1.5 semanas en el peor caso, + 1 de colchón); **falta** si `stock ≤ mínimo` y se pide hasta el **doble del mínimo**. Lo que no se vendió en la ventana **no se pide**. Orden: faltantes primero, el que se termina antes arriba.
+- **Regla** (`ReglaReposicion` en `domain/reposicion.dart`, pura y testeada; la RPC no decide nada): venta semanal = lo vendido en las últimas **4 semanas** / 4; **mínimo** = ⌈venta semanal × 2.5⌉ (el fabricante tarda 3–6 días hábiles —lun, mar, jue, vie—: 1.5 semanas en el peor caso, + 1 de colchón); **falta** si `stock ≤ mínimo` y se pide hasta el **doble del mínimo**. Lo que no se vendió en la ventana **no se pide**. Orden: faltantes primero, por aplique A→Z y de más a menos para hacer (`ReglaReposicion.porAplique`).
 - **Sucursal sin ventas propias** en la ventana (p. ej. una tienda que recién empieza a vender apliques): se estima con `vendidas_otras` y la pantalla lo avisa ("se estiman N por semana").
 - `InventarioCubit(hoy:)` recibe la fecha para que las capturas sean determinísticas.
 
@@ -250,7 +251,7 @@ flutter pub get          # instalar dependencias
 flutter run              # correr en debug
 flutter build apk        # build Android APK
 flutter analyze          # lints estrictos (ver "Lints"): tiene que quedar limpio
-flutter test             # 931 unitarios/de widget + 168 capturas golden (sin omitidos)
+flutter test             # 945 unitarios/de widget + 168 capturas golden (sin omitidos)
 flutter test --exclude-tags golden          # sin las capturas (p. ej. fuera de Windows)
 flutter test test/goldens --update-goldens  # regenerar capturas tras un cambio visual buscado
 flutter test benchmark/micro                # 176 micro-benchmarks (~1 min)

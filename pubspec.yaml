@@ -35,8 +35,13 @@ dependencies:
   flutter_bloc: ^8.1.6
   go_router: ^13.1.0
   supabase_flutter: ^2.8.0
-  # Abre WhatsApp con la lista de faltantes (ya venía con supabase_flutter)
-  url_launcher: ^6.3.2
+  # PDF de faltantes para el fabricante (Inventario), compartido por la hoja
+  # del sistema (WhatsApp, etc.). share_plus en 11: la 12+ pide AGP ≥ 8.12.1
+  pdf: ^3.12.0
+  share_plus: ^11.1.0
+  # No es directa: la trae pdf. image 4.11 usa ZLibDecoder.decodeLazy, que
+  # pide archive ≥ 4.1, y pdf 3.12 limita archive a < 4.1 (no compila)
+  image: ">=4.5.0 <4.11.0"
 
 dev_dependencies:
   benchmark_harness: ^2.3.1

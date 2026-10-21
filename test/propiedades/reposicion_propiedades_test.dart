@@ -39,8 +39,8 @@ void main() {
   });
 
   propiedad(
-      'aplicar ordena sin perder nada: faltantes primero, el más urgente '
-      'antes',
+      'aplicar ordena sin perder nada: faltantes primero, de más a menos '
+      'para hacer',
       any.listWithLengthInRange(0, 12, _entrada), (entradas) {
     final inventario = entradas.map(_item).toList();
     final items = ReglaReposicion.aplicar(inventario);
@@ -50,10 +50,10 @@ void main() {
     final faltantes = items.takeWhile((r) => r.faltante).length;
     expect(items.skip(faltantes).any((r) => r.faltante), isFalse,
         reason: 'ningún faltante después del primero que no falta');
+    // Todos son el mismo aplique: queda el orden por cantidad
     for (var i = 1; i < faltantes; i++) {
-      expect(items[i - 1].semanasDeStock,
-          lessThanOrEqualTo(items[i].semanasDeStock),
-          reason: 'el que se termina antes va primero (posición $i)');
+      expect(items[i - 1].hacer, greaterThanOrEqualTo(items[i].hacer),
+          reason: 'el que pide más va primero (posición $i)');
     }
   });
 

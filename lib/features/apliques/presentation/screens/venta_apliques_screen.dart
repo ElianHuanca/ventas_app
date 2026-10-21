@@ -39,9 +39,12 @@ class _VentaApliquesScreenState extends State<VentaApliquesScreen> {
     final formState = context.watch<VentaApliquesFormCubit>().state;
     final formCubit = context.read<VentaApliquesFormCubit>();
 
+    // Alfabético, sin distinguir mayúsculas (el inventario no trae orden)
     final coloresDisponibles = apliquesState.stock
         .where((e) => e.apliqueId == formState.idapliques)
-        .toList();
+        .toList()
+      ..sort((a, b) =>
+          a.colorNombre.toLowerCase().compareTo(b.colorNombre.toLowerCase()));
 
     final descuento = double.tryParse(formState.descuento) ?? 0;
     // Redondeado como el total que se guarda (10.3 - 0.1 daba 10.200000000000001)

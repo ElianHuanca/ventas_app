@@ -112,19 +112,21 @@ void main() {
       expect(items.any((r) => r.faltante), isFalse);
     });
 
-    test('faltantes primero, del que se termina antes al que dura más', () {
+    test('faltantes primero, por aplique y de más a menos para hacer', () {
       final items = ReglaReposicion.aplicar([
         _item(aplique: 'A', color: 'sin ventas', vendidas: 0),
-        // 2 por semana, quedan 4 → 2 semanas
-        _item(aplique: 'B', color: 'dura 2', vendidas: 8, stock: 4),
-        // 10 por semana, quedan 5 → media semana
-        _item(aplique: 'C', color: 'dura 0,5', vendidas: 40, stock: 5),
+        // mínimo 5, quedan 4 → hacer 6
+        _item(aplique: 'C', color: 'hacer 6', vendidas: 8, stock: 4),
+        // mínimo 25, quedan 5 → hacer 45
+        _item(aplique: 'C', color: 'hacer 45', vendidas: 40, stock: 5),
+        // mínimo 5, quedan 0 → hacer 10
+        _item(aplique: 'B', color: 'hacer 10', vendidas: 8),
         // sobra: 1 por semana, quedan 50
-        _item(aplique: 'D', color: 'sobra', vendidas: 4, stock: 50),
+        _item(aplique: 'B', color: 'sobra', vendidas: 4, stock: 50),
       ]);
 
       expect(items.map((r) => r.item.color),
-          ['dura 0,5', 'dura 2', 'sin ventas', 'sobra']);
+          ['hacer 10', 'hacer 45', 'hacer 6', 'sin ventas', 'sobra']);
     });
 
     test('lo que no falta va por aplique y color, sin distinguir mayúsculas',

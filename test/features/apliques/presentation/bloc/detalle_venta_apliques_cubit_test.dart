@@ -44,6 +44,32 @@ void main() {
     expect(repo.lastGetDetalleIdventa, 7);
   });
 
+  test('ordena por aplique y, dentro de cada uno, de más a menos unidades',
+      () async {
+    DetalleVentaAplique linea(int id, String nombre, double cantidad) =>
+        DetalleVentaAplique(
+            id: id, nombre: nombre, cantidad: cantidad, precio: 1, total: 1);
+    repo = FakeVentasApliquesRepository(detalle: [
+      linea(1, 'Mariposa (Verde)', 2),
+      linea(2, 'Flor (Rojo)', 1),
+      linea(3, 'Mariposa (Azul)', 5),
+      linea(4, 'Flor (Azul)', 4),
+      linea(5, 'flor (Blanco)', 4),
+      linea(6, 'Corazón', 3),
+    ]);
+    final cubit = await crearCubit();
+    addTearDown(cubit.close);
+
+    expect(cubit.state.lineas.map((l) => l.nombre), [
+      'Corazón',
+      'Flor (Azul)',
+      'flor (Blanco)',
+      'Flor (Rojo)',
+      'Mariposa (Azul)',
+      'Mariposa (Verde)',
+    ]);
+  });
+
   test('error del repositorio deja isLoading en false y lista vacía',
       () async {
     repo.error = Exception('fallo');
