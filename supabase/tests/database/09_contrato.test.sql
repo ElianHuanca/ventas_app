@@ -27,7 +27,8 @@
 --   4. las RPC: tipos y NOMBRES de los parámetros (PostgREST llama por
 --      nombre: renombrar p_fecha rompe a todas aunque el tipo no cambie), el
 --      resultado (con las columnas de RETURNS TABLE, que function_returns no
---      ve) y las claves del JSON de p_detalles / p_lineas.
+--      ve), que p_id_operacion sea opcional (solo la manda el Flutter nuevo)
+--      y las claves del JSON de p_detalles / p_lineas.
 --
 -- El tipo se compara sin precisión: numeric(12,2) → numeric(14,2) no rompe a
 -- nadie (llega como número JSON); numeric → text sí (llega como string).
@@ -39,7 +40,7 @@
 -- Corre en una transacción con rollback: no deja datos.
 -- =====================================================================
 begin;
-select plan(279);
+select plan(292);
 
 create temp table _ids (clave text primary key, id bigint not null) on commit drop;
 create function pg_temp.id(p_clave text) returns bigint
@@ -252,8 +253,10 @@ insert into _inserts values
   ('ventas',          array['fecha', 'total', 'ganancias', 'descuento', 'idsucursales'],        'Flutter, Android, iOS');
 
 -- ---------------------------------------------------------------------
--- RPC: firma tal como la llaman las apps (todas mandan todos los
--- parámetros por nombre, así que los DEFAULT no son parte del contrato)
+-- RPC: firma tal como la llaman las apps. Todas mandan todos los
+-- parámetros por nombre, salvo p_id_operacion (la clave de idempotencia de
+-- 20261020000000_idempotencia_y_venta_telas.sql): la manda solo el Flutter
+-- nuevo, así que su DEFAULT sí es parte del contrato (se fija abajo).
 -- ---------------------------------------------------------------------
 create temp table _rpcs (
   nombre     name primary key,
@@ -263,12 +266,18 @@ create temp table _rpcs (
   apps       text not null
 ) on commit drop;
 insert into _rpcs values
-  ('crear_venta_apliques', array['bigint', 'text', 'numeric', 'numeric', 'numeric', 'jsonb'],
-   'p_idsucursales bigint, p_fecha text, p_total numeric, p_ganancias numeric, p_descuento numeric, p_detalles jsonb',
+  ('crear_venta_apliques', array['bigint', 'text', 'numeric', 'numeric', 'numeric', 'jsonb', 'uuid'],
+   'p_idsucursales bigint, p_fecha text, p_total numeric, p_ganancias numeric, p_descuento numeric, p_detalles jsonb, p_id_operacion uuid',
    'bigint', 'Flutter, Android, iOS'),
-  ('registrar_produccion', array['bigint', 'date', 'jsonb'],
-   'p_sucursal_id bigint, p_fecha date, p_lineas jsonb',
+  ('registrar_produccion', array['bigint', 'date', 'jsonb', 'uuid'],
+   'p_sucursal_id bigint, p_fecha date, p_lineas jsonb, p_id_operacion uuid',
    'bigint', 'Flutter, Android, iOS'),
+  ('registrar_venta_telas', array['bigint', 'text', 'jsonb', 'numeric', 'uuid'],
+   'p_idsucursales bigint, p_fecha text, p_detalles jsonb, p_descuento numeric, p_id_operacion uuid',
+   'bigint', 'Flutter'),
+  ('borrar_detalle_venta', array['bigint'],
+   'p_id bigint',
+   'ventas', 'Flutter'),
   ('registrar_detalle_venta', array['bigint', 'jsonb'],
    'p_idventa bigint, p_detalles jsonb',
    'SETOF detalle_ventas', 'Flutter, Android, iOS'),
@@ -360,7 +369,8 @@ select is_empty(
 from _inserts order by tabla;
 
 -- =====================================================================
--- 4. RPC: existencia, nombres de los parámetros y resultado (9 + 9 + 9)
+-- 4. RPC: existencia, nombres de los parámetros, resultado y la clave
+--    opcional (11 + 11 + 11 + 3)
 -- =====================================================================
 select has_function('public', nombre, tipos,
   format('existe la RPC %s(%s) (la llaman %s)', nombre, array_to_string(tipos, ', '), apps))
@@ -382,10 +392,22 @@ select is(
   format('%s devuelve %s (%s lo decodifican)', r.nombre, r.resultado, r.apps))
 from _rpcs r order by r.nombre;
 
+-- Las apps viejas, Android e iOS no mandan p_id_operacion: tiene que tener
+-- default y ser el último (si no, PostgREST no encuentra la función)
+select ok(
+  (select pg_get_function_arguments(p.oid)
+     from pg_proc p
+    where p.pronamespace = 'public'::regnamespace and p.proname = r)
+  like '%, p_id_operacion uuid DEFAULT NULL::uuid',
+  format('%s: p_id_operacion es opcional (DEFAULT NULL, al final): lo llaman sin ella Android, iOS y los Flutter viejos', r))
+from unnest(array['crear_venta_apliques', 'registrar_produccion', 'registrar_venta_telas']) r
+order by r;
+
 -- ---------------------------------------------------------------------
 -- Claves del JSON: se llama como PostgREST (argumentos nombrados) con el
 -- mismo objeto que arman Flutter, Android e iOS, y cada clave tiene que
--- llegar a su columna (4 llamadas + 4 verificaciones).
+-- llegar a su columna (6 llamadas + 6 verificaciones). crear_venta_apliques
+-- y registrar_produccion van sin p_id_operacion, como Android e iOS.
 -- Las llamadas van en lives_ok y los datos de apoyo atrapan su error: si
 -- una migración rompe algo, los tests de acá fallan uno por uno en vez de
 -- abortar la transacción y tapar el resto.
@@ -423,7 +445,7 @@ select lives_ok($$
       'idaplique', pg_temp.id('aplique'),
       'idcolor',   pg_temp.id('color'),
       'cantidad',  5)))
-$$, 'registrar_produccion acepta p_lineas [{idaplique, idcolor, cantidad}] por nombre');
+$$, 'registrar_produccion acepta p_lineas [{idaplique, idcolor, cantidad}] por nombre (sin p_id_operacion)');
 
 select results_eq($$
   select d.idaplique, d.idcolor, d.cantidad, i.stock
@@ -450,7 +472,7 @@ select lives_ok($$
       'cantidad',   2,
       'total',      20,
       'ganancias',  12)))
-$$, 'crear_venta_apliques acepta p_detalles [{idapliques, idcolor, nombre, precio, cantidad, total, ganancias}] por nombre');
+$$, 'crear_venta_apliques acepta p_detalles [{idapliques, idcolor, nombre, precio, cantidad, total, ganancias}] por nombre (sin p_id_operacion)');
 
 select results_eq($$
   select d.idapliques, d.idcolor, d.nombre, d.precio, d.cantidad, d.total, d.ganancias, i.stock
@@ -499,12 +521,56 @@ select results_eq($$
 $$, $$ values ('2187-03-10T09:00:00.000', 15::numeric, 4.5::numeric, 0::numeric) $$,
 'incrementar_venta: suma los deltas y p_fecha null no toca la fecha');
 
+-- El Flutter vende telas en una sola llamada (con la clave) y borra una
+-- línea con otra
+select lives_ok($$
+  select public.registrar_venta_telas(
+    p_idsucursales => pg_temp.id('sucursal'),
+    p_fecha        => '2187-03-11T10:00:00.000',
+    p_detalles     => jsonb_build_array(jsonb_build_object(
+      'idtelas',   pg_temp.id('tela'),
+      'nombre',    'pgTAP Contrato lino',
+      'precio',    10,
+      'cantidad',  2,
+      'total',     20,
+      'ganancias', 6)),
+    p_descuento    => 1,
+    p_id_operacion => '00000000-0000-4000-8000-0000000009c1')
+$$, 'registrar_venta_telas acepta p_detalles [{idtelas, nombre, precio, cantidad, total, ganancias}], p_descuento y p_id_operacion por nombre');
+
+select results_eq($$
+  select v.fecha, v.total, v.ganancias, v.descuento,
+         d.idtelas, d.nombre, d.precio, d.cantidad, d.total, d.ganancias
+  from public.ventas v
+  join public.detalle_ventas d on d.idventa = v.id
+  where v.idsucursales = pg_temp.id('sucursal') and v.fecha like '2187-03-11%'
+$$, $$ values ('2187-03-11T10:00:00.000', 20::numeric, 6::numeric, 1::numeric,
+               pg_temp.id('tela'), 'pgTAP Contrato lino', 10::numeric, 2::numeric, 20::numeric, 6::numeric) $$,
+'registrar_venta_telas: cada clave llega a su columna y la venta del día suma su línea');
+
+select results_eq($$
+  select fecha, total, ganancias, descuento
+  from public.borrar_detalle_venta(
+    p_id => (select d.id from public.detalle_ventas d
+             join public.ventas v on v.id = d.idventa
+             where v.idsucursales = pg_temp.id('sucursal') and v.fecha like '2187-03-11%'))
+$$, $$ values ('2187-03-11T10:00:00.000', 0::numeric, 0::numeric, 1::numeric) $$,
+'borrar_detalle_venta acepta p_id por nombre y devuelve la venta (columnas de ventas) con la línea descontada');
+
+select is_empty($$
+  select 1 from public.detalle_ventas d
+  join public.ventas v on v.id = d.idventa
+  where v.idsucursales = pg_temp.id('sucursal') and v.fecha like '2187-03-11%'
+$$, 'borrar_detalle_venta: la línea quedó borrada');
+
 -- ---------------------------------------------------------------------
 -- Lo que Android decodifica como no nulo en el resultado de una RPC (1)
 -- ---------------------------------------------------------------------
--- Una línea de telas sin total: hoy la base la acepta (la columna admite
--- NULL y registrar_detalle_venta también, si el JSON no trae "total").
--- Si se arregla con NOT NULL, el insert falla y el test sigue valiendo.
+-- Una línea de telas sin total: la base la acepta (la columna admite NULL
+-- y registrar_detalle_venta también, si el JSON no trae "total"; las filas
+-- viejas pueden tenerlo). top_productos la suma como 0 (COALESCE desde
+-- 20261020000000_idempotencia_y_venta_telas.sql). Si se pone NOT NULL, el
+-- insert falla y el test sigue valiendo.
 do $$
 begin
   insert into public.detalle_ventas (nombre, precio, cantidad, total, ganancias, idtelas, idventa)
@@ -514,7 +580,6 @@ exception when others then
 end
 $$;
 
-select todo('bug: 20261003000100_integridad_stock_y_ventas.sql:249 — top_productos hace SUM(dv.total) y detalle_ventas.total admite NULL: una tela cuyas líneas del rango no tienen total sale con total_vendido NULL, y Android (dto/TopProductoRow.kt:8, total_vendido: Double) no la puede decodificar y el dashboard de telas entero falla. Hoy no hay ninguna línea con total NULL; se arregla con COALESCE en la RPC o con detalle_ventas.total/ganancias NOT NULL', 1);
 select is_empty($$
   select nombre, total_vendido, total_cantidad
   from public.top_productos('2187-03-10T00:00:00', '2187-03-10T23:59:59.999999')

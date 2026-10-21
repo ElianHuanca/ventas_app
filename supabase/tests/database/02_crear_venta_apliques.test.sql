@@ -1,7 +1,10 @@
 -- =====================================================================
 -- RPC crear_venta_apliques (venta de apliques)
 --
--- Última versión: 20261007000000_venta_apliques_colores_vinculados.sql.
+-- Última versión: 20261020000000_idempotencia_y_venta_telas.sql (el cuerpo
+-- de 20261007000000_venta_apliques_colores_vinculados.sql + p_id_operacion;
+-- la clave se prueba en 10_idempotencia.test.sql). Acá todo va sin clave,
+-- como lo llaman las apps viejas, Android e iOS:
 --   * una venta por sucursal+día: la crea o le suma total/ganancias/descuento
 --     (la fecha queda la del primer registro del día);
 --   * acumula líneas por (aplique, color, precio);
@@ -141,12 +144,13 @@ set local role authenticated;
 set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-0000000000a2", "role": "authenticated"}';
 
 -- =====================================================================
--- Firma (la llaman Flutter e iOS: no puede cambiar)
+-- Firma (la llaman Flutter, Android e iOS por nombre: p_id_operacion es
+-- opcional, así una llamada sin clave sigue resolviendo a esta función)
 -- =====================================================================
 select function_returns(
   'public', 'crear_venta_apliques',
-  array['bigint', 'text', 'numeric', 'numeric', 'numeric', 'jsonb'], 'bigint',
-  'crear_venta_apliques(bigint, text, numeric, numeric, numeric, jsonb) devuelve el id de la venta'
+  array['bigint', 'text', 'numeric', 'numeric', 'numeric', 'jsonb', 'uuid'], 'bigint',
+  'crear_venta_apliques(bigint, text, numeric, numeric, numeric, jsonb, uuid) devuelve el id de la venta'
 );
 
 -- =====================================================================
@@ -403,7 +407,7 @@ select is(pg_temp.estado(), (select valor from pg_temp._estado where clave = 'an
   'las entradas inválidas no dejaron nada');
 
 -- Va al final: mientras el bug exista, la llamada SÍ escribe
-select todo('bug: 20261007000000_venta_apliques_colores_vinculados.sql:33 — con p_detalles NULL el IF da NULL (no TRUE) y no corta: crea o le suma total/ganancias/descuento a la venta del día sin ninguna línea ni movimiento de stock', 1);
+select todo('bug: 20261020000000_idempotencia_y_venta_telas.sql:97 — con p_detalles NULL el IF da NULL (no TRUE) y no corta: crea o le suma total/ganancias/descuento a la venta del día sin ninguna línea ni movimiento de stock', 1);
 select throws_ok($$
   select public.crear_venta_apliques(pg_temp.id('sucursal'), '2187-03-14T10:00:00.000', 5, 1, 0, null)
 $$, 'P0001', 'La venta no tiene líneas',
