@@ -473,6 +473,8 @@ Release **y** debug se firman con una clave propia (desde 2026-10-04): `F:\Elian
 
 ## Notas Windows / Android
 
+- **El release necesita `android.permission.INTERNET` en `android/app/src/main/AndroidManifest.xml`**: los manifests de debug y profile lo agregan solos, así que un build de debug funciona y el de release no se conecta a nada (el login dice "No se pudo iniciar sesión"). Faltó hasta el 2026-10-21; lo fija `test/android_manifest_test.dart`. Para revisar un APK: `aapt dump permissions <apk>` (en `<sdk>/build-tools/<versión>/`).
+
 Si aparece `this and base files have different roots` en Gradle (común cuando el proyecto está en `F:`/`D:` y el pub cache en `C:`):
 
 ```bash

@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Supabase. Los manifests de debug y profile lo agregan solos; sin esta
+         línea el build de release no se puede conectar a nada (el login decía
+         "No se pudo iniciar sesión"). Lo verifica test/android_manifest_test.dart. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="textiles_app"
         android:name="${applicationName}"
