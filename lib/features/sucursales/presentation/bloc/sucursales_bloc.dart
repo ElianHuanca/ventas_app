@@ -100,7 +100,7 @@ class SucursalesBloc extends Bloc<SucursalesEvent, SucursalesState> {
   Future<bool> updateSucursal(Map<String, dynamic> sucursalLike) async {
     try {
       final sucursal = await sucursalesRepository.updateSucursal(
-          sucursalLike, sucursalLike['id']);
+          sucursalLike, sucursalLike['id'] as int);
       add(SucursalesUpdateRequested(sucursal));
       return true;
     } catch (_) {

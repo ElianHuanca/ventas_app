@@ -18,6 +18,7 @@ class ColoresScreen extends StatelessWidget {
                 widget: _buildBody(context, state),
                 title: 'Colores',
                 isGridview: false,
+                tooltipAgregar: 'Agregar color',
                 onTap: () async {
                   await context.push('/color/0');
                   if (context.mounted) {

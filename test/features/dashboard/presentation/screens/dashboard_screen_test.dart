@@ -60,7 +60,7 @@ void main() {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    cubit = DashboardCubit(repository: repo);
+    cubit = DashboardCubit(repository: repo, linea: LineaDashboard.telas);
     addTearDown(cubit.close);
     await tester.pumpWidget(MaterialApp(
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
@@ -209,7 +209,7 @@ void main() {
     Finder camposDelSelector() => find.descendant(
         of: find.byType(Dialog), matching: find.byType(TextField));
 
-    testWidgets('elegir un rango vuelve a consultar las 4 RPC con esas fechas',
+    testWidgets('elegir un rango vuelve a consultar las 2 RPC con esas fechas',
         (tester) async {
       await montar(tester);
       final hoy = DateTime.now();
@@ -227,7 +227,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('${fmt(desde)}  →  ${fmt(hasta)}'), findsOneWidget);
-      expect(repo.rangos, hasLength(4));
+      expect(repo.rangos, hasLength(2));
       expect(repo.rangos.every((r) => r[0] == desde && r[1] == hasta), isTrue);
     });
 

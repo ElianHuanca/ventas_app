@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:textiles_app/features/telas/domain/domain.dart';
 import 'package:textiles_app/features/telas/presentation/bloc/telas_bloc.dart';
@@ -41,6 +43,21 @@ void main() {
       expect(repo.getTelasPorSucursalUsado, true);
       expect(repo.lastIdsucursal, 3);
       expect(repo.getTelasUsado, false);
+      expect(bloc.state.telas, telas);
+    });
+
+    test('isLoading queda en true mientras espera al repositorio', () async {
+      final pendiente = _RepoConCargaPendiente(telas: telas);
+      final bloc = TelasBloc(telasRepository: pendiente);
+      addTearDown(bloc.close);
+      await pumpEventQueue();
+
+      expect(bloc.state.isLoading, true);
+
+      pendiente.carga.complete(telas);
+      await pumpEventQueue();
+
+      expect(bloc.state.isLoading, false);
       expect(bloc.state.telas, telas);
     });
 
@@ -89,8 +106,30 @@ void main() {
       await pumpEventQueue();
 
       expect(ok, true);
-      expect(bloc.state.telas.map((e) => e.nombre),
-          ['Lino Premium', 'Seda']);
+      expect(bloc.state.telas.map((e) => e.nombre), ['Lino Premium', 'Seda']);
+    });
+
+    test('updateTela con error devuelve false y no modifica la lista',
+        () async {
+      final bloc = await crearBloc();
+      addTearDown(bloc.close);
+      repo.error = Exception('fallo');
+
+      final ok = await bloc.updateTela({'id': 1, 'nombre': 'Lino Premium'});
+      await pumpEventQueue();
+
+      expect(ok, false);
+      expect(bloc.state.telas.map((e) => e.nombre), ['Lino', 'Seda']);
     });
   });
+}
+
+/// Deja la carga del listado en espera hasta completar [carga].
+class _RepoConCargaPendiente extends FakeTelasRepository {
+  _RepoConCargaPendiente({super.telas});
+
+  final carga = Completer<List<Tela>>();
+
+  @override
+  Future<List<Tela>> getTelas({bool soloActivos = true}) => carga.future;
 }

@@ -16,12 +16,12 @@ class _RepoQueDevuelveCreadas extends FakeDetalleVentasRepository {
     return detalleVentasLike
         .map((d) => DetalleVenta(
               id: id++,
-              nombre: d['nombre'],
+              nombre: d['nombre'] as String?,
               precio: (d['precio'] as num).toDouble(),
               cantidad: (d['cantidad'] as num).toDouble(),
               total: (d['total'] as num).toDouble(),
               ganancias: (d['ganancias'] as num).toDouble(),
-              idtelas: d['idtelas'],
+              idtelas: d['idtelas'] as int,
             ))
         .toList();
   }

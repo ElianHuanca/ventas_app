@@ -7,8 +7,18 @@ import 'package:textiles_app/config/theme/app_theme.dart';
 /// Teléfono de referencia de las capturas (Pixel 7, en dp).
 const telefono = Size(412, 915);
 
+/// Android de gama baja (360×640 dp): el más chico que se sigue vendiendo.
+const telefonoChico = Size(360, 640);
+
+/// La opción "Grande" del tamaño de letra de Android.
+const letraGrande = 1.3;
+
 /// Monta [pantalla] como en la app real (tema, español, GoRouter) en un
 /// teléfono de [tamano] dp y espera a que termine de dibujarse.
+///
+/// [escalaTexto] es el tamaño de letra del sistema (`null` = el normal, 1.0).
+/// Se fija en el PlatformDispatcher, de donde lo toma el MediaQuery del
+/// MaterialApp como en el celular: la app no lo sobrescribe.
 ///
 /// [rutas] agrega rutas stub por si la captura necesita navegar. Con
 /// [asentar] en `false` solo hace un `pump` (para capturar un loader, cuya
@@ -17,12 +27,17 @@ Future<void> montarParaCaptura(
   WidgetTester tester,
   Widget pantalla, {
   Size tamano = telefono,
+  double? escalaTexto,
   List<RouteBase> rutas = const [],
   bool asentar = true,
 }) async {
   tester.view.physicalSize = tamano;
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
+  if (escalaTexto != null) {
+    tester.platformDispatcher.textScaleFactorTestValue = escalaTexto;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+  }
   final router = GoRouter(
     routes: [
       GoRoute(path: '/', builder: (_, __) => pantalla),

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/domain.dart';
 
@@ -85,7 +87,7 @@ class ProduccionFormCubit extends Cubit<ProduccionFormState> {
     required this.apliquesRepository,
     required this.idsucursal,
   }) : super(ProduccionFormState(idsucursal: idsucursal)) {
-    load();
+    unawaited(load());
   }
 
   Future<void> load() async {
@@ -114,8 +116,7 @@ class ProduccionFormCubit extends Cubit<ProduccionFormState> {
     if (id == 0) return;
     try {
       final colores = await apliquesRepository.getColoresAplique(id);
-      emit(state.copyWith(
-          colores: colores.where((e) => e.vinculado).toList()));
+      emit(state.copyWith(colores: colores.where((e) => e.vinculado).toList()));
     } catch (_) {}
   }
 
@@ -124,8 +125,7 @@ class ProduccionFormCubit extends Cubit<ProduccionFormState> {
         colorNombre: value?.nombre ?? '',
         colorHex: value?.hex ?? '',
       ));
-  void onCantidadChanged(String value) =>
-      emit(state.copyWith(cantidad: value));
+  void onCantidadChanged(String value) => emit(state.copyWith(cantidad: value));
   void onFechaChanged(DateTime value) => emit(state.copyWith(fecha: value));
 
   /// Añade la línea (aplique+color+cantidad) al listado. Si ya existe una
@@ -136,7 +136,8 @@ class ProduccionFormCubit extends Cubit<ProduccionFormState> {
     if (state.idapliques == 0) return 'Seleccione un aplique';
     if (state.idcolor == 0) return 'Seleccione un color';
     final cantidad = double.tryParse(state.cantidad);
-    if (cantidad == null || cantidad <= 0) {
+    // "NaN" e "Infinity" también los parsea double.tryParse
+    if (cantidad == null || !cantidad.isFinite || cantidad <= 0) {
       return 'Ingrese una cantidad válida mayor a 0';
     }
 
@@ -149,7 +150,8 @@ class ProduccionFormCubit extends Cubit<ProduccionFormState> {
       final existing = detProducciones[existingIndex];
       detProducciones[existingIndex] = {
         ...existing,
-        'cantidad': (existing['cantidad'] as num).toDouble() + cantidad,
+        'cantidad':
+            _sinRuido((existing['cantidad'] as num).toDouble() + cantidad),
       };
     } else {
       detProducciones.insert(0, {
@@ -186,8 +188,10 @@ class ProduccionFormCubit extends Cubit<ProduccionFormState> {
   /// datasource crea/reusa la cabecera de la sucursal+fecha y hace upsert
   /// por línea, sumando la cantidad si el aplique+color ya se fabricó ese
   /// día. Devuelve null si se registró, o el mensaje de error a mostrar.
+  /// Con un registro en curso (doble toque en "Guardar") no hace nada: no es
+  /// null porque todavía no se registró.
   Future<String?> onFormSubmit() async {
-    if (state.isSubmitting) return null;
+    if (state.isSubmitting) return 'Ya se está registrando la producción';
     if (state.detProducciones.isEmpty) {
       return 'Añada al menos una línea al listado';
     }
@@ -216,3 +220,8 @@ class ProduccionFormCubit extends Cubit<ProduccionFormState> {
     }
   }
 }
+
+/// Quita el ruido de sumar cantidades (1.03 + 1 + 1.23 daba
+/// 3.2600000000000002 uds). A 6 decimales: no cambia ninguna cantidad
+/// tipeada.
+double _sinRuido(double valor) => (valor * 1000000).round() / 1000000.0;

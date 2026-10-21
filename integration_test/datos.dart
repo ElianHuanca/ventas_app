@@ -24,28 +24,45 @@ class Datos {
 
   String nombre(String base) => 'IT $base $sufijo';
 
-  Future<Sucursal> sucursal([String base = 'Sucursal']) =>
-      SucursalesDatasourceImpl().createSucursal({'nombre': nombre(base)});
+  /// La base exige login y estos datos se crean con los datasources de la
+  /// app. Si el test todavía no inició sesión (corrido solo, después del
+  /// setUpAll, que la cierra), la inicia: si no, dependía de que un test
+  /// anterior la hubiera dejado abierta.
+  Future<void> _conSesion() async {
+    if (db.auth.currentSession == null) await iniciarSesionDirecto();
+  }
 
-  Future<Tela> tela(String base, {num precio = 25, num compra = 15}) =>
-      TelasDatasourceImpl().createTela({
-        'nombre': nombre(base),
-        'precxmen': precio,
-        'precxmay': precio,
-        'precxrollo': precio,
-        'precxcompra': compra,
-        'activo': true,
-      });
+  Future<Sucursal> sucursal([String base = 'Sucursal']) async {
+    await _conSesion();
+    return SucursalesDatasourceImpl().createSucursal({'nombre': nombre(base)});
+  }
 
-  Future<ColorItem> color(String base, {String hex = 'C0392B'}) =>
-      ColoresDatasourceImpl().createColor({'nombre': nombre(base), 'hex': hex});
+  Future<Tela> tela(String base, {num precio = 25, num compra = 15}) async {
+    await _conSesion();
+    return TelasDatasourceImpl().createTela({
+      'nombre': nombre(base),
+      'precxmen': precio,
+      'precxmay': precio,
+      'precxrollo': precio,
+      'precxcompra': compra,
+      'activo': true,
+    });
+  }
 
-  Future<Aplique> aplique(String base, {num costo = 5}) =>
-      ApliquesDatasourceImpl().createAplique({
-        'nombre': nombre(base),
-        'costo_fabricacion': costo,
-        'activo': true,
-      });
+  Future<ColorItem> color(String base, {String hex = 'C0392B'}) async {
+    await _conSesion();
+    return ColoresDatasourceImpl()
+        .createColor({'nombre': nombre(base), 'hex': hex});
+  }
+
+  Future<Aplique> aplique(String base, {num costo = 5}) async {
+    await _conSesion();
+    return ApliquesDatasourceImpl().createAplique({
+      'nombre': nombre(base),
+      'costo_fabricacion': costo,
+      'activo': true,
+    });
+  }
 
   Future<void> vincularColor(Aplique aplique, ColorItem color) =>
       ApliquesDatasourceImpl().setColorAplique(aplique.id, color.id, true);

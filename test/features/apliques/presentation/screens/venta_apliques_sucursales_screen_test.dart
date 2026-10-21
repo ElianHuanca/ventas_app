@@ -52,6 +52,7 @@ void main() {
         ),
       ],
     );
+    addTearDown(router.dispose);
     await tester.pumpWidget(BlocProvider.value(
       value: bloc,
       child: MaterialApp.router(routerConfig: router),

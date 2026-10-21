@@ -134,10 +134,31 @@ Future<void> abrirMenu(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-Future<void> irDesdeMenu(WidgetTester tester, String opcion) async {
+/// Opción del menú lateral abierto. "Telas" y "Apliques" están dos veces: la
+/// gestión y, al pie, el submenú "Dashboard" (ese, con [opcionDelDashboard]).
+Finder opcionDelMenu(String opcion) => find
+    .descendant(of: find.byType(NavigationDrawer), matching: find.text(opcion))
+    .first;
+
+/// Opción [linea] ("Telas" o "Apliques") del submenú "Dashboard".
+Finder opcionDelDashboard(String linea) => find
+    .descendant(of: find.byType(NavigationDrawer), matching: find.text(linea))
+    .last;
+
+Future<void> irDesdeMenu(WidgetTester tester, String opcion) =>
+    tocarEnMenu(tester, opcionDelMenu(opcion));
+
+/// Abre el dashboard de [linea] ("Telas" o "Apliques").
+Future<void> irAlDashboard(WidgetTester tester, String linea) =>
+    tocarEnMenu(tester, opcionDelDashboard(linea));
+
+/// Abre el menú y toca [opcion].
+Future<void> tocarEnMenu(WidgetTester tester, Finder opcion) async {
   await abrirMenu(tester);
-  await tester.tap(find.descendant(
-      of: find.byType(NavigationDrawer), matching: find.text(opcion)));
+  // El submenú del dashboard queda al pie: en un celular chico hay que bajar
+  await tester.ensureVisible(opcion);
+  await tester.pumpAndSettle();
+  await tester.tap(opcion);
   await tester.pumpAndSettle();
 }
 
@@ -205,7 +226,7 @@ Future<void> elegirRango(
 }
 
 /// Lista vertical de la pantalla (las grillas y `ListView` de `Screen1`, la
-/// lista de cada pestaña del dashboard; no el `TabBarView`, que es horizontal).
+/// lista del dashboard).
 Finder get listaVertical => find.byWidgetPredicate(
     (w) => w is Scrollable && w.axisDirection == AxisDirection.down);
 

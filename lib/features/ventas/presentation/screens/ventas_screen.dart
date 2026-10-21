@@ -28,6 +28,7 @@ class VentasScreen extends StatelessWidget {
                 isGridview: true,
                 backRoute: true,
                 onTap: () => _onCreateVenta(context),
+                tooltipAgregar: 'Registrar venta',
               );
       },
     );

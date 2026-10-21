@@ -6,8 +6,11 @@ export 'entities/detalle_venta_aplique.dart';
 export 'entities/produccion.dart';
 export 'entities/produccion_cabecera.dart';
 export 'entities/stock_aplique.dart';
+export 'entities/stock_con_ventas.dart';
 export 'entities/venta_aplique.dart';
+export 'mensaje_faltantes.dart';
 export 'repositories/apliques_repository.dart';
+export 'reposicion.dart';
 
 //VentasApliques
 export 'datasources/ventas_apliques_datasource.dart';

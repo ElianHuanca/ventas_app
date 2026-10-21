@@ -5,10 +5,22 @@ import '../../domain/domain.dart';
 import '../bloc/bloc.dart';
 import '../widgets/data_table_produccion.dart';
 
-class ProduccionScreen extends StatelessWidget {
+class ProduccionScreen extends StatefulWidget {
+  const ProduccionScreen({super.key});
+
+  @override
+  State<ProduccionScreen> createState() => _ProduccionScreenState();
+}
+
+class _ProduccionScreenState extends State<ProduccionScreen> {
+  // En el State (no en el widget) para liberarlo en dispose()
   final TextEditingController cantidadController = TextEditingController();
 
-  ProduccionScreen({super.key});
+  @override
+  void dispose() {
+    cantidadController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -81,6 +93,10 @@ class ProduccionScreen extends StatelessWidget {
               DropdownMenu<Aplique>(
                 width: MediaQuery.of(context).size.width * 0.93,
                 hintText: 'Seleccione un Aplique',
+                trailingIcon: const Icon(Icons.arrow_drop_down,
+                    semanticLabel: 'Abrir lista de apliques'),
+                selectedTrailingIcon: const Icon(Icons.arrow_drop_up,
+                    semanticLabel: 'Cerrar lista de apliques'),
                 onSelected: cubit.onApliqueChanged,
                 dropdownMenuEntries: state.apliques
                     .map<DropdownMenuEntry<Aplique>>((e) =>
@@ -93,6 +109,10 @@ class ProduccionScreen extends StatelessWidget {
                 key: ValueKey(state.idapliques),
                 width: MediaQuery.of(context).size.width * 0.93,
                 hintText: 'Seleccione un Color',
+                trailingIcon: const Icon(Icons.arrow_drop_down,
+                    semanticLabel: 'Abrir lista de colores'),
+                selectedTrailingIcon: const Icon(Icons.arrow_drop_up,
+                    semanticLabel: 'Cerrar lista de colores'),
                 enabled: state.idapliques != 0,
                 onSelected: cubit.onColorChanged,
                 dropdownMenuEntries:
@@ -168,6 +188,8 @@ class ProduccionScreen extends StatelessWidget {
           padding: const EdgeInsets.all(12.0),
           child: MaterialButtonWidget(
             onTap: () async {
+              // Un segundo toque mientras se registra no hace nada
+              if (cubit.state.isSubmitting) return;
               final error = await cubit.onFormSubmit();
               if (!context.mounted) return;
               if (error != null) {

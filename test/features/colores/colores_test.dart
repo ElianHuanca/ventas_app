@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:textiles_app/features/apliques/domain/entities/color_item.dart';
 import 'package:textiles_app/features/colores/presentation/bloc/bloc.dart';
@@ -21,6 +23,14 @@ void main() {
       expect(ColorFormCubit.normalizarHex('GGGGGG'), isNull);
       expect(ColorFormCubit.normalizarHex(''), isNull);
     });
+
+    // Caso mínimo de test/propiedades/colores_propiedades_test.dart
+    test('rechaza signos que int.parse acepta (+00000, -ABCDE)', () {
+      expect(ColorFormCubit.normalizarHex('+00000'), isNull);
+      expect(ColorFormCubit.normalizarHex('#-ABCDE'), isNull);
+      // "ﬀ" (una letra) pasa a "FF" en mayúsculas
+      expect(ColorFormCubit.normalizarHex('ﬀ1234'), isNull);
+    });
   });
 
   group('ColorFormCubit', () {
@@ -34,7 +44,7 @@ void main() {
             return true;
           },
           onUpdateCallback: (m) async {
-            await repo.updateColor(m, m['id']);
+            await repo.updateColor(m, m['id'] as int);
             return true;
           },
           onDeleteCallback: repo.deleteColor,
@@ -78,8 +88,7 @@ void main() {
       final ok = await cubit.onSubmit(isUpdate: false);
 
       expect(ok, true);
-      expect(repo.creado,
-          {'id': 0, 'nombre': 'Palo de rosa', 'hex': 'FF69B4'});
+      expect(repo.creado, {'id': 0, 'nombre': 'Palo de rosa', 'hex': 'FF69B4'});
     });
 
     test('update usa el id existente', () async {
@@ -121,6 +130,70 @@ void main() {
       expect(bloc.state.colores, colores);
     });
 
+    test('isLoading queda en true mientras espera al repositorio', () async {
+      final pendiente = _ColoresConCargaPendiente();
+      final bloc = ColoresBloc(coloresRepository: pendiente);
+      addTearDown(bloc.close);
+      await pumpEventQueue();
+
+      expect(bloc.state.isLoading, true);
+
+      pendiente.carga.complete(colores);
+      await pumpEventQueue();
+
+      expect(bloc.state.isLoading, false);
+      expect(bloc.state.colores, colores);
+    });
+
+    test('una recarga pedida mientras carga se ignora', () async {
+      final pendiente = _ColoresConCargaPendiente();
+      final bloc = ColoresBloc(coloresRepository: pendiente);
+      addTearDown(bloc.close);
+      await pumpEventQueue();
+
+      bloc.add(ColoresLoadRequested());
+      await pumpEventQueue();
+      pendiente.carga.complete(colores);
+      await pumpEventQueue();
+
+      expect(pendiente.cargas, 1);
+      expect(bloc.state.colores, colores);
+    });
+
+    test('createColor con error devuelve false y no toca la lista', () async {
+      final bloc = await crearBloc();
+      addTearDown(bloc.close);
+      repo.error = Exception('fallo');
+
+      expect(
+          await bloc.createColor({'nombre': 'Rojo', 'hex': 'FF0000'}), false);
+      await pumpEventQueue();
+      expect(bloc.state.colores, colores);
+    });
+
+    test('updateColor con error devuelve false y no toca la lista', () async {
+      final bloc = await crearBloc();
+      addTearDown(bloc.close);
+      repo.error = Exception('fallo');
+
+      expect(
+          await bloc
+              .updateColor({'id': 1, 'nombre': 'Blanco humo', 'hex': 'F5F5F5'}),
+          false);
+      await pumpEventQueue();
+      expect(bloc.state.colores, colores);
+    });
+
+    test('deleteColor con error del repositorio devuelve false', () async {
+      final bloc = await crearBloc();
+      addTearDown(bloc.close);
+      repo.error = Exception('fallo');
+
+      expect(await bloc.deleteColor(2), false);
+      await pumpEventQueue();
+      expect(bloc.state.colores, colores);
+    });
+
     test('createColor agrega al estado', () async {
       final bloc = await crearBloc();
       addTearDown(bloc.close);
@@ -137,8 +210,8 @@ void main() {
       final bloc = await crearBloc();
       addTearDown(bloc.close);
 
-      final ok =
-          await bloc.updateColor({'id': 1, 'nombre': 'Blanco humo', 'hex': 'F5F5F5'});
+      final ok = await bloc
+          .updateColor({'id': 1, 'nombre': 'Blanco humo', 'hex': 'F5F5F5'});
       await pumpEventQueue();
 
       expect(ok, true);
@@ -167,4 +240,17 @@ void main() {
       expect(bloc.state.colores.length, 2);
     });
   });
+}
+
+/// Deja la carga de colores en espera hasta completar [carga] y cuenta las
+/// cargas pedidas al repositorio.
+class _ColoresConCargaPendiente extends FakeColoresRepository {
+  final carga = Completer<List<ColorItem>>();
+  int cargas = 0;
+
+  @override
+  Future<List<ColorItem>> getColores({bool soloActivos = true}) {
+    cargas++;
+    return carga.future;
+  }
 }

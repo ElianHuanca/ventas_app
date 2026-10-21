@@ -24,9 +24,6 @@ final _muestrasColor = find.byType(CircleAvatar);
 /// ("Por cantidad" se ve también mientras carga).
 final _dashboardCargado = find.text('Ganancias');
 
-Finder _opcionDelMenu(String opcion) => find.descendant(
-    of: find.byType(NavigationDrawer), matching: find.text(opcion));
-
 /// Sesión iniciada y la app en el inicio con las sucursales cargadas.
 Future<void> _entrar(WidgetTester tester) async {
   await iniciarSesionDirecto();
@@ -43,12 +40,28 @@ Future<void> _irAlInicio(WidgetTester tester) async {
 /// [listo] no tiene que estar en la pantalla de partida: durante la
 /// transición conviven las dos.
 Future<void> _medirDesdeMenu(
-    WidgetTester tester, String clave, String opcion, Finder listo) async {
+    WidgetTester tester, String clave, String opcion, Finder listo) =>
+    _medirOpcion(tester, clave, opcionDelMenu(opcion), listo);
+
+/// Como [_medirDesdeMenu], con una opción del submenú "Dashboard".
+Future<void> _medirDesdeDashboard(
+    WidgetTester tester, String clave, String linea, Finder listo) =>
+    _medirOpcion(tester, clave, opcionDelDashboard(linea), listo);
+
+Future<void> _medirOpcion(
+    WidgetTester tester, String clave, Finder opcion, Finder listo) async {
   await abrirMenu(tester);
-  await medirLatencia(tester, clave, () => tester.tap(_opcionDelMenu(opcion)),
-      listo: listo);
+  await tester.ensureVisible(opcion);
+  await tester.pumpAndSettle();
+  await medirLatencia(tester, clave, () => tester.tap(opcion), listo: listo);
   await tester.pumpAndSettle();
 }
+
+/// El dashboard de [linea] con su ranking cargado (o el aviso de que no hay
+/// ventas). El resumen no sirve al pasar de un dashboard al otro: ya está en
+/// la pantalla de partida.
+Finder _rankingCargado(String linea) =>
+    find.textContaining(RegExp('$linea (por|en el período)'));
 
 void benchmarkLogin() {
   testWidgets('login', (tester) async {
@@ -317,20 +330,17 @@ void benchmarkDashboard() {
 
     for (var i = 0; i < repeticiones; i++) {
       if (i > 0) await _irAlInicio(tester);
-      await _medirDesdeMenu(
-          tester, 'cargar_dashboard', 'Dashboard', _dashboardCargado);
+      await _medirDesdeDashboard(
+          tester, 'cargar_dashboard', 'Telas', _dashboardCargado);
     }
 
-    final pestanaTelas = find.widgetWithText(Tab, 'Telas');
-    final pestanaApliques = find.widgetWithText(Tab, 'Apliques');
-    await medirFluidez('dashboard_pestanas', () async {
-      for (var i = 0; i < 3; i++) {
-        await tester.tap(pestanaApliques);
-        await tester.pumpAndSettle();
-        await tester.tap(pestanaTelas);
-        await tester.pumpAndSettle();
-      }
-    });
+    // Del submenú Telas al de Apliques (y de vuelta, sin medir)
+    for (var i = 0; i < repeticiones; i++) {
+      await _medirDesdeDashboard(tester, 'cargar_dashboard_apliques',
+          'Apliques', _rankingCargado('apliques'));
+      await irAlDashboard(tester, 'Telas');
+      await esperarHasta(tester, _rankingCargado('telas'));
+    }
 
     // Mes actual → junio de 2020 (las +150 telas del volumen) y de vuelta
     final hoy = DateTime.now();
@@ -368,13 +378,14 @@ void benchmarkMenu() {
     // Cada pantalla con sus datos cargados antes de pasar a la siguiente
     await medirFluidez('navegacion_menu', () async {
       for (final (opcion, listo) in [
-        ('Telas', _tarjetasProducto),
-        ('Colores', _muestrasColor),
-        ('Apliques', _tarjetasProducto),
-        ('Dashboard', _dashboardCargado),
-        ('Venta telas', _tarjetasSucursal),
+        (opcionDelMenu('Telas'), _tarjetasProducto),
+        (opcionDelMenu('Colores'), _muestrasColor),
+        (opcionDelMenu('Apliques'), _tarjetasProducto),
+        (opcionDelDashboard('Telas'), _dashboardCargado),
+        (opcionDelDashboard('Apliques'), _rankingCargado('apliques')),
+        (opcionDelMenu('Venta telas'), _tarjetasSucursal),
       ]) {
-        await irDesdeMenu(tester, opcion);
+        await tocarEnMenu(tester, opcion);
         await esperarHasta(tester, listo);
         await tester.pumpAndSettle();
       }

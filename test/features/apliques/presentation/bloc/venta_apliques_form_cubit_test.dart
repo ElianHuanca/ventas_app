@@ -1,8 +1,34 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:textiles_app/features/apliques/domain/domain.dart';
 import 'package:textiles_app/features/apliques/presentation/bloc/venta_apliques_form_cubit.dart';
 
 import '../../../../helpers/fake_repositories.dart';
+
+/// Registra la venta recién cuando se completa [registro]: deja ver qué pasa
+/// si se vuelve a confirmar mientras tanto.
+class _VentaLenta extends FakeVentasApliquesRepository {
+  final registro = Completer<void>();
+
+  @override
+  Future<int> createVentaAplique({
+    required int idsucursales,
+    required double total,
+    required double ganancias,
+    required double descuento,
+    required List<Map<String, dynamic>> detalles,
+  }) async {
+    await registro.future;
+    return super.createVentaAplique(
+      idsucursales: idsucursales,
+      total: total,
+      ganancias: ganancias,
+      descuento: descuento,
+      detalles: detalles,
+    );
+  }
+}
 
 void main() {
   late FakeVentasApliquesRepository repo;
@@ -65,9 +91,14 @@ void main() {
       cubit.onCantidadChanged('0');
       cubit.onPrecioChanged('100');
       expect(cubit.addDetalle(), 'La cantidad debe ser mayor a 0');
+      cubit.onCantidadChanged('-1');
+      expect(cubit.addDetalle(), 'La cantidad debe ser mayor a 0');
       cubit.onCantidadChanged('1');
       cubit.onPrecioChanged('-1');
       expect(cubit.addDetalle(), 'El precio debe ser mayor a 0');
+      cubit.onPrecioChanged('0');
+      expect(cubit.addDetalle(), 'El precio debe ser mayor a 0');
+      expect(cubit.state.detalles, isEmpty);
     });
   });
 
@@ -120,9 +151,65 @@ void main() {
 
       expect(cubit.state.detalles.length, 2);
     });
+
+    // Casos mínimos de test/propiedades/carritos_propiedades_test.dart
+    test('el merge sube el total lo que sube la línea, sin sumar redondeos',
+        () {
+      seleccionar(stock: 3);
+      for (var i = 0; i < 2; i++) {
+        cubit.onCantidadChanged('1.5');
+        cubit.onPrecioChanged('0.01');
+        expect(cubit.addDetalle(), isNull);
+      }
+
+      // 3 × 0.01 = 0.03; cada 1.5 redondeado por separado daba 0.04
+      expect(cubit.state.detalles.single['total'], 0.03);
+      expect(cubit.state.total, 0.03);
+
+      cubit.removeDetalle(1, 5, 3.0, 0.01);
+      expect(cubit.state.total, 0);
+      expect(cubit.state.ganancias, 0);
+    });
+
+    test('la mitad del centavo redondea hacia arriba, como numeric', () {
+      seleccionar();
+      cubit.onCantidadChanged('1.5');
+      cubit.onPrecioChanged('0.15');
+      expect(cubit.addDetalle(), isNull);
+
+      // 1.5 × 0.15 = 0.225, en double 0.22499999999999998 (daba 0.22)
+      expect(cubit.state.detalles.single['total'], 0.23);
+      expect(cubit.state.total, 0.23);
+    });
+
+    test('NaN e Infinity no son cantidades ni precios válidos', () {
+      seleccionar();
+      cubit.onCantidadChanged('NaN');
+      cubit.onPrecioChanged('25');
+      expect(cubit.addDetalle(), 'Ingrese una cantidad válida');
+
+      cubit.onCantidadChanged('1');
+      cubit.onPrecioChanged('Infinity');
+      expect(cubit.addDetalle(), 'Ingrese un precio válido');
+
+      expect(cubit.state.detalles, isEmpty);
+    });
   });
 
   group('bloqueo de sobre-stock', () {
+    test('sumar cantidades con decimales no rechaza la última unidad', () {
+      seleccionar(stock: 2.07);
+      cubit.onCantidadChanged('1.07');
+      cubit.onPrecioChanged('25');
+      expect(cubit.addDetalle(), isNull);
+
+      // 1.07 + 1 en double da 2.0700000000000003 > 2.07
+      cubit.onCantidadChanged('1');
+      cubit.onPrecioChanged('25');
+      expect(cubit.addDetalle(), isNull);
+      expect(cubit.state.detalles.single['cantidad'], 2.07);
+    });
+
     test('cantidad mayor al stock disponible se rechaza', () {
       seleccionar(stock: 5);
       cubit.onCantidadChanged('6');
@@ -183,9 +270,81 @@ void main() {
       expect(cubit.state.total, 0);
       expect(cubit.state.ganancias, 0);
     });
+
+    test(
+        'con líneas parecidas quita solo la que coincide en aplique, color, '
+        'cantidad y precio', () {
+      // Flor/Rojo 2 x 25: la línea a quitar (queda última en la tabla)
+      seleccionar();
+      cubit.onCantidadChanged('2');
+      cubit.onPrecioChanged('25');
+      cubit.addDetalle();
+      // Flor/Rojo a otro precio: mismo aplique y color
+      cubit.onCantidadChanged('1');
+      cubit.onPrecioChanged('30');
+      cubit.addDetalle();
+      // Luna/Verde 2 x 25: misma cantidad y precio, otro aplique y color
+      cubit.onApliqueChanged(
+          Aplique(id: 2, nombre: 'Luna', costoFabricacion: 4));
+      cubit.onColorChanged(const StockAplique(
+        apliqueId: 2,
+        colorId: 9,
+        colorNombre: 'Verde',
+        hex: '#00FF00',
+        stock: 5,
+      ));
+      cubit.onCantidadChanged('2');
+      cubit.onPrecioChanged('25');
+      cubit.addDetalle();
+      expect(cubit.state.total, 130.0); // 50 + 30 + 50
+
+      cubit.removeDetalle(1, 5, 2.0, 25.0);
+
+      expect(
+        cubit.state.detalles.map(
+            (e) => [e['idapliques'], e['idcolor'], e['cantidad'], e['precio']]),
+        [
+          [2, 9, 2.0, 25.0],
+          [1, 5, 1.0, 30.0],
+        ],
+      );
+      expect(cubit.state.total, 80.0);
+      // (30 - 10) * 1 + (25 - 4) * 2
+      expect(cubit.state.ganancias, 62.0);
+    });
   });
 
   group('onFormSubmit', () {
+    test('un segundo envío mientras se guarda no registra la venta dos veces',
+        () async {
+      final lenta = _VentaLenta();
+      final cubitLento = VentaApliquesFormCubit(
+        ventasApliquesRepository: lenta,
+        idsucursal: 3,
+      );
+      addTearDown(cubitLento.close);
+      cubitLento
+        ..onApliqueChanged(aplique)
+        ..onColorChanged(stockRojo)
+        ..onCantidadChanged('2')
+        ..onPrecioChanged('25');
+      expect(cubitLento.addDetalle(), isNull);
+
+      final primero = cubitLento.onFormSubmit();
+      try {
+        expect(cubitLento.enviando, isTrue);
+        // Volver a confirmar antes de que responda la base: antes descontaba
+        // el stock y sumaba la venta dos veces
+        expect(await cubitLento.onFormSubmit(), isFalse);
+      } finally {
+        lenta.registro.complete();
+      }
+
+      expect(await primero, isTrue);
+      expect(lenta.createCalls, 1);
+      expect(cubitLento.enviando, isFalse);
+    });
+
     test('sin detalles devuelve false', () async {
       expect(await cubit.onFormSubmit(), false);
       expect(repo.createCalls, 0);

@@ -6,11 +6,24 @@ import 'package:textiles_app/features/telas/domain/domain.dart';
 import 'package:textiles_app/features/telas/presentation/bloc/bloc.dart';
 import '../bloc/bloc.dart';
 
-class DetVenta extends StatelessWidget {
+class DetVenta extends StatefulWidget {
+  const DetVenta({super.key});
+
+  @override
+  State<DetVenta> createState() => _DetVentaState();
+}
+
+class _DetVentaState extends State<DetVenta> {
+  // En el State (no en el widget) para liberarlos en dispose()
   final TextEditingController precioController = TextEditingController();
   final TextEditingController cantidadController = TextEditingController();
 
-  DetVenta({super.key});
+  @override
+  void dispose() {
+    precioController.dispose();
+    cantidadController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,6 +88,10 @@ class DetVenta extends StatelessWidget {
                         child: DropdownMenu<Tela>(
                           width: MediaQuery.of(context).size.width * 0.93,
                           hintText: 'Seleccione una Tela',
+                          trailingIcon: const Icon(Icons.arrow_drop_down,
+                              semanticLabel: 'Abrir lista de telas'),
+                          selectedTrailingIcon: const Icon(Icons.arrow_drop_up,
+                              semanticLabel: 'Cerrar lista de telas'),
                           // En escritorio se puede escribir: un texto que no es
                           // ninguna tela llega como null y limpia la selección
                           // (agregar sin tela queda bloqueado por idtelas == 0)
@@ -158,6 +175,8 @@ class DetVenta extends StatelessWidget {
         padding: const EdgeInsets.all(12.0),
         child: MaterialButtonWidget(
           onTap: () async {
+            // Un segundo toque mientras se envía no hace nada
+            if (detVentaFormCubit.enviando) return;
             final value = await detVentaFormCubit.onFormSubmit();
             if (context.mounted) showSnackbarBool(context, value);
           },

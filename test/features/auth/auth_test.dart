@@ -10,7 +10,8 @@ void main() {
     test('sin sesión cualquier ruta va a /login', () {
       expect(redireccionPorSesion(haySesion: false, ubicacion: '/'), '/login');
       expect(
-          redireccionPorSesion(haySesion: false, ubicacion: '/dashboard'),
+          redireccionPorSesion(
+              haySesion: false, ubicacion: '/dashboard/apliques'),
           '/login');
     });
 

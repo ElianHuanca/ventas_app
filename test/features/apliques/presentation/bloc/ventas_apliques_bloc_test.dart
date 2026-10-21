@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:textiles_app/features/apliques/domain/domain.dart';
 import 'package:textiles_app/features/apliques/presentation/bloc/ventas_apliques_bloc.dart';
@@ -46,8 +48,23 @@ void main() {
     expect(bloc.state.ventas, nuevas);
   });
 
-  test('error del repositorio deja isLoading en false y lista vacía',
-      () async {
+  test('isLoading queda en true mientras espera al repositorio', () async {
+    final pendiente = _RepoConCargaPendiente();
+    final bloc =
+        VentasApliquesBloc(ventasApliquesRepository: pendiente, idsucursal: 1);
+    addTearDown(bloc.close);
+    await pumpEventQueue();
+
+    expect(bloc.state.isLoading, true);
+
+    pendiente.carga.complete(ventas);
+    await pumpEventQueue();
+
+    expect(bloc.state.isLoading, false);
+    expect(bloc.state.ventas, ventas);
+  });
+
+  test('error del repositorio deja isLoading en false y lista vacía', () async {
     repo.error = Exception('fallo');
     final bloc = await crearBloc();
     addTearDown(bloc.close);
@@ -55,4 +72,12 @@ void main() {
     expect(bloc.state.isLoading, false);
     expect(bloc.state.ventas, isEmpty);
   });
+}
+
+/// Deja la carga en espera hasta completar [carga].
+class _RepoConCargaPendiente extends FakeVentasApliquesRepository {
+  final carga = Completer<List<VentaAplique>>();
+
+  @override
+  Future<List<VentaAplique>> getVentasApliques(int idsucursal) => carga.future;
 }

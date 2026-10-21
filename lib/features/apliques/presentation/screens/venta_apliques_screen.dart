@@ -5,11 +5,24 @@ import '../../domain/domain.dart';
 import '../bloc/bloc.dart';
 import '../widgets/data_table_apliques.dart';
 
-class VentaApliquesScreen extends StatelessWidget {
+class VentaApliquesScreen extends StatefulWidget {
+  const VentaApliquesScreen({super.key});
+
+  @override
+  State<VentaApliquesScreen> createState() => _VentaApliquesScreenState();
+}
+
+class _VentaApliquesScreenState extends State<VentaApliquesScreen> {
+  // En el State (no en el widget) para liberarlos en dispose()
   final TextEditingController cantidadController = TextEditingController();
   final TextEditingController precioController = TextEditingController();
 
-  VentaApliquesScreen({super.key});
+  @override
+  void dispose() {
+    cantidadController.dispose();
+    precioController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +44,8 @@ class VentaApliquesScreen extends StatelessWidget {
         .toList();
 
     final descuento = double.tryParse(formState.descuento) ?? 0;
-    final totalPagar = formState.total - descuento;
+    // Redondeado como el total que se guarda (10.3 - 0.1 daba 10.200000000000001)
+    final totalPagar = ((formState.total - descuento) * 100).round() / 100;
 
     return [
       apliquesState.isLoading
@@ -47,6 +61,10 @@ class VentaApliquesScreen extends StatelessWidget {
                         child: DropdownMenu<Aplique>(
                           width: MediaQuery.of(context).size.width * 0.93,
                           hintText: 'Seleccione un Aplique',
+                          trailingIcon: const Icon(Icons.arrow_drop_down,
+                              semanticLabel: 'Abrir lista de apliques'),
+                          selectedTrailingIcon: const Icon(Icons.arrow_drop_up,
+                              semanticLabel: 'Cerrar lista de apliques'),
                           onSelected: formCubit.onApliqueChanged,
                           dropdownMenuEntries: apliquesState.apliques
                               .map<DropdownMenuEntry<Aplique>>((e) {
@@ -69,6 +87,10 @@ class VentaApliquesScreen extends StatelessWidget {
                           key: ValueKey(formState.idapliques),
                           width: MediaQuery.of(context).size.width * 0.93,
                           hintText: 'Seleccione un Color',
+                          trailingIcon: const Icon(Icons.arrow_drop_down,
+                              semanticLabel: 'Abrir lista de colores'),
+                          selectedTrailingIcon: const Icon(Icons.arrow_drop_up,
+                              semanticLabel: 'Cerrar lista de colores'),
                           enabled: formState.idapliques != 0,
                           onSelected: formCubit.onColorChanged,
                           dropdownMenuEntries: coloresDisponibles
@@ -201,6 +223,8 @@ class VentaApliquesScreen extends StatelessWidget {
         padding: const EdgeInsets.all(12.0),
         child: MaterialButtonWidget(
           onTap: () {
+            // Mientras se envía, otro "Guardar" no abre otra confirmación
+            if (formCubit.enviando) return;
             if (formCubit.state.detalles.isEmpty) {
               showSnackbar(context, 'Agregue al menos un aplique a la venta');
               return;
@@ -208,6 +232,7 @@ class VentaApliquesScreen extends StatelessWidget {
             dialogoDeAlerta(
               context,
               () async {
+                if (formCubit.enviando) return;
                 final value = await formCubit.onFormSubmit();
                 if (context.mounted) showSnackbarBool(context, value);
               },

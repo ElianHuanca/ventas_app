@@ -1,0 +1,85 @@
+# Mutación semanal (domingo 07:00 UTC): mutation_test altera lib/ línea por
+# línea y verifica que algún test lo detecte. Un job por configuración de
+# mutacion/, en Windows porque los comandos de los XML pasan por cmd
+# (`git diff --quiet -- <archivo> || flutter test ...`). Tarda de 40 min a 2 h
+# por XML. También se lanza a mano desde Actions → Semanal → Run workflow.
+name: Semanal
+
+on:
+  schedule:
+    - cron: "0 7 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: semanal-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  mutacion:
+    name: Mutación (${{ matrix.nombre }})
+    runs-on: windows-latest
+    # El máximo de un job en runners de GitHub es 6 h.
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - nombre: carritos_y_formularios
+            xml: mutacion/carritos_y_formularios.xml
+            opciones: ""
+          # Sin las reglas builtin: el XML trae las suyas.
+          - nombre: mappers_utilidades_dashboard
+            xml: mutacion/mappers_utilidades_dashboard.xml
+            opciones: --no-builtin
+          - nombre: router_y_listados
+            xml: mutacion/router_y_listados.xml
+            opciones: ""
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/flutter
+
+      - name: Instalar mutation_test 1.8.0
+        if: ${{ hashFiles(matrix.xml) != '' }}
+        run: dart pub global activate mutation_test 1.8.0
+
+      # Cada comando del XML usa `git diff` para saber qué archivo está
+      # mutado: lib/ tiene que estar limpio (recién clonado lo está). Falla si
+      # el puntaje queda bajo el <threshold failure> del XML.
+      - name: mutation_test ${{ matrix.xml }}
+        if: ${{ hashFiles(matrix.xml) != '' }}
+        shell: bash
+        env:
+          XML: ${{ matrix.xml }}
+          NOMBRE: ${{ matrix.nombre }}
+          OPCIONES: ${{ matrix.opciones }}
+        # $OPCIONES va sin comillas a propósito: vacío no agrega argumento.
+        run: |
+          # shellcheck disable=SC2086
+          dart pub global run mutation_test $OPCIONES "$XML" -o "build/mutacion/$NOMBRE" -f all
+
+      - name: Avisar si falta el XML
+        if: ${{ hashFiles(matrix.xml) == '' }}
+        shell: bash
+        env:
+          XML: ${{ matrix.xml }}
+        run: |
+          echo "::warning::No existe $XML en el repo: no se mutó nada."
+
+      # Si se cortó a la mitad (timeout), la herramienta no llegó a restaurar
+      # el archivo mutado: se ve acá.
+      - name: lib/ quedó sin cambios
+        if: ${{ always() && hashFiles(matrix.xml) != '' }}
+        shell: bash
+        run: git diff --stat --exit-code -- lib
+
+      - name: Subir reporte
+        if: ${{ always() && hashFiles(matrix.xml) != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutacion-${{ matrix.nombre }}
+          path: build/mutacion/${{ matrix.nombre }}
+          if-no-files-found: warn

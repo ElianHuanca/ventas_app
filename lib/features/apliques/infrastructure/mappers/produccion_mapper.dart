@@ -9,10 +9,11 @@ class ProduccionMapper {
     return Produccion(
       id: json['id'] as int,
       fecha: produccion is Map ? (produccion['fecha']?.toString() ?? '') : '',
-      sucursalNombre: sucursal is Map ? (sucursal['nombre'] ?? '') : '',
-      apliqueNombre: aplique is Map ? (aplique['nombre'] ?? '') : '',
-      colorNombre: color is Map ? (color['nombre'] ?? '') : '',
-      hex: color is Map ? (color['hex'] ?? '') : '',
+      sucursalNombre:
+          sucursal is Map ? (sucursal['nombre'] as String? ?? '') : '',
+      apliqueNombre: aplique is Map ? (aplique['nombre'] as String? ?? '') : '',
+      colorNombre: color is Map ? (color['nombre'] as String? ?? '') : '',
+      hex: color is Map ? (color['hex'] as String? ?? '') : '',
       cantidad: (json['cantidad'] as num?)?.toDouble() ?? 0,
     );
   }

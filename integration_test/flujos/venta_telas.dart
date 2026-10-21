@@ -63,7 +63,7 @@ void ventaTelasTests() {
       final detalles = await db
           .from('detalle_ventas')
           .select('idtelas, precio, cantidad, total')
-          .eq('idventa', ventas.single['id']);
+          .eq('idventa', ventas.single['id'] as int);
       expect(detalles, hasLength(1));
       expect(detalles.single['idtelas'], tela.id);
       expect(numero(detalles.single['cantidad']), 3);
@@ -88,7 +88,7 @@ void ventaTelasTests() {
       final detalles = await db
           .from('detalle_ventas')
           .select('cantidad')
-          .eq('idventa', ventas.single['id']);
+          .eq('idventa', ventas.single['id'] as int);
       expect(detalles, hasLength(1), reason: 'misma tela y mismo precio');
       expect(numero(detalles.single['cantidad']), 3);
       expect(tarjeta(changeFormatDate(DateTime.now())), findsOneWidget);
@@ -140,7 +140,7 @@ void ventaTelasTests() {
       final detalles = await db
           .from('detalle_ventas')
           .select('idtelas, cantidad')
-          .eq('idventa', venta['id']);
+          .eq('idventa', venta['id'] as int);
       expect(detalles, hasLength(1));
       expect(detalles.single['idtelas'], lino.id);
       expect(numero(detalles.single['cantidad']), 2);
@@ -202,11 +202,15 @@ void ventaTelasTests() {
       final borrar = find.byIcon(Icons.delete_forever_rounded);
       await esperarHasta(tester, borrar);
       expect(borrar, findsNWidgets(2));
+      // A 360 dp la columna de borrar queda cortada en el borde (la tabla se
+      // desplaza de costado): el toque al centro del ícono caía afuera
+      await tester.ensureVisible(borrar.first);
+      await tester.pumpAndSettle();
       await tester.tap(borrar.first);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Eliminar'));
 
-      final idventa = (await ventasDe(sucursal)).single['id'];
+      final idventa = (await ventasDe(sucursal)).single['id'] as int;
       await esperarQue(() async {
         final filas =
             await db.from('detalle_ventas').select('id').eq('idventa', idventa);

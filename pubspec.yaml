@@ -35,6 +35,8 @@ dependencies:
   flutter_bloc: ^8.1.6
   go_router: ^13.1.0
   supabase_flutter: ^2.8.0
+  # Abre WhatsApp con la lista de faltantes (ya venía con supabase_flutter)
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   benchmark_harness: ^2.3.1
@@ -43,8 +45,12 @@ dev_dependencies:
   flutter_lints: ^2.0.0
   flutter_test:
     sdk: flutter
+  glados: ^1.1.7
   integration_test:
     sdk: flutter
+  # Rastreo de fugas de memoria en los tests de widget (test/flutter_test_config.dart).
+  # La versión la fija flutter_test (viene con el SDK): por eso `any`.
+  leak_tracker_flutter_testing: any
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

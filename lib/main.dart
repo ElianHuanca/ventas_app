@@ -58,8 +58,13 @@ class _MyAppState extends State<MyApp> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _router ??=
-        createAppRouter(authRepository: context.read<AuthRepository>());
+    _router ??= createAppRouter(authRepository: context.read<AuthRepository>());
+  }
+
+  @override
+  void dispose() {
+    _router?.dispose();
+    super.dispose();
   }
 
   @override

@@ -42,8 +42,28 @@ void main() {
         'fecha': 'no-es-fecha',
         'idsucursales': 1,
       });
-      expect(
-          v.fecha.isAfter(antes.subtract(const Duration(seconds: 2))), true);
+      final sinFecha = VentaMapper.jsonToEntity({
+        'id': 2,
+        'fecha': null,
+        'idsucursales': 1,
+      });
+      final limite = antes.subtract(const Duration(seconds: 2));
+      expect(v.fecha.isAfter(limite), true);
+      expect(sinFecha.fecha.isAfter(limite), true);
+    });
+
+    test('numéricos que no se pueden parsear quedan en 0', () {
+      final v = VentaMapper.jsonToEntity({
+        'id': 1,
+        'fecha': '2024-01-01',
+        'total': 'abc',
+        'ganancias': '',
+        'descuento': 'x',
+        'idsucursales': 1,
+      });
+      expect(v.total, 0);
+      expect(v.ganancias, 0);
+      expect(v.descuento, 0);
     });
 
     test('fecha como DateTime se respeta', () {

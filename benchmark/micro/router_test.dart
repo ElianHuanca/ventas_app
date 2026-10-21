@@ -25,6 +25,8 @@ const _rutas = [
   '/fabricacion/2',
   '/fabricacion/registro/2',
   '/fabricacion/detalle/45',
+  '/inventario',
+  '/inventario/2',
   '/sucursales',
   '/sucursal/1',
   '/sucursal-disponibilidad/1',
@@ -39,7 +41,8 @@ const _rutas = [
   '/ventas/1',
   '/det_ventas/250',
   '/det_venta/1',
-  '/dashboard',
+  '/dashboard/telas',
+  '/dashboard/apliques',
 ];
 
 void main() {
@@ -70,11 +73,11 @@ void main() {
     );
     microBenchmark(
       'redireccionPorSesion con sesión en ruta protegida',
-      () =>
-          sink = redireccionPorSesion(haySesion: true, ubicacion: '/dashboard'),
+      () => sink =
+          redireccionPorSesion(haySesion: true, ubicacion: '/dashboard/telas'),
       presupuestoUs: 0.1,
       preparar: () => expect(
-          redireccionPorSesion(haySesion: true, ubicacion: '/dashboard'),
+          redireccionPorSesion(haySesion: true, ubicacion: '/dashboard/telas'),
           isNull),
     );
     microBenchmark(

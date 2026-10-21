@@ -1,0 +1,110 @@
+# CI de cada PR y de cada push a main: análisis, tests sin base (unitarios,
+# de widget, propiedades, accesibilidad y fugas) con cobertura mínima, capturas
+# golden en Windows, pgTAP contra un Supabase local y el build de Android.
+# Lo que tarda o necesita emulador va en noche.yml; la mutación, en semanal.yml.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Un push nuevo a un PR cancela la corrida anterior de ese PR. En main cada
+# corrida tiene su propio grupo (run_id): no se cancela ni se descarta ninguna
+# y cada commit queda con su resultado.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  analisis-y-tests:
+    name: Análisis y tests (sin capturas)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/flutter
+
+      - name: flutter analyze
+        run: flutter analyze
+
+      # Todo test/ menos las capturas (generadas en Windows, van en su job):
+      # unitarios, de widget, propiedades (glados), accesibilidad y fugas
+      # (leak_tracker en cada testWidgets).
+      - name: flutter test --exclude-tags golden --coverage
+        run: flutter test --exclude-tags golden --coverage
+
+      # Medido en la PC (2026-10-20): 84.0 % de líneas de lib/ (2961 de 3523).
+      # El mínimo va un punto abajo: si baja, falta un test para lo nuevo.
+      - name: Cobertura mínima
+        run: dart run tool/cobertura.dart --minimo 83
+
+      - name: Subir lcov.info
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura-lcov
+          path: coverage/lcov.info
+          if-no-files-found: warn
+
+  capturas:
+    name: Capturas golden (Windows)
+    # Las capturas se generaron en Windows: en otro SO el antialiasing del
+    # texto cambia y no coinciden.
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/flutter
+
+      - name: flutter test --tags golden
+        run: flutter test --tags golden
+
+      # flutter_test deja las imágenes de diferencia (master, test, maskedDiff,
+      # isolatedDiff) en failures/ al lado de cada test.
+      - name: Subir diferencias de las capturas
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: capturas-diferencias
+          path: test/goldens/**/failures/
+          if-no-files-found: ignore
+
+  base-de-datos:
+    name: Base de datos (pgTAP)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/supabase-local
+
+      # supabase/tests/database/*.test.sql: RLS y permisos, RPC, restricciones,
+      # dashboard, vistas web e inventario. Cada archivo hace rollback.
+      - name: supabase test db
+        run: supabase test db
+
+  build-android:
+    name: Build Android (APK debug)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - uses: ./.github/actions/flutter
+
+      # Sin android/key.properties (fuera de git) firma con la clave de debug
+      # del runner y Gradle avisa: alcanza para detectar roturas del build.
+      - name: flutter build apk --debug
+        run: flutter build apk --debug

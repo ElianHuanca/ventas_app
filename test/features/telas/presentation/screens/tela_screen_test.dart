@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -16,7 +18,7 @@ class _Repo extends FakeTelasRepository {
   final List<Map<String, dynamic>> creadas = [];
   final List<Map<String, dynamic>> actualizadas = [];
   final List<int> idsActualizados = [];
-  Object? getTelaError;
+  Exception? getTelaError;
 
   @override
   Future<Tela> getTela(int id) async {
@@ -85,8 +87,9 @@ void main() {
         ),
       ],
     );
+    addTearDown(router.dispose);
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
-    router.push('/tela/$id');
+    unawaited(router.push('/tela/$id'));
     await tester.pumpAndSettle();
   }
 

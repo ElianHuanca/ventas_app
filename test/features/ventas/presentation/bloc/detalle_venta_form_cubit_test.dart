@@ -1,8 +1,23 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:textiles_app/features/ventas/domain/domain.dart';
 import 'package:textiles_app/features/ventas/presentation/bloc/detalle_venta_form_cubit.dart';
 
 import '../../../../helpers/fake_repositories.dart';
+
+/// Guarda las líneas recién cuando se completa [registro]: deja ver qué pasa
+/// si se vuelve a tocar "Guardar" mientras tanto.
+class _DetalleLento extends FakeDetalleVentasRepository {
+  final registro = Completer<void>();
+
+  @override
+  Future<List<DetalleVenta>> createDetalleVenta(
+      List<Map<String, dynamic>> detalleVentasLike, int idventas) async {
+    await registro.future;
+    return super.createDetalleVenta(detalleVentasLike, idventas);
+  }
+}
 
 void main() {
   late FakeVentasRepository ventasRepo;
@@ -112,6 +127,53 @@ void main() {
       expect(cubit.state.ganancias, 5.1);
     });
 
+    // Casos mínimos de test/propiedades/carritos_propiedades_test.dart
+    test('el merge sube el total lo que sube la línea, sin sumar redondeos',
+        () {
+      cargarLinea(cantidad: '0.5', precio: '0.01', precxcompra: 0);
+      cubit.addDetalleVenta();
+      cargarLinea(cantidad: '0.5', precio: '0.01', precxcompra: 0);
+      cubit.addDetalleVenta();
+
+      // 1 m × 0.01 = 0.01; cada 0.5 m redondeado por separado daba 0.02
+      expect(cubit.state.detVentas.single['total'], 0.01);
+      expect(cubit.state.total, 0.01);
+
+      cubit.removeDetalleVenta(1, 1.0, 0.01);
+      expect(cubit.state.total, 0);
+    });
+
+    test('la mitad del centavo redondea hacia arriba, como numeric', () {
+      cargarLinea(cantidad: '3.75', precio: '23.22', precxcompra: 0);
+      cubit.addDetalleVenta();
+
+      // 3.75 × 23.22 = 87.075, en double 87.07499999999999 (daba 87.07)
+      expect(cubit.state.detVentas.single['total'], 87.08);
+      expect(cubit.state.total, 87.08);
+    });
+
+    test('sumar cantidades en el merge no deja ruido de coma flotante', () {
+      cargarLinea(cantidad: '0.3', precio: '10');
+      cubit.addDetalleVenta();
+      cargarLinea(cantidad: '0.6', precio: '10');
+      cubit.addDetalleVenta();
+
+      // 0.3 + 0.6 en double da 0.8999999999999999
+      expect(cubit.state.detVentas.single['cantidad'], 0.9);
+    });
+
+    test('NaN e Infinity no son cantidades ni precios válidos', () {
+      for (final texto in ['NaN', 'Infinity', '-Infinity']) {
+        cargarLinea(cantidad: texto, precio: '100');
+        cubit.addDetalleVenta();
+        cargarLinea(cantidad: '1', precio: texto);
+        cubit.addDetalleVenta();
+      }
+
+      expect(cubit.state.detVentas, isEmpty);
+      expect(cubit.state.total, 0);
+    });
+
     test('no agrega sin producto seleccionado', () {
       cubit.onCantidadChanged('1');
       cubit.onPrecioChanged('100');
@@ -161,6 +223,35 @@ void main() {
       expect(cubit.state.ganancias, 30.0);
     });
 
+    test(
+        'con líneas parecidas quita solo la que coincide en tela, cantidad y '
+        'precio', () {
+      // Tela 1, 2 x 100: la línea a quitar (queda última en la tabla)
+      cargarLinea(idtelas: 1, cantidad: '2', precio: '100', precxcompra: 60);
+      cubit.addDetalleVenta();
+      // Misma tela a otro precio
+      cargarLinea(idtelas: 1, cantidad: '1', precio: '120', precxcompra: 60);
+      cubit.addDetalleVenta();
+      // Otra tela al mismo precio
+      cargarLinea(idtelas: 2, cantidad: '3', precio: '100', precxcompra: 60);
+      cubit.addDetalleVenta();
+      expect(cubit.state.total, 620.0);
+
+      cubit.removeDetalleVenta(1, 2.0, 100.0);
+
+      expect(
+        cubit.state.detVentas
+            .map((e) => [e['idtelas'], e['cantidad'], e['precio']]),
+        [
+          [2, 3.0, 100.0],
+          [1, 1.0, 120.0],
+        ],
+      );
+      expect(cubit.state.total, 420.0);
+      // (100 - 60) * 3 + (120 - 60) * 1
+      expect(cubit.state.ganancias, 180.0);
+    });
+
     test('con datos inexistentes no modifica el estado', () {
       cargarLinea(cantidad: '2', precio: '100');
       cubit.addDetalleVenta();
@@ -172,6 +263,40 @@ void main() {
   });
 
   group('onFormSubmit', () {
+    test('un segundo envío mientras se guarda no registra la venta dos veces',
+        () async {
+      final lento = _DetalleLento();
+      final cubitLento = DetalleVentaFormCubit(
+        ventasRepository: ventasRepo,
+        detalleVentasRepository: lento,
+        idsucursal: 1,
+      );
+      addTearDown(cubitLento.close);
+      cubitLento
+        ..onIdTelasChanged(1)
+        ..onNombreChanged('Lino')
+        ..onCantidadChanged('2')
+        ..onPrecioChanged('100')
+        ..onPrecxCompraChanged(60)
+        ..addDetalleVenta();
+
+      final primero = cubitLento.onFormSubmit();
+      try {
+        await pumpEventQueue();
+        expect(cubitLento.enviando, isTrue);
+        // Doble toque en "Guardar": antes mandaba el carrito otra vez y la
+        // base sumaba cantidades y total dos veces
+        expect(await cubitLento.onFormSubmit(), isFalse);
+      } finally {
+        lento.registro.complete();
+      }
+
+      expect(await primero, isTrue);
+      expect(lento.detallesCreados, hasLength(1));
+      expect(ventasRepo.actualizaciones, hasLength(1));
+      expect(cubitLento.enviando, isFalse);
+    });
+
     test('sin items devuelve false y no toca los repositorios', () async {
       final ok = await cubit.onFormSubmit();
 
@@ -190,6 +315,18 @@ void main() {
 
       expect(ok, false);
       expect(detalleRepo.detallesCreados, isEmpty);
+    });
+
+    test('descuento NaN devuelve false sin escribir nada', () async {
+      cargarLinea();
+      cubit.addDetalleVenta();
+      cubit.onDescuentoChanged('NaN');
+
+      final ok = await cubit.onFormSubmit();
+
+      expect(ok, false);
+      expect(detalleRepo.detallesCreados, isEmpty);
+      expect(ventasRepo.actualizaciones, isEmpty);
     });
 
     test(

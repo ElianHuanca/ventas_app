@@ -1,10 +1,8 @@
-
-
 import '../../domain/domain.dart';
 
 class SucursalMapper {
-  static jsonToEntity(Map<String, dynamic> json)=> Sucursal(
-    id: json['id'] ,
-    nombre: json['nombre'] ?? '',
+  static Sucursal jsonToEntity(Map<String, dynamic> json)=> Sucursal(
+    id: json['id'] as int,
+    nombre: json['nombre'] as String? ?? '',
   );
 }

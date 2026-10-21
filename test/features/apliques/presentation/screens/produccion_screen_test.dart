@@ -44,7 +44,7 @@ void main() {
     cubit = ProduccionFormCubit(apliquesRepository: repo, idsucursal: 1);
     addTearDown(cubit.close);
     await tester.pumpWidget(MaterialApp(
-      home: BlocProvider.value(value: cubit, child: ProduccionScreen()),
+      home: BlocProvider.value(value: cubit, child: const ProduccionScreen()),
     ));
     await tester.pumpAndSettle();
   }
@@ -245,5 +245,18 @@ void main() {
     expect(find.text('3.0 uds'), findsOneWidget);
     expect(cubit.state.detProducciones, hasLength(1));
     expect(cubit.state.isSubmitting, isFalse);
+  });
+
+  testWidgets('al salir de la pantalla libera el campo de cantidad',
+      (tester) async {
+    await montar(tester);
+    final controller =
+        tester.widget<TextFormField>(find.byType(TextFormField)).controller!;
+
+    await tester.pumpWidget(const SizedBox());
+
+    expect(() => ChangeNotifier.debugAssertNotDisposed(controller),
+        throwsFlutterError,
+        reason: 'controller sin dispose()');
   });
 }

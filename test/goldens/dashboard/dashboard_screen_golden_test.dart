@@ -12,7 +12,7 @@ import 'package:textiles_app/features/dashboard/presentation/screens/dashboard_s
 import '../../helpers/fake_repositories.dart';
 import '../golden_helpers.dart';
 
-/// Repo cuyas cuatro RPC quedan pendientes hasta completar [espera].
+/// Repo cuyas RPC quedan pendientes hasta completar [espera].
 class _RepoLento extends FakeDashboardRepository {
   final espera = Completer<void>();
 
@@ -89,9 +89,10 @@ void main() {
   Future<void> montar(
     WidgetTester tester,
     FakeDashboardRepository repo, {
+    LineaDashboard linea = LineaDashboard.telas,
     bool asentar = true,
   }) async {
-    final cubit = DashboardCubit(repository: repo);
+    final cubit = DashboardCubit(repository: repo, linea: linea);
     addTearDown(cubit.close);
     final carga = cubit.cambiarRango(desde, hasta);
     if (asentar) await carga;
@@ -124,15 +125,13 @@ void main() {
   });
 
   testWidgets('Apliques por total vendido', (tester) async {
-    await montar(tester, conVentas());
-    await tocar(tester, 'Apliques');
+    await montar(tester, conVentas(), linea: LineaDashboard.apliques);
 
     await compararCaptura('dashboard_apliques_por_monto');
   });
 
   testWidgets('Apliques por cantidad (unidades)', (tester) async {
-    await montar(tester, conVentas());
-    await tocar(tester, 'Apliques');
+    await montar(tester, conVentas(), linea: LineaDashboard.apliques);
     await tocar(tester, 'Por cantidad');
 
     await compararCaptura('dashboard_apliques_por_cantidad');
@@ -142,6 +141,13 @@ void main() {
     await montar(tester, FakeDashboardRepository());
 
     await compararCaptura('dashboard_sin_ventas');
+  });
+
+  testWidgets('apliques: período sin ventas', (tester) async {
+    await montar(tester, FakeDashboardRepository(),
+        linea: LineaDashboard.apliques);
+
+    await compararCaptura('dashboard_apliques_sin_ventas');
   });
 
   testWidgets('sin conexión: avisa del error y ofrece reintentar',

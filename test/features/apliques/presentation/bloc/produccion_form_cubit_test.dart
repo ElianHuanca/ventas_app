@@ -1,8 +1,43 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:textiles_app/features/apliques/domain/domain.dart';
 import 'package:textiles_app/features/apliques/presentation/bloc/produccion_form_cubit.dart';
 
 import '../../../../helpers/fake_repositories.dart';
+
+/// La carga de apliques queda pendiente hasta completar [carga].
+class _CargaLenta extends FakeApliquesRepository {
+  _CargaLenta({super.apliques, super.stock, super.colores});
+
+  final carga = Completer<void>();
+
+  @override
+  Future<List<Aplique>> getApliques({bool soloActivos = true}) async {
+    await carga.future;
+    return super.getApliques(soloActivos: soloActivos);
+  }
+}
+
+/// El registro de la producción queda pendiente hasta completar [registro].
+class _RegistroLento extends FakeApliquesRepository {
+  _RegistroLento({super.apliques, super.stock, super.colores});
+
+  final registro = Completer<void>();
+  int llamadas = 0;
+
+  @override
+  Future<void> createProduccion({
+    required int sucursalId,
+    required DateTime fecha,
+    required List<Map<String, dynamic>> lineas,
+  }) async {
+    llamadas++;
+    await registro.future;
+    return super
+        .createProduccion(sucursalId: sucursalId, fecha: fecha, lineas: lineas);
+  }
+}
 
 void main() {
   late FakeApliquesRepository repo;
@@ -18,7 +53,11 @@ void main() {
   ];
   const stockCentro = [
     StockAplique(
-        apliqueId: 1, colorId: 1, colorNombre: 'Rojo', hex: '#FF0000', stock: 7),
+        apliqueId: 1,
+        colorId: 1,
+        colorNombre: 'Rojo',
+        hex: '#FF0000',
+        stock: 7),
   ];
 
   setUp(() {
@@ -30,8 +69,7 @@ void main() {
   });
 
   Future<ProduccionFormCubit> crearCubit() async {
-    final cubit =
-        ProduccionFormCubit(apliquesRepository: repo, idsucursal: 1);
+    final cubit = ProduccionFormCubit(apliquesRepository: repo, idsucursal: 1);
     await pumpEventQueue();
     return cubit;
   }
@@ -54,6 +92,25 @@ void main() {
       expect(cubit.state.stock, stockCentro);
       expect(cubit.state.idsucursal, 1);
       expect(repo.lastGetStockSucursalId, 1);
+    });
+
+    test('mientras carga marca isLoading y al terminar lo apaga', () async {
+      final lento =
+          _CargaLenta(apliques: apliques, colores: colores, stock: stockCentro);
+      final cubit =
+          ProduccionFormCubit(apliquesRepository: lento, idsucursal: 1);
+      addTearDown(cubit.close);
+
+      try {
+        await pumpEventQueue();
+        expect(cubit.state.isLoading, isTrue);
+      } finally {
+        lento.carga.complete();
+      }
+      await pumpEventQueue();
+
+      expect(cubit.state.isLoading, isFalse);
+      expect(cubit.state.apliques, apliques);
     });
 
     test('error del repositorio deja isLoading en false', () async {
@@ -144,6 +201,10 @@ void main() {
       expect(cubit.addDetalleProduccion(),
           'Ingrese una cantidad válida mayor a 0');
 
+      cubit.onCantidadChanged('0');
+      expect(cubit.addDetalleProduccion(),
+          'Ingrese una cantidad válida mayor a 0');
+
       expect(cubit.state.detProducciones, isEmpty);
     });
 
@@ -176,6 +237,33 @@ void main() {
 
       expect(cubit.state.detProducciones.length, 1);
       expect(cubit.state.detProducciones.single['cantidad'], 5.0);
+    });
+
+    // Casos mínimos de test/propiedades/carritos_propiedades_test.dart
+    test('sumar cantidades no deja ruido de coma flotante', () async {
+      final cubit = await crearCubit();
+      addTearDown(cubit.close);
+      await seleccionarLinea(cubit, cantidad: '1.03');
+      cubit.addDetalleProduccion();
+      for (final cantidad in ['1', '1.23']) {
+        cubit.onCantidadChanged(cantidad);
+        cubit.addDetalleProduccion();
+      }
+
+      // 1.03 + 1 + 1.23 en double da 3.2600000000000002
+      expect(cubit.state.detProducciones.single['cantidad'], 3.26);
+    });
+
+    test('NaN e Infinity no son cantidades válidas', () async {
+      final cubit = await crearCubit();
+      addTearDown(cubit.close);
+      for (final texto in ['NaN', 'Infinity']) {
+        await seleccionarLinea(cubit, cantidad: texto);
+        expect(cubit.addDetalleProduccion(),
+            'Ingrese una cantidad válida mayor a 0');
+      }
+
+      expect(cubit.state.detProducciones, isEmpty);
     });
 
     test('distinto color agrega otra línea', () async {
@@ -228,7 +316,8 @@ void main() {
       expect(repo.produccionesCreadas, isEmpty);
     });
 
-    test('envía todas las líneas con la fecha, limpia el listado y refresca stock',
+    test(
+        'envía todas las líneas con la fecha, limpia el listado y refresca stock',
         () async {
       final cubit = await crearCubit();
       addTearDown(cubit.close);
@@ -263,6 +352,36 @@ void main() {
       expect(cubit.state.detProducciones, isEmpty);
       expect(cubit.state.stock, stockActualizado);
       expect(cubit.state.isSubmitting, false);
+    });
+
+    test(
+        'mientras registra marca isSubmitting y un segundo envío no vuelve a '
+        'registrar el lote', () async {
+      final lento = _RegistroLento(
+          apliques: apliques, colores: colores, stock: stockCentro);
+      repo = lento;
+      final cubit = await crearCubit();
+      addTearDown(cubit.close);
+      await seleccionarLinea(cubit);
+      cubit.addDetalleProduccion();
+
+      final primero = cubit.onFormSubmit();
+      final Future<String?> segundo;
+      try {
+        expect(cubit.state.isSubmitting, isTrue);
+        segundo = cubit.onFormSubmit(); // doble toque en Guardar
+        await pumpEventQueue();
+        expect(lento.llamadas, 1);
+      } finally {
+        lento.registro.complete();
+      }
+
+      expect(await primero, isNull);
+      // No es null ("se registró"): la pantalla mostraba el éxito antes de
+      // tiempo y, si el primero fallaba, el error después del éxito
+      expect(await segundo, 'Ya se está registrando la producción');
+      expect(lento.produccionesCreadas, hasLength(1));
+      expect(cubit.state.isSubmitting, isFalse);
     });
 
     test('error del repositorio devuelve mensaje sin prefijo Exception:',

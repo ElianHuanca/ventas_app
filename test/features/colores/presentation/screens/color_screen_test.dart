@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -38,8 +40,9 @@ void main() {
         ),
       ],
     );
+    addTearDown(router.dispose);
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
-    router.push('/color/$id');
+    unawaited(router.push('/color/$id'));
     await tester.pumpAndSettle();
   }
 
@@ -66,8 +69,7 @@ void main() {
       expect(campo('Hex (ej: C0392B)'), findsOneWidget);
     });
 
-    testWidgets('la vista previa toma el color del hex válido',
-        (tester) async {
+    testWidgets('la vista previa toma el color del hex válido', (tester) async {
       await montar(tester, 0);
       expect(colorPreview(tester), Colors.transparent);
 

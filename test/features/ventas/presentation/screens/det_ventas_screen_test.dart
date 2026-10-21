@@ -97,6 +97,12 @@ void main() {
     final pendiente = _DetalleRepoConCargaPendiente();
     detalleRepo = pendiente;
     await montar(tester, asentar: false);
+    // Corre antes que el close() de los blocs: si un expect falla antes del
+    // complete(), close() esperaría la carga para siempre y el test se
+    // colgaría en vez de fallar.
+    addTearDown(() {
+      if (!pendiente.carga.isCompleted) pendiente.carga.complete(const []);
+    });
 
     expect(find.byType(FullScreenLoader), findsOneWidget);
     expect(find.byType(DataTable), findsNothing);

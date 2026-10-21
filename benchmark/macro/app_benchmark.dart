@@ -33,12 +33,13 @@
 // - Latencia end-to-end, toque → dato visible (ms): login_a_inicio,
 //   abrir_sucursales, abrir_telas, buscar_tela, abrir_colores, abrir_apliques,
 //   registrar_fabricacion, registrar_venta_apliques, registrar_venta_telas,
-//   cargar_dashboard, cambiar_periodo.
+//   cargar_dashboard (submenú Telas), cargar_dashboard_apliques (de un
+//   submenú al otro), cambiar_periodo.
 // - Fluidez, FrameTiming de cada frame (build/raster promedio, p90, p99,
 //   frames perdidos) + timeline: login, sucursales_navegacion,
 //   sucursales_scroll, telas_scroll, telas_busqueda, colores_scroll,
 //   apliques_scroll, fabricacion_formulario, venta_apliques_formulario,
-//   venta_telas_formulario, dashboard_pestanas, dashboard_scroll,
+//   venta_telas_formulario, dashboard_scroll,
 //   menu_lateral, navegacion_menu.
 //
 // Datos: cada flujo crea los suyos con prefijo `BM ` (como los `IT ` de los

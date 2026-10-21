@@ -83,13 +83,14 @@ void main() {
               BlocProvider.value(value: apliquesBloc),
               BlocProvider.value(value: cubit),
             ],
-            child: VentaApliquesScreen(),
+            child: const VentaApliquesScreen(),
           ),
         ),
       ],
     );
+    addTearDown(router.dispose);
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
-    router.push('/venta-apliques/registro/3');
+    unawaited(router.push('/venta-apliques/registro/3'));
     if (esperar) await tester.pumpAndSettle();
   }
 
@@ -183,6 +184,12 @@ void main() {
       final lento = _ApliquesLento();
       apliquesRepo = lento;
       await montar(tester, esperar: false);
+      // Corre antes que el close() del bloc: si un expect falla antes del
+      // complete(), close() esperaría la carga para siempre y el test se
+      // colgaría en vez de fallar.
+      addTearDown(() {
+        if (!lento.carga.isCompleted) lento.carga.complete(const []);
+      });
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
 
@@ -518,5 +525,23 @@ void main() {
       expect(find.text('Hubo un error'), findsOneWidget);
       expect(find.text('STUB HISTORIAL'), findsNothing);
     });
+  });
+
+  testWidgets('al salir de la pantalla libera los campos de cantidad y precio',
+      (tester) async {
+    await montar(tester);
+    final controllers = [
+      for (final label in ['Cantidad', 'Precio'])
+        tester.widget<TextFormField>(campo(label)).controller!,
+    ];
+
+    router.pop();
+    await tester.pumpAndSettle();
+
+    expect(find.text('STUB HISTORIAL'), findsOneWidget);
+    for (final c in controllers) {
+      expect(() => ChangeNotifier.debugAssertNotDisposed(c), throwsFlutterError,
+          reason: 'controller sin dispose()');
+    }
   });
 }

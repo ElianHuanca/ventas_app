@@ -44,7 +44,7 @@ class ColoresDatasourceImpl implements ColoresDatasource {
 
   ColorItem _toEntity(Map<String, dynamic> json) => ColorItem(
         id: json['id'] as int,
-        nombre: json['nombre'] ?? '',
-        hex: json['hex'] ?? '',
+        nombre: json['nombre'] as String? ?? '',
+        hex: json['hex'] as String? ?? '',
       );
 }

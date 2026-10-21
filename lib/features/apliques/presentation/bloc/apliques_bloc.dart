@@ -104,8 +104,8 @@ class ApliquesBloc extends Bloc<ApliquesEvent, ApliquesState> {
 
   Future<bool> updateAplique(Map<String, dynamic> apliqueLike) async {
     try {
-      final aplique =
-          await apliquesRepository.updateAplique(apliqueLike, apliqueLike['id']);
+      final aplique = await apliquesRepository.updateAplique(
+          apliqueLike, apliqueLike['id'] as int);
       add(ApliquesUpdateRequested(aplique));
       return true;
     } catch (_) {

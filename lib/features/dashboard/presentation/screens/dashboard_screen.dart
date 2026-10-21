@@ -4,89 +4,64 @@ import 'package:textiles_app/features/dashboard/domain/domain.dart';
 import 'package:textiles_app/features/shared/shared.dart';
 import '../bloc/dashboard_cubit.dart';
 
-/// Una pestaña por línea de negocio (Telas | Apliques) con el período
-/// compartido arriba. Ambas se cargan juntas en el cubit.
+/// El dashboard de una línea de negocio (la del cubit: Telas o Apliques, un
+/// submenú cada una) con el período arriba.
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        drawer: const SideMenu(),
-        appBar: AppBar(
-          title:
-              Text('Dashboard', style: Theme.of(context).textTheme.titleSmall),
-          centerTitle: true,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(
-              bottom: Radius.circular(15),
-            ),
+    final (titulo, plural, unidad) =
+        switch (context.read<DashboardCubit>().linea) {
+      LineaDashboard.telas => ('Dashboard telas', 'telas', 'mts'),
+      LineaDashboard.apliques => ('Dashboard apliques', 'apliques', 'uds'),
+    };
+    return Scaffold(
+      drawer: const SideMenu(),
+      appBar: AppBar(
+        title: Text(titulo, style: Theme.of(context).textTheme.titleSmall),
+        centerTitle: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(15),
           ),
-          bottom: const TabBar(
-            tabs: [
-              Tab(icon: Icon(Icons.checkroom_rounded), text: 'Telas'),
-              Tab(icon: Icon(Icons.auto_awesome_rounded), text: 'Apliques'),
+        ),
+      ),
+      body: BlocBuilder<DashboardCubit, DashboardState>(
+        builder: (context, state) {
+          return Column(
+            children: [
+              _RangoFechas(state: state),
+              Expanded(
+                child: _Ventas(state: state, plural: plural, unidad: unidad),
+              ),
             ],
-          ),
-        ),
-        body: BlocBuilder<DashboardCubit, DashboardState>(
-          builder: (context, state) {
-            return Column(
-              children: [
-                _RangoFechas(state: state),
-                Expanded(
-                  child: TabBarView(
-                    children: [
-                      _PestanaVentas(
-                        state: state,
-                        resumen: state.resumenTelas,
-                        productos: state.telasOrdenadas,
-                        plural: 'telas',
-                        unidad: 'mts',
-                      ),
-                      _PestanaVentas(
-                        state: state,
-                        resumen: state.resumenApliques,
-                        productos: state.apliquesOrdenados,
-                        plural: 'apliques',
-                        unidad: 'uds',
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
+          );
+        },
       ),
     );
   }
 }
 
-class _PestanaVentas extends StatelessWidget {
+class _Ventas extends StatelessWidget {
   final DashboardState state;
-  final ResumenVentas? resumen;
-  final List<TopProducto> productos;
   final String plural;
   final String unidad;
 
-  const _PestanaVentas({
+  const _Ventas({
     required this.state,
-    required this.resumen,
-    required this.productos,
     required this.plural,
     required this.unidad,
   });
 
   @override
   Widget build(BuildContext context) {
+    final resumen = state.resumen;
     return ListView(
       padding: const EdgeInsets.only(top: 4, bottom: 16),
       children: [
         if (!state.isLoading && resumen != null) ...[
-          _ResumenCards(resumen: resumen!),
+          _ResumenCards(resumen: resumen),
           const SizedBox(height: 12),
         ],
         _ToggleVista(verPorCantidad: state.verPorCantidad),
@@ -100,7 +75,7 @@ class _PestanaVentas extends StatelessWidget {
           const _ErrorDeCarga()
         else
           _TopProductos(
-            productos: productos,
+            productos: state.ordenados,
             verPorCantidad: state.verPorCantidad,
             plural: plural,
             unidad: unidad,
@@ -167,7 +142,9 @@ class _RangoFechas extends StatelessWidget {
             ),
           );
           if (rango != null && context.mounted) {
-            context.read<DashboardCubit>().cambiarRango(rango.start, rango.end);
+            await context
+                .read<DashboardCubit>()
+                .cambiarRango(rango.start, rango.end);
           }
         },
         child: Container(
@@ -220,29 +197,34 @@ class _ResumenCards extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          _Card(
-            label: 'Total',
-            valor: '${resumen.total.toStringAsFixed(2)} Bs',
-            icon: Icons.attach_money_rounded,
-            color: colorScheme.primary,
-          ),
-          const SizedBox(width: 10),
-          _Card(
-            label: 'Ganancias',
-            valor: '${resumen.ganancias.toStringAsFixed(2)} Bs',
-            icon: Icons.trending_up_rounded,
-            color: const Color(0xFF2E7D32),
-          ),
-          const SizedBox(width: 10),
-          _Card(
-            label: 'Descuentos',
-            valor: '${resumen.descuento.toStringAsFixed(2)} Bs',
-            icon: Icons.discount_rounded,
-            color: const Color(0xFFE65100),
-          ),
-        ],
+      // Las tres del mismo alto: en un celular chico el FittedBox achica los
+      // montos largos y, centradas, quedaban desparejas
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _Card(
+              label: 'Total',
+              valor: '${resumen.total.toStringAsFixed(2)} Bs',
+              icon: Icons.attach_money_rounded,
+              color: colorScheme.primary,
+            ),
+            const SizedBox(width: 10),
+            _Card(
+              label: 'Ganancias',
+              valor: '${resumen.ganancias.toStringAsFixed(2)} Bs',
+              icon: Icons.trending_up_rounded,
+              color: const Color(0xFF2E7D32),
+            ),
+            const SizedBox(width: 10),
+            _Card(
+              label: 'Descuentos',
+              valor: '${resumen.descuento.toStringAsFixed(2)} Bs',
+              icon: Icons.discount_rounded,
+              color: const Color(0xFFE65100),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -294,6 +276,9 @@ class _Card extends StatelessWidget {
               fit: BoxFit.scaleDown,
               child: Text(
                 valor,
+                // Una línea también al medir el alto (IntrinsicHeight): el
+                // FittedBox lo achica en vez de partirlo
+                maxLines: 1,
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,

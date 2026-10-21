@@ -61,15 +61,22 @@ void main() {
   });
 
   testWidgets('marca la sección guardada en el MenuIndexCubit', (tester) async {
-    menuCubit.setIndex(6); // Colores
+    menuCubit.setIndex(7); // Colores
     await abrirMenu(tester);
 
     expect(
       tester
           .widget<NavigationDrawer>(find.byType(NavigationDrawer))
           .selectedIndex,
-      6,
+      7,
     );
     await compararCaptura('side_menu_colores_seleccionado');
+  });
+
+  testWidgets('marca el submenú Telas del dashboard', (tester) async {
+    menuCubit.setIndex(8); // Dashboard → Telas
+    await abrirMenu(tester);
+
+    await compararCaptura('side_menu_dashboard_telas_seleccionado');
   });
 }

@@ -14,7 +14,7 @@ import 'package:textiles_app/features/ventas/domain/domain.dart';
 /// métodos lo lanzan después de registrar la llamada.
 abstract class FakeDatasource {
   final List<List<Object?>> llamadas = [];
-  Object? error;
+  Exception? error;
 
   T registrar<T>(String metodo, List<Object?> argumentos, T respuesta) {
     llamadas.add([metodo, ...argumentos]);
@@ -84,6 +84,27 @@ class FakeApliquesDatasource extends FakeDatasource
   Future<void> removeInventario(
           int sucursalId, int apliqueId, int colorId) async =>
       registrar('removeInventario', [sucursalId, apliqueId, colorId], null);
+
+  List<StockConVentas> inventarioConVentas = const [
+    StockConVentas(
+      apliqueId: 1,
+      aplique: 'Flor',
+      colorId: 2,
+      color: 'Rojo',
+      hex: 'FF0000',
+      stock: 3,
+      vendidas: 8,
+    ),
+  ];
+
+  @override
+  Future<List<StockConVentas>> getInventarioConVentas(
+    int sucursalId, {
+    required DateTime desde,
+    required DateTime hasta,
+  }) async =>
+      registrar('getInventarioConVentas', [sucursalId, desde, hasta],
+          inventarioConVentas);
 
   @override
   Future<void> createProduccion({

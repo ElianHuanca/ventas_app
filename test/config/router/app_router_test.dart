@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -28,6 +30,8 @@ void main() {
     '/fabricacion/:idsucursal',
     '/fabricacion/registro/:idsucursal',
     '/fabricacion/detalle/:idproduccion',
+    '/inventario',
+    '/inventario/:idsucursal',
     '/sucursales',
     '/sucursal/:idsucursal',
     '/sucursal-disponibilidad/:idsucursal',
@@ -42,7 +46,8 @@ void main() {
     '/ventas/:idsucursal',
     '/det_ventas/:idventa',
     '/det_venta/:idsucursal',
-    '/dashboard',
+    '/dashboard/telas',
+    '/dashboard/apliques',
   ];
 
   group('tabla de rutas', () {
@@ -82,6 +87,7 @@ void main() {
         '/fabricacion/detalle/:idproduccion',
         {'idproduccion': '8'}
       ),
+      '/inventario/2': ('/inventario/:idsucursal', {'idsucursal': '2'}),
       '/sucursal/0': ('/sucursal/:idsucursal', {'idsucursal': '0'}),
       '/sucursal-disponibilidad/2': (
         '/sucursal-disponibilidad/:idsucursal',
@@ -113,8 +119,7 @@ void main() {
 
     test('una ruta inexistente no matchea ninguna', () {
       expect(router.configuration.findMatch('/no-existe').isError, isTrue);
-    });
-  });
+    });  });
 
   group('redirect por sesión', () {
     late FakeAuthRepository auth;
@@ -177,7 +182,12 @@ void main() {
         (tester) async {
       await montar(tester);
 
-      for (final destino in ['/sucursales', '/dashboard', '/ventas/1']) {
+      for (final destino in [
+        '/sucursales',
+        '/dashboard/telas',
+        '/dashboard/apliques',
+        '/ventas/1',
+      ]) {
         router.go(destino);
         await tester.pumpAndSettle();
         expect(ubicacion(), '/login', reason: destino);
@@ -226,6 +236,11 @@ void main() {
       await tester.pumpAndSettle();
       expect(ubicacion(), '/fabricacion');
       expect(find.text('Fabricación'), findsOneWidget);
+
+      router.go('/inventario');
+      await tester.pumpAndSettle();
+      expect(ubicacion(), '/inventario');
+      expect(find.text('Inventario'), findsOneWidget);
     });
 
     testWidgets(
@@ -256,4 +271,27 @@ void main() {
       expect(ubicacion(), '/login');
     });
   });
+
+  test('dispose() del router deja de escuchar los cambios de sesión', () {
+    final cambios = StreamController<bool>.broadcast();
+    addTearDown(cambios.close);
+    final router =
+        createAppRouter(authRepository: _AuthConCambios(cambios.stream));
+    expect(cambios.hasListener, isTrue);
+
+    router.dispose();
+
+    expect(cambios.hasListener, isFalse,
+        reason: 'el SesionListenable del router quedó suscripto');
+  });
+}
+
+/// Fake de auth con el stream de sesión a la vista del test.
+class _AuthConCambios extends FakeAuthRepository {
+  _AuthConCambios(this._cambios);
+
+  final Stream<bool> _cambios;
+
+  @override
+  Stream<bool> get cambiosDeSesion => _cambios;
 }

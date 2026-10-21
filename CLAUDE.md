@@ -38,7 +38,8 @@ Una sola DB Postgres en Supabase alimenta estas aplicaciones:
 | **ventas_app** (este) | Flutter | Punto de venta de **telas y apliques**. Dueño del esquema → `github.com/ElianHuanca/ventas_app` |
 | ~~**textiles**~~ | PHP 8.2 MVC | **Eliminado** de GitHub; queda solo la carpeta local `F:\Elian\textiles`. Era el módulo de apliques; lo absorbió este repo |
 | **sitio** | Next.js 16 | Landing pública de solo lectura → `github.com/ElianHuanca/sitio` |
-| **ventas_app_android** | Kotlin + Compose | Port nativo Android (por ahora solo telas: sucursales, telas, ventas, dashboard) → `github.com/ElianHuanca/ventas_app_android` (privado). Su build type `local` usa el mismo Supabase de Docker que este repo (ver "Entorno local") |
+| **ventas_app_android** | Kotlin + Compose | Port nativo Android: telas y apliques (ventas de telas y de apliques, fabricación, colores, dashboard) → `github.com/ElianHuanca/ventas_app_android` (privado). Su build type `local` usa el mismo Supabase de Docker que este repo (ver "Entorno local") |
+| **ventas_app_ios** | Swift + SwiftUI | Port nativo iOS, solo local (`F:\Elian\ventas_app_ios`). Usa las mismas tablas y RPC salvo `top_apliques` e `inventario_con_ventas` |
 
 En disco son carpetas hermanas (`F:\Elian\ventas_app`, `F:\Elian\ventas_app_android`, `F:\Elian\sitio`); el vault de notas está en `F:\Elian\notas`.
 
@@ -48,7 +49,7 @@ En disco son carpetas hermanas (`F:\Elian\ventas_app`, `F:\Elian\ventas_app_andr
 - **`supabase/landing.sql`** — las vistas públicas que consume la web (`sitio`). Es `CREATE OR REPLACE`, re-aplicable. Las vistas `catalogo_*_web` también están copiadas en `migrations/20261003000000_vistas_catalogo_web.sql`: si se cambian, actualizar ambos.
 - ⚠️ **`supabase/schema.sql` está obsoleto** (no describe producción; re-aplicarlo rompe cosas). Solo referencia histórica. Lo mismo los `.sql` sueltos de `supabase/` (ya aplicados, no re-ejecutables).
 
-Al cambiar el esquema: migración nueva → `npx supabase@latest db reset` en local → anotarla en el registro de migraciones del vault → aplicarla en el SQL Editor. **Antes de renombrar o borrar una columna, revisar si `sitio`, `ventas_app_android` o `ventas_app_ios` la usan.**
+Al cambiar el esquema: migración nueva → `npx supabase@latest db reset` en local → anotarla en el registro de migraciones del vault → aplicarla en el SQL Editor. **Antes de renombrar o borrar una columna o un parámetro de una RPC, correr `npx supabase@latest test db`**: `09_contrato.test.sql` fija lo que usan Flutter, Android, iOS y la web, y su mensaje dice qué app se rompe.
 
 ### ⚠️ Tablas compartidas: cuidado al tocarlas
 
@@ -115,6 +116,8 @@ Las tablas nuevas (`categorias`, `colores`, `tela_colores`, `tela_fotos`) y las 
 
 Todo lo que antes era "leer → sumar en Dart → escribir" en varias llamadas HTTP ahora es una RPC (migración `20261003000100_integridad_stock_y_ventas.sql`). **No volver al patrón leer-y-escribir desde el cliente**: con dos dispositivos pierde unidades.
 
+Son atómicas pero **no idempotentes**: si se pierde la respuesta después del commit y el usuario vuelve a tocar Guardar, se aplican dos veces. Y la venta de telas y el borrado de una línea siguen siendo varias llamadas: una falla en el medio deja el total de la venta distinto de la suma de sus líneas. Son bugs conocidos (omitidos) de `red/`.
+
 | Datasource | RPC | Qué hace en una transacción |
 |---|---|---|
 | `VentasApliquesDatasourceImpl.createVentaAplique` | `crear_venta_apliques` | **venta del día** de la sucursal (la crea o le suma total/ganancias/descuento) + líneas acumuladas por `(aplique, color, precio)` + descuento de stock; **falla entera** si alguna línea no tiene stock (o no está en inventario activo) o su color no está vinculado al aplique (`aplique_colores` activo) |
@@ -158,6 +161,7 @@ Ambas con `GRANT SELECT ... TO anon`. Si se cambia una columna que estas vistas 
 - `lib/features/apliques/infrastructure/datasources/apliques_datasource_impl.dart` — apliques, inventario, colores y producciones (fabricación sube stock)
 - `lib/features/apliques/infrastructure/datasources/ventas_apliques_datasource_impl.dart` — venta de apliques: insert en `ventas_apliques` + detalles + descuento de stock
 - `lib/features/sucursales/presentation/bloc/sucursal_disponibilidad_cubit.dart` — vinculación telas↔sucursal (solo telas: el inventario de apliques no tiene pantalla de gestión; `addInventario`/`removeInventario` no los llama ninguna)
+- `lib/features/apliques/domain/reposicion.dart` — regla de reposición (cuándo falta un aplique+color y cuánto hacer); la usa la pantalla Inventario
 - `lib/features/dashboard/infrastructure/datasources/dashboard_datasource_impl.dart` — llama a las RPC del dashboard (`top_productos`, `top_apliques`, `resumen_ventas`, `resumen_ventas_apliques`)
 
 ## Rutas registradas
@@ -174,6 +178,8 @@ Ambas con `GRANT SELECT ... TO anon`. Si se cambia una columna que estas vistas 
 | `/fabricacion/:idsucursal` | ProduccionesScreen (producciones de la sucursal, una por día) |
 | `/fabricacion/registro/:idsucursal` | ProduccionScreen (registrar producción → sube stock; una fila por aplique+color+sucursal+día, se acumula si ya hay una de ese día) |
 | `/fabricacion/detalle/:idproduccion` | ProduccionDetalleScreen (líneas de la producción) |
+| `/inventario` | InventarioSucursalesScreen (elegir sucursal) |
+| `/inventario/:idsucursal` | InventarioScreen (faltantes de apliques y cuánto hacer; los manda al fabricante por WhatsApp o los copia) |
 | `/sucursales` | SucursalesScreen (gestión) |
 | `/sucursal/:idsucursal` | SucursalScreen (form + botón a disponibilidad) |
 | `/sucursal-disponibilidad/:idsucursal` | SucursalDisponibilidadScreen (qué telas se venden en la sucursal) |
@@ -188,7 +194,8 @@ Ambas con `GRANT SELECT ... TO anon`. Si se cambia una columna que estas vistas 
 | `/ventas/:idsucursal` | VentasScreen |
 | `/det_ventas/:idventa` | DetVentas |
 | `/det_venta/:idsucursal` | DetVenta (formulario de registro; telas filtradas por disponibilidad de la sucursal) |
-| `/dashboard` | DashboardScreen |
+| `/dashboard/telas` | DashboardScreen de telas (submenú "Dashboard → Telas") |
+| `/dashboard/apliques` | DashboardScreen de apliques (submenú "Dashboard → Apliques") |
 
 ## Convenciones de estado
 
@@ -200,11 +207,19 @@ Ambas con `GRANT SELECT ... TO anon`. Si se cambia una columna que estas vistas 
 
 ## Dashboard
 
-- Ruta: `/dashboard`
-- Dos pestañas, **Telas | Apliques**, con el período compartido arriba. Cada una: tarjetas de resumen (total, ganancias, descuentos) y el ranking completo por total vendido o por cantidad (metros en telas, unidades en apliques)
-- Rango default: primer día del mes actual → hoy; el selector usa `showDateRangePicker`
-- `DashboardCubit` carga las 4 RPC juntas (cambiar de pestaña no consulta): `top_productos` + `resumen_ventas` (telas), `top_apliques` + `resumen_ventas_apliques` (apliques). Existen porque el cliente de Supabase no permite `GROUP BY`/`SUM` directo. Son `LANGUAGE sql STABLE` y comparan `fecha` como texto ISO8601
+- En el menú lateral es una sección **Dashboard** con dos submenús, **Telas** (`/dashboard/telas`) y **Apliques** (`/dashboard/apliques`). `NavigationDrawer` solo numera los destinos que son hijos directos, así que el "submenú" es un título + dos destinos (índices 7 y 8 del `MenuIndexCubit`); sus `Text` llevan `semanticsLabel` "Dashboard telas/apliques" porque el lector de pantalla no lee el título al tocar
+- Cada ruta crea su `DashboardCubit(linea: LineaDashboard.telas | .apliques)`; `DashboardScreen` toma la línea del cubit (título, "telas"/"apliques", mts/uds). Cada pantalla: período arriba, tarjetas de resumen (total, ganancias, descuentos) y el ranking completo por total vendido o por cantidad (metros en telas, unidades en apliques)
+- Rango default: primer día del mes actual → hoy; el selector usa `showDateRangePicker`. El período no se comparte entre los dos submenús (cada uno tiene su cubit)
+- Cada cubit carga solo las 2 RPC de su línea, juntas: `top_productos` + `resumen_ventas` (telas), `top_apliques` + `resumen_ventas_apliques` (apliques). Existen porque el cliente de Supabase no permite `GROUP BY`/`SUM` directo. Son `LANGUAGE sql STABLE` y comparan `fecha` como texto ISO8601
 - `top_apliques` (migración `20261006000000_top_apliques.sql`) tiene las mismas columnas que `top_productos`; agrupa por `idapliques` con el nombre de la tabla `apliques` (no el `nombre` del detalle, que trae basura) y suma todos los colores
+
+## Inventario (faltantes para el fabricante)
+
+- Menú "Inventario" (después de Fabricación) → elegir sucursal → `/inventario/:idsucursal`. Lista cada aplique+color del inventario con su stock, lo que vende por semana y cuánto hacer; por defecto solo los faltantes ("Faltan | Todos"). **"Enviar por WhatsApp"** abre `https://wa.me/?text=…` (sin número: WhatsApp pregunta a quién) con `url_launcher`; **"Copiar lista"** deja el mismo texto en el portapapeles. El texto lo arma `mensajeFaltantes` (`domain/mensaje_faltantes.dart`).
+- Datos: RPC **`inventario_con_ventas(p_sucursal_id, desde, hasta)`** (migración `20261015000000_inventario_con_ventas.sql`, solo lectura): filas de `inventario` activas con aplique, color y vínculo `aplique_colores` activos (lo mismo que ofrece la venta), con `vendidas` (esa sucursal, en el rango) y `vendidas_otras` (promedio de las otras sucursales que vendieron).
+- **Regla** (`ReglaReposicion` en `domain/reposicion.dart`, pura y testeada; la RPC no decide nada): venta semanal = lo vendido en las últimas **4 semanas** / 4; **mínimo** = ⌈venta semanal × 2.5⌉ (el fabricante tarda 3–6 días hábiles —lun, mar, jue, vie—: 1.5 semanas en el peor caso, + 1 de colchón); **falta** si `stock ≤ mínimo` y se pide hasta el **doble del mínimo**. Lo que no se vendió en la ventana **no se pide**. Orden: faltantes primero, el que se termina antes arriba.
+- **Sucursal sin ventas propias** en la ventana (p. ej. una tienda que recién empieza a vender apliques): se estima con `vendidas_otras` y la pantalla lo avisa ("se estiman N por semana").
+- `InventarioCubit(hoy:)` recibe la fecha para que las capturas sean determinísticas.
 
 ## Login (Supabase Auth)
 
@@ -229,11 +244,13 @@ Ambas con `GRANT SELECT ... TO anon`. Si se cambia una columna que estas vistas 
 flutter pub get          # instalar dependencias
 flutter run              # correr en debug
 flutter build apk        # build Android APK
-flutter analyze          # lint check
-flutter test             # 586 unitarios/de widget + 128 capturas golden (sin omitidos)
+flutter analyze          # lints estrictos (ver "Lints"): tiene que quedar limpio
+flutter test             # 878 unitarios/de widget + 168 capturas golden (sin omitidos)
 flutter test --exclude-tags golden          # sin las capturas (p. ej. fuera de Windows)
 flutter test test/goldens --update-goldens  # regenerar capturas tras un cambio visual buscado
 flutter test benchmark/micro                # 176 micro-benchmarks (~1 min)
+flutter test --exclude-tags golden --coverage && dart run tool/cobertura.dart --minimo 83   # cobertura (CI)
+flutter test red --dart-define-from-file=env/local.json --concurrency=1   # fallas de red (Supabase local)
 flutter clean            # limpiar build
 ```
 
@@ -243,12 +260,20 @@ flutter clean            # limpiar build
 |---|---|---|
 | Unitarios | `test/` (mappers, cubits, blocs, repositorios, router, utilidades) | **fakes en memoria** (`test/helpers/fake_repositories.dart`, `fake_datasources.dart`), nunca Supabase |
 | De widget | `test/` (todas las pantallas y widgets compartidos; la navegación se verifica con un `GoRouter` de rutas stub) | los mismos fakes |
-| Captura (golden) | `test/goldens/` (todas las pantallas y widgets compartidos, en cada estado) | los mismos fakes; compara contra PNG |
+| Captura (golden) | `test/goldens/` (todas las pantallas y widgets compartidos, en cada estado) y `test/goldens/pantalla_chica/` (cada pantalla en 360×640 dp con letra grande) | los mismos fakes; compara contra PNG |
+| Property-based | `test/propiedades/` (carritos, colores/hex, mappers, fechas, router, dashboard) | glados: 500 entradas generadas por propiedad, contra un modelo en enteros |
 | Micro-benchmarks | `benchmark/micro/` (mappers, utilidades, router, cubits, blocs, montaje de widgets) | fakes; µs/op o ms/montaje con presupuesto |
 | Macro-benchmarks | `benchmark/macro/` + `test_driver/perf_driver.dart` | la app completa en el **celular**, contra el Supabase local |
 | De integración | `integration_test/app_test.dart` | la app completa (`HuantexApp`: router, login, datasources, RLS, RPC) contra el **Supabase local** |
+| Fugas de memoria | todos los `testWidgets` de `test/` (`test/flutter_test_config.dart`) | leak_tracker: falla si un controller/notifier/FocusNode quedó sin `dispose()` |
+| Accesibilidad | `test/accesibilidad/` (todas las pantallas, en sus estados principales) | fakes; guías de flutter_test: toque ≥ 48 dp (Android) / 44 (iOS), etiquetas para lector de pantalla, contraste WCAG |
+| Concurrencia | `concurrencia/` | 8 clientes Supabase a la vez contra el **Supabase local**: las RPC no pierden unidades ni duplican cabeceras |
+| Base de datos (pgTAP) | `supabase/tests/database/` | la **base local** en SQL: RLS y permisos, RPC, restricciones, dashboard, vistas web y el **contrato** con las otras apps |
+| Red (fallas de conexión) | `red/` | la app (cubits y datasources reales vía `SupabaseConfig.client`) con la red de `RedConFallas` contra el **Supabase local**: respuesta perdida después del commit, sin conexión, falla en la llamada N o en una RPC |
+| Firma, actualización y monkey | `tool/*.dart` | el APK (certificado oficial), y la app instalada en el **emulador**: actualizar encima de la versión de `main`, y miles de toques al azar |
+| Mutación | `mutacion/*.xml` (carritos y formularios; mappers, utilidades y dashboard; router y listados) | mutation_test: altera `lib/` línea por línea y verifica que algún test de `test/` lo detecte |
 
-Cada flujo (login, sucursales y su disponibilidad, telas, colores, apliques, fabricación, venta de apliques, venta de telas, dashboard, menú) tiene los seis tipos. Los tests de `test/` siguen la estructura de `lib/` (los de `features/shared/` van sueltos en `test/features/shared/`). Los fakes no se pisan entre tests: si uno necesita otro comportamiento, se hace una subclase local en ese archivo.
+Cada flujo (login, sucursales y su disponibilidad, telas, colores, apliques, fabricación, venta de apliques, venta de telas, dashboard, inventario, menú) tiene los seis tipos. Los tests de `test/` siguen la estructura de `lib/` (los de `features/shared/` van sueltos en `test/features/shared/`). Los fakes no se pisan entre tests: si uno necesita otro comportamiento, se hace una subclase local en ese archivo.
 
 **Tests omitidos = bugs conocidos.** Los `skip: true` describen el comportamiento correcto y llevan un comentario `// bug: archivo:línea — qué pasa`. Al arreglar el bug, quitar el `skip` (el test tiene que pasar; si es una captura, generarla con `--update-goldens`).
 
@@ -259,6 +284,8 @@ Cada flujo (login, sucursales y su disponibilidad, telas, colores, apliques, fab
 - **Generadas en Windows**: el antialiasing cambia entre SO; en otro, regenerarlas o `--exclude-tags golden`. Las sombras salen como contorno (flutter_test las apaga por determinismo).
 - Determinísticas: nada de `DateTime.now()` (las fechas se fijan por el cubit, p. ej. `onFechaChanged`, `cambiarRango`). Un loader se captura con un fake que espera un `Completer`, `asentar: false` y `pump(400 ms)`; el `complete()` va en un `finally` (si la captura falla y queda pendiente, `Bloc.close()` cuelga el test 10 min).
 - Un cambio visual buscado se acepta regenerando (`--update-goldens`) y revisando el PNG en el diff.
+- **Pantalla chica** (`test/goldens/pantalla_chica/`): cada pantalla (las rutas de la tabla y el menú abierto) en un teléfono de gama baja (`telefonoChico`, 360×640 dp) con la letra del sistema en "Grande" (`letraGrande`, 1.3), con `montarChica` / `compararChica` → `goldens/<pantalla>_chica.png`. Ahí aparecen los textos que desbordan o se cortan. `montarParaCaptura(escalaTexto:)` fija la escala por `textScaleFactorTestValue`, de donde la lee el `MediaQuery` igual que en el celular.
+- Un `DataTable` que no entra en el ancho **no tira overflow**: achica las columnas y recorta lo que sobra (la columna de borrar quedaba inalcanzable). Por eso las tablas van en `TablaDesplazable` (`lib/features/shared/widgets/tabla_desplazable.dart`): si entra se dibuja igual; si no, se desplaza de costado.
 
 ### Micro-benchmarks
 
@@ -298,14 +325,118 @@ flutter test integration_test -d emulator-5554 --dart-define-from-file=env/local
 
 Un test que se queda quieto sin fallar (sin timeout de `esperarHasta`) casi siempre es la pantalla del dispositivo apagada (`adb shell dumpsys power | grep mWakefulness` dice `Asleep`) o la app de prueba en segundo plano: si otra app pasa al frente (o se toca Inicio), Android la congela. `adb shell dumpsys activity activities | grep topResumedActivity` lo muestra; se trae de vuelta (y el test sigue) con `adb shell monkey -p com.example.textiles_app -c android.intent.category.LAUNCHER 1`.
 
+Otros cuelgues vistos (2026-10-15), los dos en `(setUpAll)`:
+
+- **El túnel `adb reverse` no responde** (pasó después de reiniciar Docker Desktop; `adb kill-server` no alcanzó): se prueba con `adb shell "printf 'GET /auth/v1/health HTTP/1.0\r\n\r\n' | nc -w 5 127.0.0.1 54321"` (tiene que devolver `HTTP/1.1 200`). Desenchufar y volver a enchufar el USB lo arregla un rato, pero con este celular se volvió a cortar a los pocos minutos. Lo estable fue **todo por Wi-Fi**: `adb -s <id usb> tcpip 5555`, `adb connect <IP del celular>:5555` y correr con `-d <IP del celular>:5555` y un `--dart-define-from-file` cuya `SUPABASE_URL` sea `http://<IP de la PC>:54321` (cualquier URL que no sea la de producción cuenta como local; sin `adb reverse`). Así pasaron los 29.
+- **La app de prueba no llega a inicializar Supabase** (el log no dice `Supabase init completed` y `docker logs supabase_auth_ventas_app` no muestra pedidos): quedó estado de una corrida anterior; `adb shell pm clear --user 0 com.example.textiles_app` y volver a correr.
+- `--name` con acentos no encuentra ningún test en Windows (se rompe la codificación del argumento) y la corrida espera para siempre: filtrar por un pedazo sin acentos (`--name "borrar una l"`).
+
 - **Solo corren contra la base local**: `prepararBaseLocal()` corta antes de conectarse si `SupabaseConfig.isLocal` es `false` (sin `--dart-define` apuntaría a producción).
 - Se crean su usuario (`integracion@example.com`) la primera vez, vía sign-up, que solo está habilitado en el `config.toml` local. Sobrevive hasta el próximo `db reset`.
 - Estructura: `app_test.dart` es el **único punto de entrada** (la app se compila e instala una vez) y llama a los flujos de `flujos/*.dart` (sin sufijo `_test` a propósito: si no, `flutter test` los correría como entradas sueltas). `datos.dart` crea los datos de cada test con los datasources reales.
-- Cubren (27 tests): login; sucursales (alta, renombrar, baja lógica, disponibilidad de telas → venta, quitar una tela la saca de la venta y sin ninguna activa vuelve todo el catálogo); telas (alta, precio/desactivar → no se ofrece, colores); colores (alta con hex normalizado, renombrar, baja, hex inválido); apliques (alta/edición/desactivar, deshabilitar un color lo saca de Fabricación y de la venta, habilitarlo lo ofrece en Fabricación); fabricación (sube stock, acumula en el día, historial y detalle, fecha anterior, línea quitada no se registra); venta de apliques (descuenta stock, bloquea sobre-stock, acumula en la venta del día, detalle, línea quitada no descuenta stock, descuento); venta de telas (venta, acumula en el día, borrar línea descuenta el total, línea quitada del carrito, descuento, fecha anterior); dashboard (pestañas Telas y Apliques, cambio de período). Cada uno verifica también las filas en la base.
+- Cubren (29 tests): login; sucursales (alta, renombrar, baja lógica, disponibilidad de telas → venta, quitar una tela la saca de la venta y sin ninguna activa vuelve todo el catálogo); telas (alta, precio/desactivar → no se ofrece, colores); colores (alta con hex normalizado, renombrar, baja, hex inválido); apliques (alta/edición/desactivar, deshabilitar un color lo saca de Fabricación y de la venta, habilitarlo lo ofrece en Fabricación); fabricación (sube stock, acumula en el día, historial y detalle, fecha anterior, línea quitada no se registra); venta de apliques (descuenta stock, bloquea sobre-stock, acumula en la venta del día, detalle, línea quitada no descuenta stock, descuento); venta de telas (venta, acumula en el día, borrar línea descuenta el total, línea quitada del carrito, descuento, fecha anterior); dashboard (submenús Telas y Apliques, cambio de período); inventario (faltante con lo que hay que hacer y "Copiar lista" al portapapeles, lo que no se vende no falta). Cada uno verifica también las filas en la base.
 - Dejan filas con prefijo `IT ` en casi todas las tablas: la base no permite borrar físicamente. Se limpian con `npx supabase@latest db reset`.
 - La app de prueba se instala con el mismo `applicationId` que la oficial y la reemplaza en el celular. En Windows desktop (`-d windows`) no compila sin el toolchain C++ de Visual Studio.
-- Helpers en `integration_test/helpers.dart`. Las respuestas de Supabase no son frames, así que se espera con `esperarHasta` / `esperarQue` (no basta `pumpAndSettle`), se escribe con `escribir` (re-enfoca el campo; si no, el segundo `enterText` se pierde) y se eligen opciones de `DropdownMenu` con `elegir`. Fechas con `elegirFecha` / `elegirRango` (modo texto del selector, en el idioma del dispositivo). Para tocar un ítem de una lista recién recargada (al volver de un formulario), `tocarHasta`: el toque que cae mientras está el loader se pierde.
+- Helpers en `integration_test/helpers.dart`. Al menú se va con `irDesdeMenu` y al dashboard con `irAlDashboard(tester, 'Telas' | 'Apliques')`: "Telas" y "Apliques" están dos veces en el menú (gestión y submenú del dashboard). Las respuestas de Supabase no son frames, así que se espera con `esperarHasta` / `esperarQue` (no basta `pumpAndSettle`), se escribe con `escribir` (re-enfoca el campo; si no, el segundo `enterText` se pierde) y se eligen opciones de `DropdownMenu` con `elegir`. Fechas con `elegirFecha` / `elegirRango` (modo texto del selector, en el idioma del dispositivo). Para tocar un ítem de una lista recién recargada (al volver de un formulario), `tocarHasta`: el toque que cae mientras está el loader se pierde.
 - `DropdownMenu` arma un `Text` oculto por cada opción: para verificar que algo ya no está en pantalla, buscarlo dentro de su contenedor (p. ej. el `DataTable`), no en toda la pantalla.
+
+### Fugas de memoria
+
+- `test/flutter_test_config.dart` activa `LeakTesting.enable()` (`leak_tracker_flutter_testing`): cada `testWidgets` de `test/` registra los objetos de Flutter que avisan su creación y su `dispose()` (`TextEditingController`, `FocusNode`, `ScrollController`, `AnimationController`, `ChangeNotifier`…). Si al final del archivo alguno sigue vivo, el test falla con la clase y el test donde se creó; `--dart-define=FUGAS_CON_PILA=true` agrega la pila de creación.
+- Una fuga de `lib/` se arregla en `lib/` (falta un `dispose()`, un controller creado en `build`, un listener sin quitar); una del propio test, con `addTearDown(x.dispose)`. Solo lo del framework sin arreglo va en `withIgnored`, con su porqué.
+- Flutter usa **solo** el `flutter_test_config.dart` más cercano: `test/goldens/` (y `benchmark/micro/widgets/`) tienen el suyo y no rastrean fugas; `test/accesibilidad/` encadena los dos.
+- Los Bloc/Cubit no los ve: los creados a mano en un test se cierran con `addTearDown(bloc.close)`.
+
+### Accesibilidad
+
+- `test/accesibilidad/<feature>_accesibilidad_test.dart`. `verificarGuias(estado, montar)` (`accesibilidad_helpers.dart`) arma un test por guía de flutter_test: `androidTapTargetGuideline` (48×48), `iOSTapTargetGuideline` (44×44), `labeledTapTargetGuideline` y `textContrastGuideline`.
+- Tamaños y etiquetas se miden con Roboto a 412×915 dp (como las capturas). El contraste, con la fuente de prueba (glifos sólidos) en una pantalla ancha: el antialiasing de Roboto hace que un texto negro mida gris.
+- Un ícono tocable sin texto necesita `tooltip` (o `semanticLabel`); un `GestureDetector` encima de algo que ya tiene etiqueta, `excludeFromSemantics: true`. Una guía que una pantalla todavía no cumple va en `omitidas:` con su comentario `// bug:`.
+
+### Property-based
+
+- `test/propiedades/<tema>_propiedades_test.dart`, con glados. `propiedad(descripcion, generador, cuerpo)` (`generadores.dart`) verifica cada propiedad con 500 entradas generadas desde una semilla fija, así que la corrida es determinística. `--dart-define=PROPIEDADES_SEMILLA=n` explora otras entradas y `--dart-define=PROPIEDADES_FACTOR=10` corre 10 veces más casos. Corren con `flutter test` (están en `test/`).
+- Si una falla, glados achica la entrada hasta la mínima que la rompe (`Failing for input: ...`). Al arreglar el bug, ese caso mínimo se agrega también como test puntual en el test del archivo arreglado.
+- Los carritos (telas, apliques, fabricación) se comparan contra un modelo en enteros (centésimos): una línea por clave con la cantidad sumada, total y ganancias = suma de las líneas con 2 decimales y la mitad del centavo hacia arriba (como `numeric`), quitar todo vuelve a 0, el orden de agregado no cambia nada y nunca se pasa del stock.
+- glados re-exporta `package:test` y choca con `flutter_test`: importarlo con `show`. Para enteros usar `any.entero(min, max)` de `generadores.dart` (el `intInRange` de glados achica de a 1 y una falla tardaba más de 10 minutos en llegar a la mínima).
+
+### Mutación
+
+```bash
+dart pub global activate mutation_test   # una vez (1.8.0)
+dart pub global run mutation_test mutacion/carritos_y_formularios.xml -o build/mutacion -f all
+dart pub global run mutation_test --no-builtin mutacion/mappers_utilidades_dashboard.xml -o build/mutacion -f all
+dart pub global run mutation_test mutacion/router_y_listados.xml -o build/mutacion -f all
+```
+
+- La herramienta muta un archivo de `lib/` por vez (operadores, `if`, defaults de `??`, booleanos, llamadas borradas, columnas mal leídas…), corre los tests y lo restaura. Un mutante que **sobrevive** (los tests siguen en verde) es un comportamiento que ningún test fija. Reporte en `build/mutacion/` (`-d` solo cuenta los mutantes).
+- Cada mutante corre **solo los tests del archivo mutado**: los comandos del XML empiezan con `git diff --quiet -- <archivo> ||` (o, en mappers, el script `mutacion/mappers_utilidades_dashboard.dart` mira `git diff lib`). Por eso se corre con `lib/` **sin cambios sin commitear**, en Windows (pasan por cmd). Si se corta a la mitad, `git status` y `git checkout lib`.
+- Lento: ~10–25 s por mutante (lo que tarda en arrancar `flutter test`), de 40 min a 2 h por XML. Correrlos de a uno y con la PC libre: con otros `flutter` corriendo un mutante puede cortarse por timeout.
+- Un sobreviviente se mata con un test en el archivo de test de ese código; si es **equivalente** (mismo comportamiento, p. ej. un default que nada usa) se excluye en el XML con un comentario del porqué. Las tres configuraciones quedaron en 100 % (2026-10-12). Al cambiar uno de esos archivos, volver a correr su XML (o acotarlo a ese `<file>`).
+- No corren con `flutter test`.
+
+### Concurrencia
+
+```bash
+npx supabase@latest start -x realtime,storage-api,imgproxy,edge-runtime,logflare,vector,supavisor,mailpit
+flutter test concurrencia --dart-define-from-file=env/local.json --concurrency=1
+```
+
+- 8 "dispositivos" (`SupabaseClient` independientes, cada uno con su sesión del usuario de integración) disparan la misma operación a la vez y se verifica qué quedó en la base: venta de telas (la venta del día la crea uno y los demás recuperan esa por el `23505`; `registrar_detalle_venta` y `incrementar_venta` suman exacto), venta de apliques (última unidad: solo venden los que tienen stock y queda en 0; la venta del día es una sola) y fabricación (una cabecera, una línea, stock exacto; fabricar y vender a la vez).
+- Cada escenario se repite `CC_REPETICIONES` veces (5 por defecto; `--dart-define=CC_REPETICIONES=20` para más cruces) con una sucursal nueva y fecha 2001-01-01, fuera de los rangos del dashboard y de la integración. Dejan filas con prefijo `CC `: se limpian con `db reset`.
+- Son `test()` simples, sin `TestWidgetsFlutterBinding` (reemplaza el `HttpClient` y toda request devuelve 400). Las sesiones se guardan en `build/concurrencia/sesiones.json`: el auth local acepta 30 logins cada 5 minutos.
+
+### Red (respuestas perdidas y reintentos)
+
+```bash
+npx supabase@latest start -x realtime,storage-api,imgproxy,edge-runtime,logflare,vector,supavisor,mailpit
+flutter test red --dart-define-from-file=env/local.json --concurrency=1
+# los omitidos (bugs conocidos) también: --dart-define=RED_CORRER_BUGS=true
+```
+
+- `RedConFallas` (`red/red_con_fallas.dart`) es un `http.Client`: **respuesta perdida** (manda el pedido, espera la respuesta entera —la base ya hizo commit— y lanza `ClientException: Connection closed while receiving data`) y **sin conexión** (falla antes de mandar); a qué pedidos alcanza: `Cuando.rpc`, `Cuando.tabla`, `Cuando.llamada(n)`, `Cuando.desdeLlamada(n)`, con `veces`. `red.registro` dice qué llegó a la base.
+- `Celular.abrir()` (`red/celular.dart`) inicializa `Supabase.instance` con ese `httpClient` (misma URL y clave que `SupabaseConfig.init()`): los cubits y datasources reales se crean después y salen por esa red sin tocar `lib/`. `celular.base` es un cliente sano para preparar y verificar la base. Reusa las sesiones de `concurrencia/` (`abrirDispositivos(2)`).
+- `test()` simples con `WidgetsFlutterBinding.ensureInitialized()` (lo pide `Supabase.initialize`), nunca `TestWidgetsFlutterBinding` (toda request devolvería 400).
+- Datos con prefijo `RD ` (`DatosRD`) y fecha 2001-01-02; se limpian con `db reset`. `crear_venta_apliques` recibe `DateTime.now()` del datasource: la red lo cambia por la fecha fija (`fijarParametro`); el resto del cuerpo es el que arma la app.
+- postgrest reintenta solo GET/HEAD (3 veces: 1 + 2 + 4 s) ante un error de red; los POST (todas las RPC) nunca. Un "sin conexión" en un GET tarda ~7 s en fallar.
+- **Bugs conocidos (9 omitidos, 2026-10-20):** las RPC de escritura no son idempotentes (con la respuesta perdida y un segundo toque en Guardar, stock, líneas y totales se aplican dos veces); la venta y el borrado de líneas de telas son varias llamadas y una falla en el medio deja el total distinto de la suma de las líneas (el borrado ya sacó la línea de la pantalla: no hay cómo reintentar); Fabricación da por fallido el registro si falla el refresco del stock y el reintento lo duplica (este se arregla solo en la app). Arreglo propuesto: un `p_id_operacion uuid` por envío (tabla de operaciones aplicadas, en la misma transacción) y una RPC única para la venta de telas y otra para borrar una línea.
+
+### Base de datos (pgTAP)
+
+```bash
+npx supabase@latest test db   # con el Supabase local levantado
+```
+
+- `supabase/tests/database/NN_*.test.sql`: RLS y permisos de `anon`/`authenticated` en cada tabla, vista y RPC (01); `crear_venta_apliques` (02); `registrar_produccion` (03); `registrar_detalle_venta` / `incrementar_venta` (04); restricciones y UNIQUE (05); RPC del dashboard (06); vistas `*_web` (07); `inventario_con_ventas` (08); **contrato con las otras apps (09)**.
+- **Contrato (`09_contrato.test.sql`, 279 aserciones)**: lo que Flutter, Android (master), iOS y la web leen y escriben. Fija tablas y vistas; por columna, que exista, su tipo base (sin precisión) y NOT NULL donde una app la decodifica no nula (Android: tipo Kotlin no nulo, supabase-kt no usa `coerceInputValues`; Flutter: `as int`); las FK de los embeds (una sola por par de tablas, si no PostgREST da `PGRST201`), las PK de los upserts, que los inserts de las apps no dejen afuera una NOT NULL sin default, y las RPC con los nombres de sus parámetros (PostgREST llama por nombre), su resultado y las claves del JSON. Reemplaza el "revisar a mano si otra app usa la columna". **Al cambiar lo que lee una app, actualizar sus listas** (`_columnas`, `_embeds`, `_inserts`, `_rpcs`) y el `plan(n)`. Su `todo`: `top_productos` suma `detalle_ventas.total`, que admite NULL; una tela cuyas líneas no tengan total saldría con `total_vendido` NULL y Android (`TopProductoRow`) no la decodifica (hoy no hay ninguna así).
+- Cada archivo corre en una transacción con `rollback`: no deja datos. Al agregar una tabla, RPC o vista, sumarla acá (y actualizar el `plan(n)`).
+- **Bugs conocidos = `todo()`**, el equivalente SQL del `skip` con su `bug: archivo:línea — qué pasa`. Al arreglarlo con una migración, sacar el `todo` (el test tiene que pasar).
+
+### Lints
+
+`analysis_options.yaml`: flutter_lints + `strict-casts` / `strict-inference` / `strict-raw-types` + 25 reglas curadas que detectan bugs (futures sin esperar, llamadas dinámicas, throws de algo que no es Exception, strings pegados…), cada una con su porqué; las de estilo puro quedaron afuera con su motivo. `flutter analyze` tiene que quedar limpio (también falla con "info"). Una fila de Supabase es `Map<String, dynamic>`: castear explícito (`json['nombre'] as String? ?? ''`); `rpc<T>` siempre con tipo (`rpc<List<dynamic>>`, `rpc<Map<String, dynamic>?>`, `rpc<dynamic>` si no se usa). Un Future que no se espera a propósito (`router.push` en tests, la carga del constructor de un cubit) va en `unawaited(...)`.
+
+### Firma, actualización y monkey (`tool/`)
+
+- `dart run tool/verificar_firma_apk.dart [apk]` (default `build/app/outputs/flutter-apk/app-release.apk`): compara el SHA-256 del certificado con el oficial (`48e1da98d963f1dddfb0965090b1599a4151cfabc6c5d2999b345d9fc4c47bfb`). Sale 1 si quedó con la clave de debug: `flutter build apk` NO muestra el aviso de `key.properties` faltante (en un worktree nuevo no está: es ignorado por git).
+- Los builds **profile** salen siempre con la clave de debug de la PC (Flutter crea profile con `initWith(debug)` antes de que `build.gradle.kts` asigne la firma): no se instalan encima de la app oficial.
+- `dart run tool/prueba_actualizacion.dart` (solo emulador, Supabase local levantado): compila `origin/main` en un worktree temporal y HEAD (profile + `env/local-android.json`), instala la vieja, inicia sesión, `adb install -r` la nueva y verifica misma firma, que actualiza en el lugar, que abre sin caerse y que la sesión sobrevive. Con poca RAM: `--solo-compilar` con el emulador apagado y después `--sin-compilar`. Logs en `build/actualizacion/`.
+- `dart run tool/monkey.dart [--semillas 1,2,3] [--eventos 2000]` (solo emulador): instala `build/actualizacion/nueva.apk` (o compila con `--compilar`), entra con el usuario de integración y corre `adb shell monkey` por semilla; falla con CRASH, ANR o FATAL EXCEPTION. Logs en `build/monkey/`. ⚠️ Escribe datos al azar en el Supabase local (limpiar con `db reset`); no correrlo junto con la integración. El 2026-10-20: semillas 1, 2 y 3 × 2000 eventos sin fallas.
+- Los scripts rechazan cualquier serial que no sea `emulator-*` (mismo applicationId que la app oficial: nunca en el celular). Con 16 GB y otras cargas el emulador se congela (qemu a 0 % de CPU, `adb shell` no responde) o se cae (`Could not allocated host memory`): matarlo y relanzarlo con `-memory 2048`; Gradle y el emulador no entran juntos.
+
+## CI (GitHub Actions)
+
+El repo es **público** desde el 2026-10-20 (minutos ilimitados en los runners de GitHub). Todo corre en runners de GitHub: **nunca un runner self-hosted** (en un repo público, un PR de un extraño ejecutaría código en esa máquina). Flutter fijo en **3.38.9** en `.github/actions/flutter` (si se sube, regenerar las capturas en Windows). Los jobs con base usan `.github/actions/supabase-local`: CLI 2.121.0, `supabase start -x realtime,storage-api,imgproxy,edge-runtime,logflare,vector,supavisor,mailpit,studio` con las migraciones y **sin seed**, y reescribe `env/local.json` / `env/local-android.json` con la URL y la clave de esa base (avisa si no coinciden con las del repo).
+
+| Workflow | Cuándo | Jobs |
+|---|---|---|
+| `ci.yml` | cada PR y push a `main` (un push nuevo a un PR cancela la corrida anterior) | `analisis-y-tests` (ubuntu: `flutter analyze` + `flutter test --exclude-tags golden --coverage` + `tool/cobertura.dart --minimo 83`, sube `lcov.info`); `capturas` (windows-latest: `flutter test --tags golden`, sube `test/goldens/**/failures/` si falla); `base-de-datos` (pgTAP, incluido el contrato); `build-android` (`flutter build apk --debug`, Java 17) |
+| `noche.yml` | 06:00 UTC diario + a mano | `concurrencia` y `red` contra el Supabase local; `integracion` en emulador Android API 34 (google_apis x86_64, KVM) que llega al Supabase del host por `10.0.2.2`; `micro-benchmarks` (informativo: los presupuestos se calibraron en la PC; sube los JSON) |
+| `semanal.yml` | domingo 07:00 UTC + a mano | `mutacion`: matriz en windows-latest con cada XML de `mutacion/` (los comandos pasan por cmd), `mutation_test 1.8.0`, sube `build/mutacion/<xml>`; un XML que no existe se saltea con aviso |
+
+- **Cobertura:** `tool/cobertura.dart` lee `coverage/lcov.info`, descarta archivos generados, imprime el % por carpeta (`--profundidad`, 3 por defecto) y el total, y falla si el total < `--minimo`. Medido el 2026-10-20: 84.0 % (lo más flojo: `lib/config/router`, 26.8 %). El mínimo va un punto abajo: si baja, falta un test para lo nuevo. Lista aparte los archivos de `lib/` con código que ningún test importa.
+- `noche.yml` y `semanal.yml` se lanzan a mano desde Actions → Run workflow. Los artifacts (lcov, diferencias de capturas, benchmarks, reportes de mutación) quedan en cada corrida.
+- Los workflows se validan con `actionlint` (binario de su release de GitHub; con `-shellcheck` si está shellcheck).
 
 ## Entorno local (pruebas sin tocar producción)
 

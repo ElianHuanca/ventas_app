@@ -1,8 +1,23 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:textiles_app/features/apliques/domain/domain.dart';
 import 'package:textiles_app/features/apliques/presentation/bloc/apliques_bloc.dart';
 
 import '../../../../helpers/fake_repositories.dart';
+
+/// Devuelve los apliques recién cuando se completa [carga].
+class _CargaLenta extends FakeApliquesRepository {
+  _CargaLenta({super.apliques});
+
+  final carga = Completer<void>();
+
+  @override
+  Future<List<Aplique>> getApliques({bool soloActivos = true}) async {
+    await carga.future;
+    return super.getApliques(soloActivos: soloActivos);
+  }
+}
 
 void main() {
   late FakeApliquesRepository repo;
@@ -27,6 +42,23 @@ void main() {
   }
 
   group('modo gestión (idsucursal null)', () {
+    test('mientras carga marca isLoading y al terminar lo apaga', () async {
+      final lenta = _CargaLenta(apliques: apliques);
+      final bloc = ApliquesBloc(apliquesRepository: lenta);
+      addTearDown(bloc.close);
+      try {
+        await pumpEventQueue();
+        // Sin esto la pantalla no muestra el loader (y un segundo pedido de
+        // carga no se descarta)
+        expect(bloc.state.isLoading, isTrue);
+      } finally {
+        lenta.carga.complete();
+      }
+      await pumpEventQueue();
+      expect(bloc.state.isLoading, isFalse);
+      expect(bloc.state.apliques, apliques);
+    });
+
     test('carga todos los apliques (soloActivos false) y sin stock', () async {
       final bloc = await crearBloc();
       addTearDown(bloc.close);
@@ -82,6 +114,17 @@ void main() {
 
       expect(await bloc.createAplique({'nombre': 'Estrella'}), false);
       expect(bloc.state.apliques.length, 2);
+    });
+
+    test('error del repositorio en update devuelve false y no toca la lista',
+        () async {
+      final bloc = await crearBloc();
+      addTearDown(bloc.close);
+      repo.error = Exception('fallo');
+
+      expect(await bloc.updateAplique({'id': 1, 'nombre': 'Flor X'}), false);
+      await pumpEventQueue();
+      expect(bloc.state.apliques.map((e) => e.nombre), ['Flor', 'Luna']);
     });
   });
 }

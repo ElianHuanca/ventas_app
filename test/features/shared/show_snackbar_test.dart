@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -5,8 +7,7 @@ import 'package:textiles_app/features/shared/shared.dart';
 
 void main() {
   group('showSnackbar', () {
-    Future<void> montar(WidgetTester tester) =>
-        tester.pumpWidget(MaterialApp(
+    Future<void> montar(WidgetTester tester) => tester.pumpWidget(MaterialApp(
           home: Scaffold(
             body: Builder(
               builder: (context) => Column(
@@ -88,10 +89,11 @@ void main() {
           GoRoute(path: '/form', builder: (_, __) => formulario()),
         ],
       );
+      addTearDown(router.dispose);
       await tester.pumpWidget(MaterialApp.router(routerConfig: router));
       await tester.pumpAndSettle();
       if (anterior) {
-        router.push('/form');
+        unawaited(router.push('/form'));
         await tester.pumpAndSettle();
       }
     }
@@ -119,8 +121,7 @@ void main() {
       expect(find.text('FORMULARIO'), findsOneWidget);
     });
 
-    testWidgets('popOnSuccess false avisa el éxito sin volver',
-        (tester) async {
+    testWidgets('popOnSuccess false avisa el éxito sin volver', (tester) async {
       await montar(tester);
 
       await tester.tap(find.text('ok sin volver'));

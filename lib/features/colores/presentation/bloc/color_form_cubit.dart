@@ -34,11 +34,14 @@ class ColorFormCubit extends Cubit<ColorFormState> {
 
   /// Hex normalizado: sin '#', mayúsculas, 6 dígitos. Null si inválido.
   static String? normalizarHex(String value) {
-    final limpio = value.replaceAll('#', '').trim().toUpperCase();
-    if (limpio.length != 6) return null;
-    if (int.tryParse(limpio, radix: 16) == null) return null;
-    return limpio;
+    final limpio = value.replaceAll('#', '').trim();
+    // Con int.tryParse pasaban "+12345" y "-ABCDE" (el signo cuenta como
+    // dígito); se valida antes de pasar a mayúsculas ("ﬀ" → "FF").
+    if (!_seisDigitosHex.hasMatch(limpio)) return null;
+    return limpio.toUpperCase();
   }
+
+  static final _seisDigitosHex = RegExp(r'^[0-9a-fA-F]{6}$');
 
   Future<bool> onSubmit({required bool isUpdate}) async {
     final nombre = state.nombre.trim();

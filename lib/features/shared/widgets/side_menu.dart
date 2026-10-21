@@ -11,11 +11,13 @@ class SideMenu extends StatelessWidget {
     '/',
     '/venta-apliques',
     '/fabricacion',
+    '/inventario',
     '/sucursales',
     '/telas',
     '/apliques',
     '/colores',
-    '/dashboard'
+    '/dashboard/telas',
+    '/dashboard/apliques',
   ];
 
   @override
@@ -50,6 +52,10 @@ class SideMenu extends StatelessWidget {
           label: Text('Fabricación'),
         ),
         const NavigationDrawerDestination(
+          icon: Icon(Icons.inventory_2_rounded),
+          label: Text('Inventario'),
+        ),
+        const NavigationDrawerDestination(
           icon: Icon(Icons.add_business_rounded),
           label: Text('Sucursales'),
         ),
@@ -59,8 +65,25 @@ class SideMenu extends StatelessWidget {
             icon: Icon(Icons.category_rounded), label: Text('Apliques')),
         const NavigationDrawerDestination(
             icon: Icon(Icons.palette_rounded), label: Text('Colores')),
+        // Submenú: NavigationDrawer solo numera los destinos que son hijos
+        // directos, así que va como sección (título + destinos)
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 28, vertical: 8),
+          child: Divider(),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(28, 8, 16, 10),
+          child: Text('Dashboard', style: textStyles.titleSmall),
+        ),
+        // El lector de pantalla no ve el título de la sección al tocar
         const NavigationDrawerDestination(
-            icon: Icon(Icons.bar_chart_rounded), label: Text('Dashboard')),
+          icon: Icon(Icons.bar_chart_rounded),
+          label: Text('Telas', semanticsLabel: 'Dashboard telas'),
+        ),
+        const NavigationDrawerDestination(
+          icon: Icon(Icons.bar_chart_rounded),
+          label: Text('Apliques', semanticsLabel: 'Dashboard apliques'),
+        ),
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 28, vertical: 8),
           child: Divider(),

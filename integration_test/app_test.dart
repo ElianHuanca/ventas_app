@@ -16,6 +16,7 @@ import 'flujos/auth.dart';
 import 'flujos/colores.dart';
 import 'flujos/dashboard.dart';
 import 'flujos/fabricacion.dart';
+import 'flujos/inventario.dart';
 import 'flujos/sucursales.dart';
 import 'flujos/telas.dart';
 import 'flujos/venta_apliques.dart';
@@ -34,6 +35,7 @@ void main() {
   apliquesTests();
   fabricacionTests();
   ventaApliquesTests();
+  inventarioTests();
   ventaTelasTests();
   dashboardTests();
 }

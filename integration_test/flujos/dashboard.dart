@@ -8,7 +8,7 @@ void dashboardTests() {
   group('dashboard', () {
     // Las ventas son de hoy: caen en el rango por defecto (este mes)
 
-    testWidgets('la pestaña Telas muestra las telas vendidas, en metros',
+    testWidgets('el submenú Telas muestra las telas vendidas, en metros',
         (tester) async {
       final datos = Datos();
       final sucursal = await datos.sucursal('Dashboard telas');
@@ -17,7 +17,8 @@ void dashboardTests() {
       await iniciarSesionDirecto();
       await montarApp(tester);
 
-      await irDesdeMenu(tester, 'Dashboard');
+      await irAlDashboard(tester, 'Telas');
+      await esperarHasta(tester, find.text('Dashboard telas'));
       await esperarHasta(tester, find.text('Por cantidad'));
       await tester.scrollUntilVisible(find.text(tela.nombre), 200,
           scrollable: listaVertical.first);
@@ -49,7 +50,7 @@ void dashboardTests() {
       await iniciarSesionDirecto();
       await montarApp(tester);
 
-      await irDesdeMenu(tester, 'Dashboard');
+      await irAlDashboard(tester, 'Telas');
       await esperarHasta(tester, find.text('Por cantidad'));
       await tester.scrollUntilVisible(find.text(deHoy.nombre), 200,
           scrollable: listaVertical.first);
@@ -67,7 +68,7 @@ void dashboardTests() {
       expect(find.text(deHoy.nombre), findsNothing);
     });
 
-    testWidgets('la pestaña Apliques muestra los apliques vendidos',
+    testWidgets('el submenú Apliques muestra los apliques vendidos',
         (tester) async {
       final datos = Datos();
       final sucursal = await datos.sucursal('Dashboard apliques');
@@ -79,11 +80,9 @@ void dashboardTests() {
       await iniciarSesionDirecto();
       await montarApp(tester);
 
-      await irDesdeMenu(tester, 'Dashboard');
-      await esperarHasta(tester, find.text('Apliques'));
-      await tester.tap(find.text('Apliques'));
-      await tester.pumpAndSettle();
-      await esperarHasta(tester, listaVertical);
+      await irAlDashboard(tester, 'Apliques');
+      await esperarHasta(tester, find.text('Dashboard apliques'));
+      await esperarHasta(tester, find.text('Por cantidad'));
       // El ranking usa el nombre de la tabla apliques, no el del detalle
       await tester.scrollUntilVisible(find.text(aplique.nombre), 200,
           scrollable: listaVertical.first);

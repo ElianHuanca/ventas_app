@@ -5,9 +5,9 @@ class TelaSucursalMapper {
     final vinculos = json['tela_sucursales'];
     return TelaSucursal(
       idtela: json['id'] as int,
-      nombre: json['nombre'] ?? '',
+      nombre: json['nombre'] as String? ?? '',
       disponible: vinculos is List &&
-          vinculos.any((e) => e is Map && (e['activo'] ?? false)),
+          vinculos.any((e) => e is Map && (e['activo'] as bool? ?? false)),
     );
   }
 }

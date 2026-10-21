@@ -18,11 +18,14 @@ void main() {
     ('Venta telas', '/'),
     ('Venta apliques', '/venta-apliques'),
     ('Fabricación', '/fabricacion'),
+    ('Inventario', '/inventario'),
     ('Sucursales', '/sucursales'),
     ('Telas', '/telas'),
     ('Apliques', '/apliques'),
     ('Colores', '/colores'),
-    ('Dashboard', '/dashboard'),
+    // Submenú "Dashboard"
+    ('Telas', '/dashboard/telas'),
+    ('Apliques', '/dashboard/apliques'),
   ];
 
   setUp(() async {
@@ -57,6 +60,7 @@ void main() {
           GoRoute(path: ruta, builder: (_, __) => pagina(ruta)),
       ],
     );
+    addTearDown(router.dispose);
     await tester.pumpWidget(RepositoryProvider<AuthRepository>.value(
       value: auth,
       child: BlocProvider.value(
@@ -72,18 +76,44 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('muestra el título y las 8 secciones en orden', (tester) async {
+  /// "Telas" y "Apliques" están dos veces (gestión y dashboard): se toca el
+  /// destino por su posición.
+  Finder destino(int i) => find.byType(NavigationDrawerDestination).at(i);
+
+  testWidgets('muestra el título y las 10 secciones en orden', (tester) async {
     await montar(tester);
     await abrirMenu(tester);
 
     expect(find.text('Menú'), findsOneWidget);
-    expect(find.byType(NavigationDrawerDestination), findsNWidgets(8));
+    expect(find.byType(NavigationDrawerDestination), findsNWidgets(10));
     final textos = tester
         .widgetList<NavigationDrawerDestination>(
             find.byType(NavigationDrawerDestination))
         .map((d) => (d.label as Text).data)
         .toList();
     expect(textos, secciones.map((s) => s.$1).toList());
+  });
+
+  testWidgets(
+      'el dashboard es un submenú: Telas y Apliques bajo el título '
+      '"Dashboard"', (tester) async {
+    final semantica = tester.ensureSemantics();
+    await montar(tester);
+    await abrirMenu(tester);
+
+    final titulo = tester.getTopLeft(find.text('Dashboard')).dy;
+    expect(tester.getTopLeft(destino(7)).dy, lessThan(titulo),
+        reason: 'Colores queda arriba del título');
+    expect(tester.getTopLeft(destino(8)).dy, greaterThan(titulo));
+    expect(tester.getTopLeft(destino(9)).dy, greaterThan(titulo));
+    // El lector de pantalla no ve el título al tocar: los anuncia completos
+    // (el destino agrega "pestaña N de M" a la etiqueta)
+    expect(find.bySemanticsLabel(RegExp('^Dashboard telas\\b')),
+        findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp('^Dashboard apliques\\b')),
+        findsOneWidget);
+    // Antes de que termine el test: si no, flutter_test lo da por no liberado
+    semantica.dispose();
   });
 
   testWidgets('muestra "Cerrar sesión" con el email de la cuenta',
@@ -100,8 +130,8 @@ void main() {
     await montar(tester);
     await abrirMenu(tester);
 
-    final tile = tester.widget<ListTile>(
-        find.widgetWithText(ListTile, 'Cerrar sesión'));
+    final tile =
+        tester.widget<ListTile>(find.widgetWithText(ListTile, 'Cerrar sesión'));
     expect((tile.subtitle as Text).data, '');
   });
 
@@ -117,12 +147,13 @@ void main() {
   });
 
   for (final (i, (texto, ruta)) in secciones.indexed) {
-    testWidgets('tocar "$texto" navega a $ruta, guarda el índice $i '
+    testWidgets(
+        'tocar "$texto" navega a $ruta, guarda el índice $i '
         'y cierra el menú', (tester) async {
       await montar(tester);
       await abrirMenu(tester);
 
-      await tester.tap(find.text(texto));
+      await tester.tap(destino(i));
       await tester.pumpAndSettle();
 
       expect(find.text('STUB $ruta'), findsOneWidget);
