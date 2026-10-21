@@ -1,0 +1,126 @@
+# Corrida nocturna (06:00 UTC = 02:00 en Bolivia) de lo que tarda o necesita
+# una base o un emulador: concurrencia y red contra un Supabase local, la
+# integración completa en un emulador Android y los micro-benchmarks
+# (informativos). También se lanza a mano desde Actions → Noche → Run workflow.
+name: Noche
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Una corrida a la vez: si se lanza a mano mientras corre la programada, la
+# nueva espera a que termine (la que está corriendo no se cancela).
+concurrency:
+  group: noche-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  concurrencia:
+    name: Concurrencia (8 clientes contra Supabase local)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/flutter
+
+      - uses: ./.github/actions/supabase-local
+
+      # Crea su usuario con sign-up (habilitado solo en config.toml local) y
+      # deja filas "CC " en la base del runner, que se descarta al terminar.
+      - name: flutter test concurrencia
+        run: flutter test concurrencia --dart-define-from-file=env/local.json --concurrency=1
+
+  red:
+    name: Red (respuestas perdidas y reintentos)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/flutter
+
+      - uses: ./.github/actions/supabase-local
+
+      - name: flutter test red
+        if: ${{ hashFiles('red/**/*_test.dart') != '' }}
+        run: flutter test red --dart-define-from-file=env/local.json --concurrency=1
+
+      - name: Avisar si todavía no hay suite de red
+        if: ${{ hashFiles('red/**/*_test.dart') == '' }}
+        run: |
+          echo "::warning::No hay tests en red/ todavía: el job no corrió nada."
+
+  integracion:
+    name: Integración (emulador Android API 34)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+
+      # El emulador x86_64 necesita KVM: en los runners Linux existe pero solo
+      # root lo puede abrir.
+      - name: Habilitar KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - uses: ./.github/actions/flutter
+
+      # En el host del runner; el emulador llega por 10.0.2.2
+      # (env/local-android.json, que la acción reescribe con las claves de
+      # esta base).
+      - uses: ./.github/actions/supabase-local
+
+      # Cada línea de `script` corre por separado. La pantalla tiene que
+      # quedar encendida y desbloqueada toda la corrida: si se duerme, la app
+      # deja de dibujar y los tests se quedan esperando (ver CLAUDE.md).
+      - name: flutter test integration_test
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot-save
+          script: |
+            adb -s emulator-5554 shell svc power stayon true
+            adb -s emulator-5554 shell wm dismiss-keyguard
+            flutter test integration_test -d emulator-5554 --dart-define-from-file=env/local-android.json
+
+  micro-benchmarks:
+    name: Micro-benchmarks (informativo)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Los presupuestos (~10x el peor valor) se calibraron en la PC de
+    # desarrollo: en un runner compartido pueden pasarse sin que haya una
+    # regresión real. Se suben los números para compararlos.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/flutter
+
+      - name: flutter test benchmark/micro
+        run: flutter test benchmark/micro
+
+      - name: Subir resultados
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: micro-benchmarks
+          path: build/benchmarks/micro/*.json
+          if-no-files-found: warn
