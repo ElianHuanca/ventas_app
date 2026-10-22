@@ -69,6 +69,11 @@ void main() {
           builder: (_, state) => Scaffold(
               body: Text('STUB COLORES ${state.pathParameters['idaplique']}')),
         ),
+        GoRoute(
+          path: '/aplique-fotos/:idaplique',
+          builder: (_, state) => Scaffold(
+              body: Text('STUB FOTOS ${state.pathParameters['idaplique']}')),
+        ),
       ],
     );
     addTearDown(router.dispose);
@@ -86,6 +91,18 @@ void main() {
             )
             .first,
         matching: find.text(texto),
+      );
+
+  /// El lápiz "Modificar" de la tarjeta [nombre].
+  Finder lapizDe(String nombre) => find.descendant(
+        of: find
+            .ancestor(
+              of: find.text(nombre),
+              matching: find
+                  .byWidgetPredicate((w) => w is Container && w.margin != null),
+            )
+            .first,
+        matching: find.byTooltip('Modificar'),
       );
 
   String textoBusqueda(WidgetTester tester) => tester
@@ -107,7 +124,7 @@ void main() {
       expect(find.text('Flor Petalo'), findsOneWidget);
       expect(find.text('Luna'), findsOneWidget);
       expect(find.text('Flor Grande'), findsOneWidget);
-      expect(find.text('Modificar'), findsNWidgets(3));
+      expect(find.byTooltip('Modificar'), findsNWidgets(3));
       expect(find.text('Colores'), findsNWidgets(3));
     });
 
@@ -145,7 +162,7 @@ void main() {
       await montar(tester);
 
       expect(find.text('No hay apliques registrados'), findsOneWidget);
-      expect(find.text('Modificar'), findsNothing);
+      expect(find.byTooltip('Modificar'), findsNothing);
     });
   });
 
@@ -190,7 +207,7 @@ void main() {
       await tester.enterText(find.byType(TextField), 'luna');
       await tester.pump();
 
-      await tester.tap(enTarjeta('Luna', 'Modificar'));
+      await tester.tap(lapizDe('Luna'));
       await tester.pumpAndSettle();
       expect(find.text('STUB APLIQUE 2'), findsOneWidget);
 
@@ -226,11 +243,25 @@ void main() {
       expect(repo.getApliquesCalls, 2);
     });
 
+    testWidgets('tocar la tarjeta también abre /aplique/:id y recarga al volver',
+        (tester) async {
+      await montar(tester);
+
+      await tester.tap(find.text('Flor Grande'));
+      await tester.pumpAndSettle();
+      expect(find.text('STUB APLIQUE 3'), findsOneWidget);
+
+      router.pop();
+      await tester.pumpAndSettle();
+
+      expect(repo.getApliquesCalls, 2);
+    });
+
     testWidgets('"Modificar" navega a /aplique/:id y recarga al volver',
         (tester) async {
       await montar(tester);
 
-      await tester.tap(enTarjeta('Flor Grande', 'Modificar'));
+      await tester.tap(lapizDe('Flor Grande'));
       await tester.pumpAndSettle();
       expect(find.text('STUB APLIQUE 3'), findsOneWidget);
 
@@ -249,6 +280,21 @@ void main() {
       await tester.tap(enTarjeta('Flor Petalo', 'Colores'));
       await tester.pumpAndSettle();
       expect(find.text('STUB COLORES 1'), findsOneWidget);
+
+      router.pop();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Flor Petalo'), findsOneWidget);
+      expect(repo.getApliquesCalls, 1);
+    });
+
+    testWidgets('"Fotos" navega a /aplique-fotos/:id sin recargar al volver',
+        (tester) async {
+      await montar(tester);
+
+      await tester.tap(enTarjeta('Flor Petalo', 'Fotos'));
+      await tester.pumpAndSettle();
+      expect(find.text('STUB FOTOS 1'), findsOneWidget);
 
       router.pop();
       await tester.pumpAndSettle();

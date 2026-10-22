@@ -85,6 +85,13 @@ class _TelasScreenState extends State<TelasScreen> {
   }
 
   Widget _telaCard(Tela tela, BuildContext context) {
+    Future<void> modificar() async {
+      await context.push('/tela/${tela.id}');
+      if (context.mounted) {
+        context.read<TelasBloc>().add(TelasLoadRequested());
+      }
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
@@ -99,75 +106,90 @@ class _TelasScreenState extends State<TelasScreen> {
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      // Tocar la tarjeta abre Modificar (el lápiz es el mismo atajo, con su
+      // etiqueta para TalkBack)
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: modificar,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 4, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  Icons.checkroom_rounded,
-                  color: tela.activo
-                      ? Theme.of(context).primaryColor
-                      : Colors.black26,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
+                Row(
+                  children: [
+                    Icon(
+                      Icons.checkroom_rounded,
+                      color: tela.activo
+                          ? Theme.of(context).primaryColor
+                          : Colors.black26,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
                         tela.nombre,
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           color: tela.activo ? Colors.black87 : Colors.black38,
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 4,
-                        children: [
-                          _chip('X Menor: ${tela.precxmen} Bs'),
-                          _chip('X Mayor: ${tela.precxmay} Bs'),
-                          _chip('X Rollo: ${tela.precxrollo} Bs'),
-                          _chip('Compra: ${tela.precxcompra} Bs'),
-                          if (!tela.activo)
-                            _chip('Inactivo', icon: Icons.visibility_off),
-                        ],
+                    ),
+                    IconButton(
+                      tooltip: 'Modificar',
+                      onPressed: modificar,
+                      icon: const Icon(Icons.edit_outlined),
+                    ),
+                  ],
+                ),
+                // Los chips van debajo, con todo el ancho (al lado del lápiz
+                // quedaban de a uno por línea con letra grande)
+                Padding(
+                  padding: const EdgeInsets.only(left: 36, right: 8),
+                  child: Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      _chip('X Menor: ${tela.precxmen} Bs'),
+                      _chip('X Mayor: ${tela.precxmay} Bs'),
+                      _chip('X Rollo: ${tela.precxrollo} Bs'),
+                      _chip('Compra: ${tela.precxcompra} Bs'),
+                      if (!tela.activo)
+                        _chip('Inactivo', icon: Icons.visibility_off),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                // Dos botones entran en una línea aun con letra grande
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () =>
+                              context.push('/tela-colores/${tela.id}'),
+                          icon: const Icon(Icons.palette_outlined, size: 16),
+                          label: const Text('Colores'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () =>
+                              context.push('/tela-fotos/${tela.id}'),
+                          icon: const Icon(Icons.photo_library_outlined,
+                              size: 16),
+                          label: const Text('Fotos'),
+                        ),
                       ),
                     ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => context.push('/tela-colores/${tela.id}'),
-                    icon: const Icon(Icons.palette_outlined, size: 16),
-                    label: const Text('Colores'),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: () async {
-                      await context.push('/tela/${tela.id}');
-                      if (context.mounted) {
-                        context.read<TelasBloc>().add(TelasLoadRequested());
-                      }
-                    },
-                    icon: const Icon(Icons.edit_outlined, size: 16),
-                    label: const Text('Modificar'),
-                  ),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
     );

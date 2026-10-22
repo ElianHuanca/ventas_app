@@ -4,6 +4,7 @@ import 'package:textiles_app/features/apliques/domain/domain.dart';
 import 'package:textiles_app/features/auth/auth.dart';
 import 'package:textiles_app/features/colores/domain/domain.dart';
 import 'package:textiles_app/features/dashboard/domain/domain.dart';
+import 'package:textiles_app/features/fotos/domain/domain.dart';
 import 'package:textiles_app/features/sucursales/domain/domain.dart';
 import 'package:textiles_app/features/telas/domain/domain.dart';
 import 'package:textiles_app/features/ventas/domain/domain.dart';
@@ -663,5 +664,55 @@ class FakeAuthRepository implements AuthRepository {
   Future<void> cerrarSesion() async {
     _email = null;
     _cambios.add(false);
+  }
+}
+
+class FakeFotosRepository implements FotosRepository {
+  String nombre;
+  List<Foto> fotos;
+
+  FakeFotosRepository({this.nombre = '', List<Foto>? fotos})
+      : fotos = [...?fotos];
+
+  final List<(ProductoConFotos, int)> getFotosCalls = [];
+  final List<(ProductoConFotos, int, FotoElegida)> subirCalls = [];
+  final List<(ProductoConFotos, int)> quitarCalls = [];
+  Exception? error;
+  Exception? errorAlSubir;
+  int _proximoId = 100;
+
+  void _throwIfError() {
+    if (error != null) throw error!;
+  }
+
+  @override
+  Future<String> getNombre(ProductoConFotos producto, int id) async {
+    _throwIfError();
+    return nombre;
+  }
+
+  @override
+  Future<List<Foto>> getFotos(ProductoConFotos producto, int id) async {
+    _throwIfError();
+    getFotosCalls.add((producto, id));
+    return fotos;
+  }
+
+  @override
+  Future<Foto> subirFoto(
+      ProductoConFotos producto, int id, FotoElegida foto) async {
+    _throwIfError();
+    if (errorAlSubir != null) throw errorAlSubir!;
+    subirCalls.add((producto, id, foto));
+    final nueva = Foto(id: _proximoId++, url: 'https://example.com/$_proximoId.jpg');
+    fotos = [...fotos, nueva];
+    return nueva;
+  }
+
+  @override
+  Future<void> quitarFoto(ProductoConFotos producto, int idfoto) async {
+    _throwIfError();
+    quitarCalls.add((producto, idfoto));
+    fotos = fotos.where((f) => f.id != idfoto).toList();
   }
 }

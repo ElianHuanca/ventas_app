@@ -41,7 +41,7 @@ void apliquesTests() {
 
       await buscarAplique(tester, nombre);
       expect(find.text('4.0 × 3.0 cm'), findsOneWidget);
-      await tester.tap(find.text('Modificar'));
+      await tester.tap(find.byTooltip('Modificar'));
       await esperarHasta(tester, find.text('Editar Aplique'));
       await escribir(tester, campo('Costo de fabricación'), '7.5');
       await tocar(tester, find.widgetWithText(SwitchListTile, 'Activo'));

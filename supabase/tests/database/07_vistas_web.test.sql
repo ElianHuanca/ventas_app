@@ -7,13 +7,14 @@
 --     sale NULL; no publica telas inactivas ni sin ningún precio;
 --   * sucursales_web: solo activo = true;
 --   * catalogo_telas_web / catalogo_apliques_web: solo activos, sin
---     precxcompra ni costo_fabricacion; colores = vínculos y colores activos.
+--     precxcompra ni costo_fabricacion; colores = vínculos y colores activos;
+--     fotos = las activas por id, foto = la primera.
 --
 -- Se leen como anon (la web): funcionan aunque anon no tenga acceso a las
 -- tablas. Rollback al final.
 -- =====================================================================
 begin;
-select plan(18);
+select plan(19);
 
 -- ---------------------------------------------------------------------
 -- Datos de apoyo (solo viven en esta transacción)
@@ -67,6 +68,11 @@ begin
     values ('pgTAP Aplique viejo', false) returning id into v_aplique_inactivo;
   insert into public.aplique_colores (idaplique, idcolor, activo) values
     (v_mariposa, v_verde, true), (v_mariposa, v_rojo, false), (v_mariposa, v_azul, true);
+  -- La segunda (por id) está dada de baja
+  insert into public.aplique_fotos (idaplique, url, activo) values
+    (v_mariposa, 'https://example.com/pgtap-mariposa-1.jpg', true),
+    (v_mariposa, 'https://example.com/pgtap-mariposa-baja.jpg', false),
+    (v_mariposa, 'https://example.com/pgtap-mariposa-2.jpg', true);
 
   -- Montos enormes para entrar al top 6 por encima de las ventas reales.
   -- Lino vende 7e11 en dos líneas con distinto nombre (agrupado por nombre
@@ -149,21 +155,22 @@ select is_empty(
 -- =====================================================================
 select columns_are('public', 'catalogo_telas_web', array[
   'id', 'nombre', 'slug', 'descripcion', 'ancho',
-  'precio_metro', 'precio_mayor', 'precio_rollo', 'foto', 'colores'
+  'precio_metro', 'precio_mayor', 'precio_rollo', 'foto', 'colores', 'fotos'
 ]::name[], 'catalogo_telas_web publica datos de vitrina');
 select hasnt_column('public', 'catalogo_telas_web', 'precxcompra', 'catalogo_telas_web no expone precxcompra');
 
 select results_eq($$
-  select id, precio_metro, precio_mayor, precio_rollo, foto, colores
+  select id, precio_metro, precio_mayor, precio_rollo, foto, colores, fotos
   from public.catalogo_telas_web
   where id in (pg_temp.id('lino'), pg_temp.id('seda'), pg_temp.id('sin_precio'))
   order by nombre
 $$, $$ values
-  (pg_temp.id('sin_precio'), null::numeric, null::numeric, null::numeric, null::text, '[]'::jsonb),
+  (pg_temp.id('sin_precio'), null::numeric, null::numeric, null::numeric, null::text, '[]'::jsonb, '[]'::jsonb),
   (pg_temp.id('lino'), 10::numeric, null::numeric, 300::numeric, 'https://example.com/pgtap-a.jpg',
-   '[{"nombre": "pgTAP amarillo", "hex": "#FFFF00"}, {"nombre": "pgTAP Rojo", "hex": "#FF0000"}]'::jsonb),
-  (pg_temp.id('seda'), null::numeric, null::numeric, 500::numeric, null::text, '[]'::jsonb)
-$$, 'catalogo_telas_web: también telas sin precio, precio 0 → NULL, solo colores activos con vínculo activo (orden sin mayúsculas)');
+   '[{"nombre": "pgTAP amarillo", "hex": "#FFFF00"}, {"nombre": "pgTAP Rojo", "hex": "#FF0000"}]'::jsonb,
+   '["https://example.com/pgtap-a.jpg", "https://example.com/pgtap-b.jpg"]'::jsonb),
+  (pg_temp.id('seda'), null::numeric, null::numeric, 500::numeric, null::text, '[]'::jsonb, '[]'::jsonb)
+$$, 'catalogo_telas_web: también telas sin precio, precio 0 → NULL, solo colores activos con vínculo activo (orden sin mayúsculas), fotos activas por id y foto = la primera');
 
 select is_empty(
   $$ select 1 from public.catalogo_telas_web where id = pg_temp.id('tela_inactiva') $$,
@@ -174,7 +181,7 @@ select is_empty(
 -- catalogo_apliques_web
 -- =====================================================================
 select columns_are('public', 'catalogo_apliques_web', array[
-  'id', 'nombre', 'tamanio', 'ancho_cm', 'alto_cm', 'colores'
+  'id', 'nombre', 'tamanio', 'ancho_cm', 'alto_cm', 'colores', 'foto', 'fotos'
 ]::name[], 'catalogo_apliques_web publica datos de vitrina');
 select hasnt_column('public', 'catalogo_apliques_web', 'costo_fabricacion', 'catalogo_apliques_web no expone costo_fabricacion');
 
@@ -190,6 +197,12 @@ select is_empty(
   $$ select 1 from public.catalogo_apliques_web where id = pg_temp.id('aplique_inactivo') $$,
   'catalogo_apliques_web: no publica apliques inactivos'
 );
+
+select results_eq($$
+  select foto, fotos from public.catalogo_apliques_web where id = pg_temp.id('mariposa')
+$$, $$ values ('https://example.com/pgtap-mariposa-1.jpg',
+  '["https://example.com/pgtap-mariposa-1.jpg", "https://example.com/pgtap-mariposa-2.jpg"]'::jsonb) $$,
+'catalogo_apliques_web: fotos activas por id y foto = la primera');
 
 reset role;
 

@@ -40,7 +40,7 @@
 -- Corre en una transacción con rollback: no deja datos.
 -- =====================================================================
 begin;
-select plan(292);
+select plan(350);
 
 create temp table _ids (clave text primary key, id bigint not null) on commit drop;
 create function pg_temp.id(p_clave text) returns bigint
@@ -70,8 +70,12 @@ insert into _objetos values
   ('detalle_ventas',          false, 'Flutter, Android, iOS'),
   ('ventas_apliques',         false, 'Flutter, Android'),
   ('detalle_ventas_apliques', false, 'Flutter, Android'),
+  ('tela_fotos',              false, 'Flutter'),
+  ('aplique_fotos',           false, 'Flutter'),
   ('top_telas_web',           true,  'web'),
-  ('sucursales_web',          true,  'web');
+  ('sucursales_web',          true,  'web'),
+  ('catalogo_telas_web',      true,  'web'),
+  ('catalogo_apliques_web',   true,  'web');
 
 -- ---------------------------------------------------------------------
 -- Columnas: lo que leen los mappers/DTO (las apps piden select * y leen
@@ -190,6 +194,36 @@ insert into _columnas values
   ('detalle_ventas_apliques', 'cantidad', 'numeric', 'Flutter, Android', 'Android: Double'),
   ('detalle_ventas_apliques', 'total',    'numeric', 'Flutter, Android', 'Android: Double'),
 
+  -- tela_fotos / aplique_fotos: pantallas Fotos (select id, url where
+  -- activo order id; alta con la URL pública del bucket; baja lógica)
+  ('tela_fotos',    'id',        'bigint',  'Flutter', 'Flutter: as int'),
+  ('tela_fotos',    'idtela',    'bigint',  'Flutter', null),
+  ('tela_fotos',    'url',       'text',    'Flutter', 'Flutter: as String'),
+  ('tela_fotos',    'activo',    'boolean', 'Flutter', null),
+  ('aplique_fotos', 'id',        'bigint',  'Flutter', 'Flutter: as int'),
+  ('aplique_fotos', 'idaplique', 'bigint',  'Flutter', null),
+  ('aplique_fotos', 'url',       'text',    'Flutter', 'Flutter: as String'),
+  ('aplique_fotos', 'activo',    'boolean', 'Flutter', null),
+
+  -- catalogo_telas_web / catalogo_apliques_web: el catálogo de la landing
+  -- (select *; numeric con num(); colores y fotos son jsonb)
+  ('catalogo_telas_web', 'id',           'bigint',  'web', null),
+  ('catalogo_telas_web', 'nombre',       'text',    'web', null),
+  ('catalogo_telas_web', 'descripcion',  'text',    'web', null),
+  ('catalogo_telas_web', 'ancho',        'numeric', 'web', null),
+  ('catalogo_telas_web', 'precio_metro', 'numeric', 'web', null),
+  ('catalogo_telas_web', 'precio_mayor', 'numeric', 'web', null),
+  ('catalogo_telas_web', 'precio_rollo', 'numeric', 'web', null),
+  ('catalogo_telas_web', 'colores',      'jsonb',   'web', null),
+  ('catalogo_telas_web', 'fotos',        'jsonb',   'web', null),
+  ('catalogo_apliques_web', 'id',        'bigint',  'web', null),
+  ('catalogo_apliques_web', 'nombre',    'text',    'web', null),
+  ('catalogo_apliques_web', 'tamanio',   'text',    'web', null),
+  ('catalogo_apliques_web', 'ancho_cm',  'numeric', 'web', null),
+  ('catalogo_apliques_web', 'alto_cm',   'numeric', 'web', null),
+  ('catalogo_apliques_web', 'colores',   'jsonb',   'web', null),
+  ('catalogo_apliques_web', 'fotos',     'jsonb',   'web', null),
+
   -- top_telas_web: "las más buscadas" de la landing (select *, order posicion;
   -- normaliza los numeric con Number())
   ('top_telas_web', 'posicion',     'bigint',  'web', null),
@@ -250,7 +284,9 @@ insert into _inserts values
   ('tela_colores',    array['idtela', 'idcolor', 'activo'],                                     'Flutter, Android, iOS'),
   ('aplique_colores', array['idaplique', 'idcolor', 'activo'],                                  'Flutter, Android, iOS'),
   ('inventario',      array['sucursal_id', 'aplique_id', 'color_id', 'stock'],                  'Flutter, Android, iOS'),
-  ('ventas',          array['fecha', 'total', 'ganancias', 'descuento', 'idsucursales'],        'Flutter, Android, iOS');
+  ('ventas',          array['fecha', 'total', 'ganancias', 'descuento', 'idsucursales'],        'Flutter, Android, iOS'),
+  ('tela_fotos',      array['idtela', 'url'],                                                   'Flutter'),
+  ('aplique_fotos',   array['idaplique', 'url'],                                                'Flutter');
 
 -- ---------------------------------------------------------------------
 -- RPC: firma tal como la llaman las apps. Todas mandan todos los
@@ -302,7 +338,7 @@ insert into _rpcs values
    'Flutter');
 
 -- =====================================================================
--- 1. Tablas, vistas y columnas (16 + 80 + 80 + 46)
+-- 1. Tablas, vistas y columnas (20 + 104 + 104 + 50)
 -- =====================================================================
 select has_table('public', nombre, format('existe la tabla %s (la usan %s)', nombre, apps))
 from _objetos where not es_vista order by nombre;
@@ -353,7 +389,7 @@ select col_is_pk('public', 'aplique_colores', array['idaplique', 'idcolor']::nam
 
 -- =====================================================================
 -- 3. Inserts: una columna NOT NULL nueva sin default rompe el alta en las
---    apps que no la mandan (9)
+--    apps que no la mandan (11)
 -- =====================================================================
 select is_empty(
   format($q$
