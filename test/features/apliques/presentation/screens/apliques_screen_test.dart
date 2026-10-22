@@ -69,6 +69,11 @@ void main() {
           builder: (_, state) => Scaffold(
               body: Text('STUB COLORES ${state.pathParameters['idaplique']}')),
         ),
+        GoRoute(
+          path: '/aplique-fotos/:idaplique',
+          builder: (_, state) => Scaffold(
+              body: Text('STUB FOTOS ${state.pathParameters['idaplique']}')),
+        ),
       ],
     );
     addTearDown(router.dispose);
@@ -249,6 +254,21 @@ void main() {
       await tester.tap(enTarjeta('Flor Petalo', 'Colores'));
       await tester.pumpAndSettle();
       expect(find.text('STUB COLORES 1'), findsOneWidget);
+
+      router.pop();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Flor Petalo'), findsOneWidget);
+      expect(repo.getApliquesCalls, 1);
+    });
+
+    testWidgets('"Fotos" navega a /aplique-fotos/:id sin recargar al volver',
+        (tester) async {
+      await montar(tester);
+
+      await tester.tap(enTarjeta('Flor Petalo', 'Fotos'));
+      await tester.pumpAndSettle();
+      expect(find.text('STUB FOTOS 1'), findsOneWidget);
 
       router.pop();
       await tester.pumpAndSettle();

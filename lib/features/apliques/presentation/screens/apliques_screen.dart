@@ -152,19 +152,28 @@ class _ApliquesScreenState extends State<ApliquesScreen> {
               ],
             ),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
+            // En un celular chico con letra grande no entran los tres: el
+            // que no entra baja a otra línea en vez de partir el texto
+            SizedBox(
+              width: double.infinity,
+              child: Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
                     onPressed: () =>
                         context.push('/aplique-colores/${aplique.id}'),
                     icon: const Icon(Icons.palette_outlined, size: 16),
                     label: const Text('Colores'),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: FilledButton.icon(
+                  OutlinedButton.icon(
+                    onPressed: () =>
+                        context.push('/aplique-fotos/${aplique.id}'),
+                    icon: const Icon(Icons.photo_library_outlined, size: 16),
+                    label: const Text('Fotos'),
+                  ),
+                  FilledButton.icon(
                     onPressed: () async {
                       await context.push('/aplique/${aplique.id}');
                       if (context.mounted) {
@@ -176,8 +185,8 @@ class _ApliquesScreenState extends State<ApliquesScreen> {
                     icon: const Icon(Icons.edit_outlined, size: 16),
                     label: const Text('Modificar'),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),

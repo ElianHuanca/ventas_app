@@ -9,12 +9,14 @@
 --   * anon (la web, sin login) no lee ni escribe tablas ni ejecuta RPC:
 --     solo lee las vistas *_web;
 --   * authenticated lee y escribe todo, pero sin DELETE físico salvo en
---     ventas y detalle_ventas, y sin TRUNCATE en nada.
+--     ventas y detalle_ventas, y sin TRUNCATE en nada;
+--   * bucket `fotos` (20261021000000_fotos_de_productos.sql): público para
+--     leer, solo authenticated sube (INSERT), nadie modifica ni borra.
 --
 -- Corre en una transacción con rollback: no deja datos.
 -- =====================================================================
 begin;
-select plan(202);
+select plan(216);
 
 -- ---------------------------------------------------------------------
 -- Datos de apoyo (solo viven en esta transacción)
@@ -25,7 +27,7 @@ create function pg_temp.id(p_clave text) returns bigint
   language sql stable
   as $$ select id from pg_temp._ids where clave = p_clave $$;
 
--- Las 17 tablas conocidas. Por cada una: cómo encontrar la fila que crea
+-- Las 18 tablas conocidas. Por cada una: cómo encontrar la fila que crea
 -- este test y un cambio que authenticated tiene que poder hacer (el mismo
 -- texto sirve de SET y de WHERE para verificarlo).
 create temp table _tablas (
@@ -35,6 +37,7 @@ create temp table _tablas (
 ) on commit drop;
 grant select on _tablas to public;
 insert into _tablas values
+  ('aplique_fotos',           $f$idaplique = pg_temp.id('aplique')$f$,      'activo = false'),
   ('aplique_colores',         $f$idaplique = pg_temp.id('aplique')$f$,      'activo = false'),
   ('apliques',                $f$id = pg_temp.id('aplique')$f$,             'activo = false'),
   ('categorias',              $f$id = pg_temp.id('categoria')$f$,           'activo = false'),
@@ -85,7 +88,7 @@ insert into _rpc values
 -- =====================================================================
 select tables_are(
   'public', array(select nombre::name from _tablas),
-  'public tiene las 17 tablas conocidas (una nueva necesita RLS, su política solo_logueados_* y revisar permisos)'
+  'public tiene las 18 tablas conocidas (una nueva necesita RLS, su política solo_logueados_* y revisar permisos)'
 );
 select views_are(
   'public', array['catalogo_apliques_web', 'catalogo_telas_web', 'sucursales_web', 'top_telas_web']::name[],
@@ -294,6 +297,7 @@ select lives_ok($$
     insert into public.apliques (nombre, costo_fabricacion, categoria_id) values ('pgTAP mariposa', 5, v_categoria)
       returning id into v_aplique;
     insert into public.aplique_colores (idaplique, idcolor) values (v_aplique, v_color);
+    insert into public.aplique_fotos (idaplique, url) values (v_aplique, 'https://example.com/pgtap-aplique.jpg');
     insert into public.inventario (sucursal_id, aplique_id, color_id, stock) values (v_sucursal, v_aplique, v_color, 3);
     insert into public.telas (nombre, precxmen, categoria_id) values ('pgTAP lino', 10, v_categoria)
       returning id into v_tela;
@@ -321,7 +325,7 @@ select lives_ok($$
       ('venta_aplique', v_venta_aplique), ('produccion', v_produccion);
   end
   $do$
-$$, 'authenticated puede insertar en las 17 tablas');
+$$, 'authenticated puede insertar en las 18 tablas');
 
 -- Sin política, PostgREST devuelve [] en silencio: hay que poder releerlo
 select results_eq(
@@ -369,6 +373,41 @@ select throws_ok(
   format('authenticated no puede TRUNCATE %s', nombre)
 ) from _tablas;
 
+reset role;
+
+-- =====================================================================
+-- 4. Storage: bucket `fotos` de telas y apliques
+-- =====================================================================
+select results_eq($$
+  select public, file_size_limit, allowed_mime_types
+  from storage.buckets where id = 'fotos'
+$$, $$ values (true, 5242880::bigint, array['image/jpeg', 'image/png', 'image/webp']) $$,
+'bucket fotos: público (la web lee la URL sin sesión), hasta 5 MB y solo imágenes');
+
+select set_eq($$
+  select policyname::text, cmd::text, roles::text
+  from pg_policies where schemaname = 'storage'
+$$, $$ values ('fotos_subir_logueados', 'INSERT', '{authenticated}') $$,
+'storage: la única política es subir a fotos con sesión (nadie modifica ni borra archivos)');
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-0000000000a1", "role": "authenticated"}';
+select lives_ok(
+  $$ insert into storage.objects (bucket_id, name) values ('fotos', 'pgtap/tela.jpg') $$,
+  'authenticated puede subir al bucket fotos'
+);
+select throws_ok(
+  $$ insert into storage.objects (bucket_id, name) values ('pgtap-otro', 'x.jpg') $$, '42501', null,
+  'authenticated no puede subir a otro bucket'
+);
+reset role;
+
+set local role anon;
+set local request.jwt.claims = '{"role": "anon"}';
+select throws_ok(
+  $$ insert into storage.objects (bucket_id, name) values ('fotos', 'pgtap/anon.jpg') $$, '42501', null,
+  'anon no puede subir al bucket fotos'
+);
 reset role;
 
 select * from finish();

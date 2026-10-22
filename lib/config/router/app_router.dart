@@ -11,6 +11,7 @@ import 'package:textiles_app/features/colores/presentation/bloc/bloc.dart';
 import 'package:textiles_app/features/dashboard/infrastructure/infrastructure.dart';
 import 'package:textiles_app/features/dashboard/presentation/bloc/dashboard_cubit.dart';
 import 'package:textiles_app/features/dashboard/presentation/screens/dashboard_screen.dart';
+import 'package:textiles_app/features/fotos/fotos.dart';
 import 'package:textiles_app/features/sucursales/infrastructure/infrastructure.dart';
 import 'package:textiles_app/features/sucursales/presentation/bloc/bloc.dart';
 import 'package:textiles_app/features/sucursales/sucursales.dart';
@@ -212,6 +213,20 @@ GoRouter createAppRouter({required AuthRepository authRepository}) {
         },
       ),
       GoRoute(
+        path: '/aplique-fotos/:idaplique',
+        builder: (context, state) {
+          final id = _pathParamInt(state, 'idaplique');
+          return BlocProvider(
+            create: (_) => FotosCubit(
+              fotosRepository: FotosRepositoryImpl(FotosDatasourceImpl()),
+              producto: ProductoConFotos.aplique,
+              id: id,
+            ),
+            child: FotosScreen(producto: ProductoConFotos.aplique),
+          );
+        },
+      ),
+      GoRoute(
         path: '/colores',
         builder: (context, state) => BlocProvider(
           create: (_) => ColoresBloc(
@@ -325,6 +340,20 @@ GoRouter createAppRouter({required AuthRepository authRepository}) {
               idtela: id,
             ),
             child: TelaColoresScreen(idtela: id),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/tela-fotos/:idtela',
+        builder: (context, state) {
+          final id = _pathParamInt(state, 'idtela');
+          return BlocProvider(
+            create: (_) => FotosCubit(
+              fotosRepository: FotosRepositoryImpl(FotosDatasourceImpl()),
+              producto: ProductoConFotos.tela,
+              id: id,
+            ),
+            child: FotosScreen(producto: ProductoConFotos.tela),
           );
         },
       ),

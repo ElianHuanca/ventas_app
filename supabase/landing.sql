@@ -80,7 +80,8 @@ GRANT SELECT ON sucursales_web TO anon;
 --
 -- `colores` sale como jsonb: [{"nombre": "...", "hex": "..."}, ...],
 -- solo vínculos y colores activos, ordenado alfabético sin mayúsculas.
--- `foto` es la primera foto activa (tela_fotos); NULL si no tiene.
+-- `fotos` sale como jsonb: ["url", ...], las fotos activas (tela_fotos)
+-- por id; `foto` es la primera (NULL si no tiene).
 -- ---------------------------------------------------------------------
 CREATE OR REPLACE VIEW catalogo_telas_web AS
 SELECT
@@ -92,16 +93,15 @@ SELECT
   NULLIF(t.precxmen,   0) AS precio_metro,
   NULLIF(t.precxmay,   0) AS precio_mayor,
   NULLIF(t.precxrollo, 0) AS precio_rollo,
-  foto.url AS foto,
-  COALESCE(cols.colores, '[]'::jsonb) AS colores
+  fotos.lista->>0 AS foto,
+  COALESCE(cols.colores, '[]'::jsonb) AS colores,
+  COALESCE(fotos.lista, '[]'::jsonb) AS fotos
 FROM telas t
 LEFT JOIN LATERAL (
-  SELECT f.url
+  SELECT jsonb_agg(f.url ORDER BY f.id) AS lista
   FROM tela_fotos f
   WHERE f.idtela = t.id AND f.activo
-  ORDER BY f.id
-  LIMIT 1
-) foto ON TRUE
+) fotos ON TRUE
 LEFT JOIN LATERAL (
   SELECT jsonb_agg(jsonb_build_object('nombre', c.nombre, 'hex', c.hex)
                    ORDER BY lower(c.nombre)) AS colores
@@ -116,6 +116,7 @@ ORDER BY lower(t.nombre);
 -- Catálogo de apliques (todos los activos). No tienen precio de lista
 -- (el precio se define en cada venta), así que la web ofrece consultar
 -- por WhatsApp. Nunca expone costo_fabricacion (margen).
+-- `foto` / `fotos` como en telas, desde aplique_fotos.
 -- ---------------------------------------------------------------------
 CREATE OR REPLACE VIEW catalogo_apliques_web AS
 SELECT
@@ -124,7 +125,9 @@ SELECT
   a.tamanio,
   a.ancho_cm,
   a.alto_cm,
-  COALESCE(cols.colores, '[]'::jsonb) AS colores
+  COALESCE(cols.colores, '[]'::jsonb) AS colores,
+  fotos.lista->>0 AS foto,
+  COALESCE(fotos.lista, '[]'::jsonb) AS fotos
 FROM apliques a
 LEFT JOIN LATERAL (
   SELECT jsonb_agg(jsonb_build_object('nombre', c.nombre, 'hex', c.hex)
@@ -133,6 +136,11 @@ LEFT JOIN LATERAL (
   JOIN colores c ON c.id = ac.idcolor AND c.activo
   WHERE ac.idaplique = a.id AND ac.activo
 ) cols ON TRUE
+LEFT JOIN LATERAL (
+  SELECT jsonb_agg(f.url ORDER BY f.id) AS lista
+  FROM aplique_fotos f
+  WHERE f.idaplique = a.id AND f.activo
+) fotos ON TRUE
 WHERE a.activo
 ORDER BY lower(a.nombre);
 

@@ -143,18 +143,26 @@ class _TelasScreenState extends State<TelasScreen> {
               ],
             ),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
+            // En un celular chico con letra grande no entran los tres: el
+            // que no entra baja a otra línea en vez de partir el texto
+            SizedBox(
+              width: double.infinity,
+              child: Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
                     onPressed: () => context.push('/tela-colores/${tela.id}'),
                     icon: const Icon(Icons.palette_outlined, size: 16),
                     label: const Text('Colores'),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: FilledButton.icon(
+                  OutlinedButton.icon(
+                    onPressed: () => context.push('/tela-fotos/${tela.id}'),
+                    icon: const Icon(Icons.photo_library_outlined, size: 16),
+                    label: const Text('Fotos'),
+                  ),
+                  FilledButton.icon(
                     onPressed: () async {
                       await context.push('/tela/${tela.id}');
                       if (context.mounted) {
@@ -164,8 +172,8 @@ class _TelasScreenState extends State<TelasScreen> {
                     icon: const Icon(Icons.edit_outlined, size: 16),
                     label: const Text('Modificar'),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),

@@ -85,6 +85,11 @@ void main() {
           builder: (_, state) => Scaffold(
               body: Text('STUB COLORES ${state.pathParameters['idtela']}')),
         ),
+        GoRoute(
+          path: '/tela-fotos/:idtela',
+          builder: (_, state) => Scaffold(
+              body: Text('STUB FOTOS ${state.pathParameters['idtela']}')),
+        ),
       ],
     );
     addTearDown(router.dispose);
@@ -249,6 +254,21 @@ void main() {
       await tester.tap(enTarjeta('Lino Rústico', 'Colores'));
       await tester.pumpAndSettle();
       expect(find.text('STUB COLORES 3'), findsOneWidget);
+
+      router.pop();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Lino Rústico'), findsOneWidget);
+      expect(repo.getTelasCalls, 1);
+    });
+
+    testWidgets('"Fotos" navega a /tela-fotos/:id sin recargar al volver',
+        (tester) async {
+      await montar(tester);
+
+      await tester.tap(enTarjeta('Lino Rústico', 'Fotos'));
+      await tester.pumpAndSettle();
+      expect(find.text('STUB FOTOS 3'), findsOneWidget);
 
       router.pop();
       await tester.pumpAndSettle();

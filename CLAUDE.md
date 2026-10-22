@@ -70,6 +70,8 @@ Al cambiar el esquema: migración nueva → `npx supabase@latest db reset` en lo
 | i18n | `flutter_localizations` |
 | Lint | `flutter_lints` (dev) |
 | UI | Material 3 |
+| Fotos | `image_picker` (galería/cámara) + Supabase Storage |
+| PDF | `pdf` + `share_plus` (Inventario) |
 
 ## Arquitectura
 
@@ -96,7 +98,8 @@ Features: `sucursales`, `telas`, `ventas`, `apliques`, `colores`, `dashboard`, `
 | `categorias` | id, nombre, slug, activo — seed: `Telas`, `Apliques` |
 | `colores` | id, nombre, hex, activo |
 | `tela_colores` | idtela, idcolor, activo (PK compuesta) |
-| `tela_fotos` | id, idtela, url, activo |
+| `tela_fotos` | id, idtela, url, activo — fotos de una tela (URL pública del bucket `fotos`) |
+| `aplique_fotos` | id, idaplique, url, activo — fotos de un aplique (migración `20261021000000_fotos_de_productos.sql`) |
 | `tela_sucursales` | idtela, idsucursal, activo (PK compuesta) — disponibilidad de telas por sucursal (migración `supabase/tela_sucursales.sql`) |
 | `apliques` | id, nombre, costo_fabricacion, ancho_cm, alto_cm, categoria_id, activo (tamanio quedó sin uso: ya va en el nombre) |
 | `inventario` | sucursal_id, aplique_id, color_id, stock (PK compuesta) — disponibilidad y stock de apliques |
@@ -107,7 +110,7 @@ Features: `sucursales`, `telas`, `ventas`, `apliques`, `colores`, `dashboard`, `
 
 `fecha` se almacena como **TEXT ISO8601** (igual que en la versión SQLite) para preservar la lógica de comparación — las RPC comparan lexicográficamente y eso depende de este formato. Los precios son `NUMERIC` (no `REAL`) para evitar errores de coma flotante en dinero.
 
-Las tablas nuevas (`categorias`, `colores`, `tela_colores`, `tela_fotos`) y las columnas agregadas a `telas`/`sucursales` existen para el catálogo web; esta app gestiona `colores` (módulo `/colores`, baja lógica) pero **no escribe** `tela_colores`/`tela_fotos` (solo `tela_colores` en la gestión de colores por tela).
+Las tablas nuevas (`categorias`, `colores`, `tela_colores`, `tela_fotos`) y las columnas agregadas a `telas`/`sucursales` existen para el catálogo web; esta app gestiona `colores` (módulo `/colores`, baja lógica) y escribe `tela_colores` (colores por tela) y `tela_fotos` / `aplique_fotos` (pantallas Fotos).
 
 ### Convención importante: `actualizarVenta`
 
@@ -190,9 +193,11 @@ Ambas con `GRANT SELECT ... TO anon`. Si se cambia una columna que estas vistas 
 | `/telas` | TelasScreen |
 | `/tela/:idtela` | TelaScreen |
 | `/tela-colores/:idtela` | TelaColoresScreen (colores vinculados de la tela) |
+| `/tela-fotos/:idtela` | FotosScreen (fotos de la tela: subir de la galería o la cámara, quitar) |
 | `/apliques` | ApliquesScreen (gestión de apliques) |
 | `/aplique/:idaplique` | ApliqueScreen (form: nombre, dimensiones cm, costo fabricación, activo) |
 | `/aplique-colores/:idaplique` | ApliqueColoresScreen (colores vinculados del aplique) |
+| `/aplique-fotos/:idaplique` | FotosScreen (fotos del aplique) |
 | `/colores` | ColoresScreen (gestión de colores) |
 | `/color/:idcolor` | ColorScreen (form: nombre + hex con preview; baja lógica) |
 | `/ventas/:idsucursal` | VentasScreen |
@@ -227,6 +232,15 @@ Ambas con `GRANT SELECT ... TO anon`. Si se cambia una columna que estas vistas 
 - **Sucursal sin ventas propias** en la ventana (p. ej. una tienda que recién empieza a vender apliques): se estima con `vendidas_otras` y la pantalla lo avisa ("se estiman N por semana").
 - `InventarioCubit(hoy:)` recibe la fecha para que las capturas sean determinísticas.
 
+## Fotos (telas y apliques)
+
+- Botón **"Fotos"** en cada tarjeta de `/telas` y `/apliques` → `/tela-fotos/:idtela` o `/aplique-fotos/:idaplique`: la misma `FotosScreen` (feature `lib/features/fotos/`, un solo datasource para los dos con `ProductoConFotos`). Subir desde la galería o la cámara (`image_picker`, achicada a 1600 px y JPEG 80 %: unos 200-400 KB) y quitar (con confirmación). La primera (por id) es la **principal**: la que la web muestra primero.
+- Archivos en **Supabase Storage**, bucket público **`fotos`** (`telas/<id>/…`, `apliques/<id>/…`; nombre con milisegundos + aleatorio, el bucket no pisa archivos). Una fila por foto en `tela_fotos` / `aplique_fotos` con la URL pública. **Quitar = `activo = false`**: el archivo queda en el bucket (nadie tiene UPDATE ni DELETE en `storage.objects`).
+- Límites del bucket (migración): **5 MB** y solo `image/jpeg`, `image/png`, `image/webp`; subir solo con sesión (`fotos_subir_logueados`, INSERT para `authenticated`). Leer no pide sesión (bucket público).
+- ⚠️ `postgrest-dart` ordena **descendente** por defecto: `.order('id')` daba la última subida como principal. Va `ascending: true` explícito.
+- En Windows `image_picker` no tiene cámara: `FotosScreen` muestra solo "Galería" fuera de Android/iOS.
+- Tests: las capturas y los de widget dibujan imágenes en memoria (`test/helpers/imagenes.dart`: `imagenDePrueba`, `liberarImagenesAlTerminar`), nunca `Image.network`. La integración no sube fotos: la CI levanta Supabase **sin `storage-api`** (el esquema `storage` sí existe, así que la migración y pgTAP corren igual).
+
 ## Login (Supabase Auth)
 
 - Feature `lib/features/auth/`: `AuthRepository` (impl sobre `supabase.auth`), `LoginFormCubit`, `LoginScreen`.
@@ -251,7 +265,7 @@ flutter pub get          # instalar dependencias
 flutter run              # correr en debug
 flutter build apk        # build Android APK
 flutter analyze          # lints estrictos (ver "Lints"): tiene que quedar limpio
-flutter test             # 945 unitarios/de widget + 168 capturas golden (sin omitidos)
+flutter test             # 986 unitarios/de widget + 174 capturas golden (sin omitidos)
 flutter test --exclude-tags golden          # sin las capturas (p. ej. fuera de Windows)
 flutter test test/goldens --update-goldens  # regenerar capturas tras un cambio visual buscado
 flutter test benchmark/micro                # 176 micro-benchmarks (~1 min)
@@ -413,8 +427,8 @@ flutter test red --dart-define-from-file=env/local.json --concurrency=1
 npx supabase@latest test db   # con el Supabase local levantado
 ```
 
-- `supabase/tests/database/NN_*.test.sql`: RLS y permisos de `anon`/`authenticated` en cada tabla (17, con `operaciones_aplicadas`), vista y RPC (01, 11 RPC); `crear_venta_apliques` (02); `registrar_produccion` (03); venta de telas: `registrar_detalle_venta` / `incrementar_venta` (las de Android e iOS) y `registrar_venta_telas` / `borrar_detalle_venta` (las del Flutter) (04); restricciones y UNIQUE (05); RPC del dashboard (06); vistas `*_web` (07); `inventario_con_ventas` (08); **contrato con las otras apps (09)**; **idempotencia** de las tres RPC con `p_id_operacion` (10: misma clave dos veces = una sola aplicación y el mismo resultado, aunque cambie el contenido; claves distintas = dos; sin clave = como antes; una falla no gasta la clave; una clave de otra RPC es error). 755 aserciones en total (2026-10-20).
-- **Contrato (`09_contrato.test.sql`, 292 aserciones)**: lo que Flutter, Android (master), iOS y la web leen y escriben. Fija tablas y vistas; por columna, que exista, su tipo base (sin precisión) y NOT NULL donde una app la decodifica no nula (Android: tipo Kotlin no nulo, supabase-kt no usa `coerceInputValues`; Flutter: `as int`); las FK de los embeds (una sola por par de tablas, si no PostgREST da `PGRST201`), las PK de los upserts, que los inserts de las apps no dejen afuera una NOT NULL sin default, y las RPC con los nombres de sus parámetros (PostgREST llama por nombre), su resultado y las claves del JSON. Las apps mandan todos los parámetros por nombre **salvo `p_id_operacion`** (solo el Flutter nuevo): que sea opcional (`DEFAULT NULL`, al final) es parte del contrato, y `crear_venta_apliques` / `registrar_produccion` se llaman sin ella como Android e iOS. Reemplaza el "revisar a mano si otra app usa la columna". **Al cambiar lo que lee una app, actualizar sus listas** (`_columnas`, `_embeds`, `_inserts`, `_rpcs`) y el `plan(n)`. Sin `todo` desde que `top_productos` usa `COALESCE` (una tela con líneas sin total salía con `total_vendido` NULL y Android no la decodificaba).
+- `supabase/tests/database/NN_*.test.sql`: RLS y permisos de `anon`/`authenticated` en cada tabla (18, con `operaciones_aplicadas` y `aplique_fotos`), vista y RPC (01, 11 RPC), y el bucket `fotos` de Storage (01); `crear_venta_apliques` (02); `registrar_produccion` (03); venta de telas: `registrar_detalle_venta` / `incrementar_venta` (las de Android e iOS) y `registrar_venta_telas` / `borrar_detalle_venta` (las del Flutter) (04); restricciones y UNIQUE (05); RPC del dashboard (06); vistas `*_web` (07); `inventario_con_ventas` (08); **contrato con las otras apps (09)**; **idempotencia** de las tres RPC con `p_id_operacion` (10: misma clave dos veces = una sola aplicación y el mismo resultado, aunque cambie el contenido; claves distintas = dos; sin clave = como antes; una falla no gasta la clave; una clave de otra RPC es error). 828 aserciones en total (2026-10-22).
+- **Contrato (`09_contrato.test.sql`, 350 aserciones)**: lo que Flutter, Android (master), iOS y la web leen y escriben. Fija tablas y vistas; por columna, que exista, su tipo base (sin precisión) y NOT NULL donde una app la decodifica no nula (Android: tipo Kotlin no nulo, supabase-kt no usa `coerceInputValues`; Flutter: `as int`); las FK de los embeds (una sola por par de tablas, si no PostgREST da `PGRST201`), las PK de los upserts, que los inserts de las apps no dejen afuera una NOT NULL sin default, y las RPC con los nombres de sus parámetros (PostgREST llama por nombre), su resultado y las claves del JSON. Las apps mandan todos los parámetros por nombre **salvo `p_id_operacion`** (solo el Flutter nuevo): que sea opcional (`DEFAULT NULL`, al final) es parte del contrato, y `crear_venta_apliques` / `registrar_produccion` se llaman sin ella como Android e iOS. Reemplaza el "revisar a mano si otra app usa la columna". **Al cambiar lo que lee una app, actualizar sus listas** (`_columnas`, `_embeds`, `_inserts`, `_rpcs`) y el `plan(n)`. Sin `todo` desde que `top_productos` usa `COALESCE` (una tela con líneas sin total salía con `total_vendido` NULL y Android no la decodificaba).
 - Cada archivo corre en una transacción con `rollback`: no deja datos. Al agregar una tabla, RPC o vista, sumarla acá (y actualizar el `plan(n)`).
 - **Bugs conocidos = `todo()`**, el equivalente SQL del `skip` con su `bug: archivo:línea — qué pasa`. Al arreglarlo con una migración, sacar el `todo` (el test tiene que pasar).
 
