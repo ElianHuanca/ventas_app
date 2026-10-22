@@ -474,6 +474,7 @@ npx supabase@latest stop
 - `supabase/migrations/20260925000000_prod_schema.sql` es un **dump del esquema real de producción** (2026-09-25) — más fiel que `schema.sql`.
 - `supabase/seed.sql` es una copia de los **datos reales**, está en `.gitignore` (no subir). Para refrescarla: `npx supabase@latest db dump --linked --data-only -f supabase/seed.sql` (sin `--use-copy`, el seed no acepta `COPY`).
 - El `link` a producción necesita IPv4 vía pooler: si `db dump` da `DbConfigIpv6Error`, repetir `npx supabase@latest link --project-ref tacgylhmwqkfhdkpcvkr`.
+- `db.tacgylhmwqkfhdkpcvkr.supabase.co` es **solo IPv6** (desde esta PC: "Network is unreachable"). Por psql, el pooler en modo sesión: `host=aws-1-us-west-2.pooler.supabase.com port=5432 user=postgres.tacgylhmwqkfhdkpcvkr dbname=postgres sslmode=require` (el `aws-0-…` responde "tenant/user not found"). Sin psql en Windows: `docker exec -i -e PGPASSWORD=… supabase_db_ventas_app psql "…" -v ON_ERROR_STOP=1 -f - < archivo.sql` (con `-f /tmp/…` Git Bash reescribe la ruta).
 - `mailpit` se excluye porque su puerto 54324 chocó en esta máquina.
 - Android: `http://` habilitado solo en `android/app/src/debug/AndroidManifest.xml`.
 
