@@ -58,7 +58,7 @@ void telasTests() {
       await montarApp(tester);
 
       await buscarTela(tester, tela.nombre);
-      await tester.tap(find.text('Modificar'));
+      await tester.tap(find.byTooltip('Modificar'));
       await esperarHasta(tester, find.text('Editar Tela'));
       await escribir(tester, campo('Precio X Menor'), '30');
       await tocar(tester, find.widgetWithText(SwitchListTile, 'Activo'));
