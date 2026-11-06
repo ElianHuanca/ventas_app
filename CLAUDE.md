@@ -29,6 +29,14 @@ Como este repo es (parcialmente) dueño del esquema, antes de tocar `supabase/`:
 
 Esta app ahora también cubre **apliques** (ventas con stock, fabricación, gestión y disponibilidad por sucursal), con lo que **reemplazó al repo PHP `textiles`** (eliminado).
 
+## Spec-driven development (`openspec/`)
+
+El comportamiento vigente de cada flujo está especificado en `openspec/specs/<capacidad>/spec.md` (requisitos con escenarios WHEN → THEN, en formato OpenSpec). **Todo cambio de comportamiento empieza con un change en `openspec/changes/<id>/`** (propuesta + delta de la spec + tareas): se aprueba antes de tocar código y se archiva en el mismo PR. Refactors, tests y lints van directo.
+
+- Procedimiento completo: `openspec/AGENTS.md`. Capacidades y paridad con Android e iOS: `openspec/project.md`.
+- Este repo es la **referencia**: Android e iOS usan los mismos nombres de Requirement, y un cambio que toca la base empieza acá (capacidad `contrato-de-datos`).
+- Si el código y la spec no coinciden, uno de los dos tiene un bug. `<!-- revisar: -->` en una spec marca un comportamiento actual dudoso.
+
 ## Los repos comparten UNA base de datos
 
 Una sola DB Postgres en Supabase alimenta estas aplicaciones:
