@@ -32,6 +32,24 @@ Las mismas capacidades, con los mismos nombres de Requirement, están en las tre
 `contrato-de-datos` existe solo acá porque este repo es dueño del esquema. Los ports describen
 las RPC que llaman dentro de la capacidad que las usa.
 
+## La landing `sitio`
+
+`sitio` (Next.js) **también tiene specs** en `../sitio/openspec/`, con las mismas convenciones. No
+es un port: es un consumidor de **solo lectura** que no escribe nada y solo consulta las vistas
+públicas (`catalogo_telas_web`, `catalogo_apliques_web`, `sucursales_web`), así que no aparece en la
+tabla de paridad de arriba.
+
+Reusa cuatro nombres de capacidad —`telas`, `apliques`, `fotos` y `sucursales`— pero **no son las
+mismas specs**: acá describen la gestión (alta, edición, precios de compra, stock por color) y allá
+solo lo que sale al escaparate. Comparar ambas muestra dónde queda el filtro: `precxcompra`,
+`costo_fabricacion`, el stock y los montos vendidos nunca cruzan a la vista pública. Sus otras
+capacidades (`pagina`, `catalogo`, `contacto` y `datos`) son propias de la landing.
+
+Un change de acá que **toque una vista pública o una columna que ellas leen** tiene que anotarlo en
+el `Impacto` de su `proposal.md` y abrir el change correspondiente en `sitio` con el mismo `<id>`:
+la landing no se entera sola de un cambio de esquema. El sentido es siempre este: el change empieza
+acá (delta de `contrato-de-datos` + `supabase/landing.sql` reaplicado) y `sitio` lo referencia.
+
 ## Paridad (relevada el 2026-11-06: Flutter `1d15233`, Android `4dab27f`, iOS `5dd16c5`)
 
 Cada port marca sus diferencias con Flutter en sus specs con `<!-- paridad: ... -->`, y las resume
