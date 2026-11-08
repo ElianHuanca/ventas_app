@@ -273,7 +273,8 @@ flutter pub get          # instalar dependencias
 flutter run              # correr en debug
 flutter build apk        # build Android APK
 flutter analyze          # lints estrictos (ver "Lints"): tiene que quedar limpio
-flutter test             # 1016 unitarios/de widget + 247 capturas golden, 1 omitido (bug: orden de sucursales)
+flutter test             # 1220 unitarios/de widget (204 de vectores compartidos) + 247 capturas golden; 2 omitidos (bug: orden de sucursales; paridad: hex con espacios)
+dart run tool/sincronizar_vectores.dart --verificar ../ventas_app_android   # copias de los vectores en Android al día
 flutter test --exclude-tags golden          # sin las capturas (p. ej. fuera de Windows)
 flutter test test/goldens --update-goldens  # regenerar capturas tras un cambio visual buscado
 flutter test benchmark/micro                # 176 micro-benchmarks (~1 min)
@@ -290,6 +291,7 @@ flutter clean            # limpiar build
 | De widget | `test/` (todas las pantallas y widgets compartidos; la navegación se verifica con un `GoRouter` de rutas stub) | los mismos fakes |
 | Captura (golden) | `test/goldens/` (todas las pantallas y widgets compartidos, en cada estado), `pantalla_chica/` (cada pantalla en 360×640 dp con letra grande), `apaisado/` (teléfono acostado, 915×412 dp, en sus estados principales) y `tablet/` (800×1280 dp) | los mismos fakes; compara contra PNG |
 | Property-based | `test/propiedades/` (carritos, colores/hex, mappers, fechas, router, dashboard) | glados: 500 entradas generadas por propiedad, contra un modelo en enteros |
+| Vectores compartidos | `test/vectores/` (reposición, redondeo, parámetros de las RPC, faltantes y PDF, mappers, colores/hex, carritos, fechas, errores de login) | JSON `{nombre, entrada, esperado}` que recorren también Android (y más adelante iOS): misma entrada, mismo resultado en cada port |
 | Micro-benchmarks | `benchmark/micro/` (mappers, utilidades, router, cubits, blocs, montaje de widgets) | fakes; µs/op o ms/montaje con presupuesto |
 | Macro-benchmarks | `benchmark/macro/` + `test_driver/perf_driver.dart` | la app completa en el **celular**, contra el Supabase local |
 | De integración | `integration_test/app_test.dart` | la app completa (`HuantexApp`: router, login, datasources, RLS, RPC) contra el **Supabase local** |
@@ -393,6 +395,32 @@ Otros cuelgues vistos (2026-10-15), los dos en `(setUpAll)`:
 - Si una falla, glados achica la entrada hasta la mínima que la rompe (`Failing for input: ...`). Al arreglar el bug, ese caso mínimo se agrega también como test puntual en el test del archivo arreglado.
 - Los carritos (telas, apliques, fabricación) se comparan contra un modelo en enteros (centésimos): una línea por clave con la cantidad sumada, total y ganancias = suma de las líneas con 2 decimales y la mitad del centavo hacia arriba (como `numeric`), quitar todo vuelve a 0, el orden de agregado no cambia nada y nunca se pasa del stock.
 - glados re-exporta `package:test` y choca con `flutter_test`: importarlo con `show`. Para enteros usar `any.entero(min, max)` de `generadores.dart` (el `intInRange` de glados achica de a 1 y una falla tardaba más de 10 minutos en llegar a la mínima).
+
+### Vectores de prueba compartidos (paridad con Android e iOS)
+
+Los tests de cada port prueban sus reglas, pero nada garantizaba que dieran **lo mismo** ante la misma entrada. Los vectores son casos canónicos que recorren todos los ports con sus propias funciones.
+
+- **Fuente de verdad: `test/vectores/<tema>.json` de este repo.** Cada archivo tiene `descripcion` y `casos`: `{ "nombre", "entrada", "esperado" }`. Temas: `reposicion` (`ReglaReposicion.aplicar`), `redondeo` (centavos, suma sin ruido y lectura de lo tipeado de los carritos), `params_rpc` (`registrar_venta_telas`, `crear_venta_apliques`, `registrar_produccion`, `inventario_con_ventas`), `faltantes` (`mensajeFaltantes`, `ordenParaFabricante`, `cantidadLegible`, nombre y **texto** del PDF), `mappers` (fila de PostgREST → entidad), `colores` (`colorFromHex`, `normalizarHex`), `carritos` (secuencias de agregar/quitar en los tres carritos), `fechas` (`changeFormatDate`, día de la venta), `auth_errores` (traducción de los errores de login).
+- Flutter los recorre en `test/vectores/<tema>_vectores_test.dart` (un test por caso; corren con `flutter test`). `vectores.dart` carga el JSON y compara (`expectComoVector`: números por valor pero el cero con signo). Lo que en Flutter es privado se recorre por el camino real: el redondeo por el carrito de apliques, los parámetros de las RPC con los datasources de verdad sobre una **red de mentira** (`supabase_de_prueba.dart`: `Supabase.initialize` con un `http.Client` que anota el cuerpo de cada pedido), el PDF descomprimiendo sus streams y leyendo las palabras que dibuja.
+- **Diferencia a propósito** (la que la spec de otro port marca con `<!-- paridad: ... -->`, p. ej. el PDF de Android sin sanear a Latin-1 o `desde` sin segundos): va en el caso como `"difiere": { "android": { "esperado": ..., "paridad": "<spec>: ..." } }`; ese port compara contra su `esperado`. **Diferencia que no es a propósito**: el caso queda desactivado del lado que difiere (acá `probarVectores(..., paridad: {'<caso>': 'paridad: ...'})`, que lo omite con `skip`, más su `// bug:`; en Android `@Ignore("paridad: ...")`) hasta que se resuelva.
+- **Al cambiar una regla** que tiene vector: actualizar primero el caso en `test/vectores/*.json` de este repo (no en las copias), y después sincronizar las copias y correr los tests de los otros ports. Al agregar un caso, incluir bordes: vacíos, ceros, decimales, tildes y los límites de la regla.
+- **Sincronizar** (Android lee una copia en `app/src/test/resources/vectores/` de `ventas_app_android`):
+
+  ```bash
+  dart run tool/sincronizar_vectores.dart                       # copia a ../ventas_app_android (borra los .json que sobran)
+  dart run tool/sincronizar_vectores.dart <ruta_android>        # otro checkout o worktree
+  dart run tool/sincronizar_vectores.dart --verificar [<ruta>]  # no copia: sale con 1 si falta, sobra o difiere alguna copia
+  ```
+
+  Compara sin importar CRLF/LF (git los cambia en Windows). La CI de este repo no lo verifica (el repo de Android es otro y privado): correr `--verificar` antes de mergear un cambio de vectores.
+- **iOS** (`../ventas_app_ios`, Swift, no compila en Windows): todavía sin copia ni tests. Irían la copia en `VentasAppTests/Resources/vectores/*.json` (como recurso del target de tests) y los tests en `VentasAppTests/Vectores/<Tema>VectoresTests.swift` (Swift Testing, `@Test(arguments:)` sobre los casos, con `difiere.ios` para sus diferencias a propósito); `tool/sincronizar_vectores.dart` habría que extenderlo con ese destino.
+- **Diferencias de paridad abiertas** (2026-11-07), todas del lado de Android salvo la primera:
+  - Flutter: `colorFromHex("C0392B  ")` (8 caracteres con espacios) da transparente `00C0392B` porque `int.tryParse` ignora los espacios; la spec dice negro (Android da negro).
+  - Android: `cantidadLegible` con `String.format("%.2f")` redondea el decimal más corto (2.675 → "2.68", 1.005 → "1.01"; Flutter "2.67" y "1.00").
+  - Android: `VentaMapper` solo lee `LocalDateTime.parse`: las fechas del viejo PHP (`2025-03-14 10:20:30`), solo con el día o con zona quedan en "ahora"; `VentaApliqueMapper` pierde la hora del formato PHP y con zona toma la hora de pared en vez de UTC.
+  - Android: `p_fecha` sin fracción cuando es cero (`…T15:42:10`, Flutter `…T15:42:10.000`); la spec solo marca la medianoche.
+  - Android: `centavos()` devuelve `-0.0` para una pérdida menor a medio centavo; `aDecimalFinito` acepta `"1.5f"` y rechaza `" 3"` (Dart al revés).
+  - Android: `colorFromHex` acepta dígitos Unicode (`"ＦＦＦＦＦＦ"` → blanco); `normalizarHex` acepta la ligadura `ﬀ` y no saca el BOM.
 
 ### Mutación
 

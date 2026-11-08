@@ -90,6 +90,7 @@ El registro DEBE ofrecer en "Seleccione un Aplique" los apliques activos (orden 
 
 #### Scenario: Sin aplique
 <!-- test: test/features/apliques/presentation/screens/venta_apliques_screen_test.dart::líneas > Añadir sin aplique avisa y no agrega nada -->
+<!-- test: test/vectores/carritos_vectores_test.dart::apliques: los datos inválidos devuelven su mensaje y no cambian el carrito -->
 - **WHEN** se toca "Añadir" sin aplique
 - **THEN** se avisa "Seleccione un aplique" y el carrito no cambia
 
@@ -104,16 +105,19 @@ El registro DEBE ofrecer en "Seleccione un Aplique" los apliques activos (orden 
 
 #### Scenario: Supera el stock
 <!-- test: test/features/apliques/presentation/screens/venta_apliques_screen_test.dart::líneas > sobre-stock muestra "Stock insuficiente..." y no agrega la línea -->
+<!-- test: test/vectores/carritos_vectores_test.dart::apliques: el stock cuenta lo que ya está en el carrito a cualquier precio -->
 - **WHEN** se pide más que el stock disponible
 - **THEN** se avisa "Stock insuficiente. Disponible: N" y no se agrega
 
 #### Scenario: Cuenta lo del carrito
 <!-- test: test/features/apliques/presentation/screens/venta_apliques_screen_test.dart::líneas > el sobre-stock cuenta lo que ya está en la venta -->
+<!-- test: test/vectores/carritos_vectores_test.dart::apliques: el stock cuenta lo que ya está en el carrito a cualquier precio -->
 - **WHEN** el carrito ya tiene 8 de un color con stock 10 y se piden 3 más
 - **THEN** se rechaza
 
 #### Scenario: Decimales al límite
 <!-- test: test/features/apliques/presentation/bloc/venta_apliques_form_cubit_test.dart::bloqueo de sobre-stock > sumar cantidades con decimales no rechaza la última unidad -->
+<!-- test: test/vectores/carritos_vectores_test.dart::apliques: con stock 2,07 entran 1,07 + 1 (sin ruido) y nada más -->
 - **WHEN** con stock 2.07 se agregan 1.07 y luego 1
 - **THEN** se acepta (no se rechaza por ruido de coma flotante)
 
@@ -128,6 +132,7 @@ Si el carrito ya tiene una línea del mismo aplique, color y precio, "Añadir" D
 
 #### Scenario: Mismo precio
 <!-- test: test/features/apliques/presentation/bloc/venta_apliques_form_cubit_test.dart::addDetalle válido > merge por aplique+color+precio suma cantidad -->
+<!-- test: test/vectores/carritos_vectores_test.dart::apliques: otro color al mismo precio es otra línea; el mismo color y precio suma en su lugar -->
 - **WHEN** se agrega dos veces el mismo aplique y color al mismo precio
 - **THEN** queda una línea con la cantidad sumada
 
@@ -147,11 +152,13 @@ El total de una línea DEBE ser cantidad × precio redondeado a centavos con la 
 
 #### Scenario: Mitad del centavo
 <!-- test: test/features/apliques/presentation/bloc/venta_apliques_form_cubit_test.dart::addDetalle válido > la mitad del centavo redondea hacia arriba, como numeric -->
+<!-- test: test/vectores/redondeo_vectores_test.dart::línea: 1,5 × 0,15 = 0,23 (la mitad del centavo para arriba) -->
 - **WHEN** se agregan 1.5 unidades a 0.15 Bs
 - **THEN** el total de la línea es 0.23 Bs
 
 #### Scenario: Ganancia por costo
 <!-- test: test/features/apliques/presentation/bloc/venta_apliques_form_cubit_test.dart::addDetalle válido > agrega línea con nombre compuesto, total y ganancia por costo -->
+<!-- test: test/vectores/carritos_vectores_test.dart::apliques: se agrega con stock y la línea se llama aplique (color) -->
 - **WHEN** el aplique cuesta 10 de fabricar y se venden 2 a 25
 - **THEN** la línea tiene total 50 y ganancias 30
 

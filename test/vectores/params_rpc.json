@@ -1,0 +1,144 @@
+{
+  "tema": "params_rpc",
+  "descripcion": "Los parámetros (por nombre, como los llama PostgREST) de las RPC de escritura con carrito y de inventario_con_ventas. Esperado: el cuerpo JSON que sale hacia la base. \"<ahora>\" = la fecha y hora actual (crear_venta_apliques la arma con now()). Fechas de entrada en hora local, sin zona.",
+  "casos": [
+    {
+      "nombre": "registrar_venta_telas: una línea con clave de operación",
+      "entrada": {"rpc": "registrar_venta_telas", "idsucursal": 3, "fecha": "2026-11-07T15:42:10.123", "descuento": 0, "id_operacion": "9b2f6a8e-1c4d-4e0f-8a7b-3c5d2e1f0a9b", "detalles": [
+        {"idtelas": 5, "nombre": "Razo Suizo Licra", "cantidad": 1.5, "precio": 12.5, "total": 18.75, "ganancias": 3.75}
+      ]},
+      "esperado": {"p_idsucursales": 3, "p_fecha": "2026-11-07T15:42:10.123", "p_descuento": 0, "p_id_operacion": "9b2f6a8e-1c4d-4e0f-8a7b-3c5d2e1f0a9b", "p_detalles": [
+        {"idtelas": 5, "nombre": "Razo Suizo Licra", "precio": 12.5, "cantidad": 1.5, "total": 18.75, "ganancias": 3.75}
+      ]}
+    },
+    {
+      "nombre": "registrar_venta_telas: sin clave no manda p_id_operacion",
+      "entrada": {"rpc": "registrar_venta_telas", "idsucursal": 1, "fecha": "2026-11-07T09:05:01.5", "descuento": 2.5, "id_operacion": null, "detalles": [
+        {"idtelas": 2, "nombre": "Seda", "cantidad": 3, "precio": 10, "total": 30, "ganancias": 6}
+      ]},
+      "esperado": {"p_idsucursales": 1, "p_fecha": "2026-11-07T09:05:01.500", "p_descuento": 2.5, "p_detalles": [
+        {"idtelas": 2, "nombre": "Seda", "precio": 10, "cantidad": 3, "total": 30, "ganancias": 6}
+      ]}
+    },
+    {
+      "nombre": "registrar_venta_telas: varias líneas en el orden del carrito y solo con sus seis columnas",
+      "entrada": {"rpc": "registrar_venta_telas", "idsucursal": 3, "fecha": "2026-11-07T15:42:10.123", "descuento": 0, "id_operacion": "a", "detalles": [
+        {"idtelas": 9, "nombre": "Tela B", "cantidad": 0.75, "precio": 23.22, "total": 17.42, "ganancias": 0, "precxcompra": 0, "otra": "no viaja"},
+        {"idtelas": 5, "nombre": "Tela A", "cantidad": 2, "precio": 10, "total": 20, "ganancias": 4}
+      ]},
+      "esperado": {"p_idsucursales": 3, "p_fecha": "2026-11-07T15:42:10.123", "p_descuento": 0, "p_id_operacion": "a", "p_detalles": [
+        {"idtelas": 9, "nombre": "Tela B", "precio": 23.22, "cantidad": 0.75, "total": 17.42, "ganancias": 0},
+        {"idtelas": 5, "nombre": "Tela A", "precio": 10, "cantidad": 2, "total": 20, "ganancias": 4}
+      ]}
+    },
+    {
+      "nombre": "registrar_venta_telas: a una línea le falta total y ganancias: van en null",
+      "entrada": {"rpc": "registrar_venta_telas", "idsucursal": 3, "fecha": "2026-11-07T15:42:10.123", "descuento": 0, "id_operacion": null, "detalles": [
+        {"idtelas": 5, "nombre": "Tela A", "cantidad": 2, "precio": 10}
+      ]},
+      "esperado": {"p_idsucursales": 3, "p_fecha": "2026-11-07T15:42:10.123", "p_descuento": 0, "p_detalles": [
+        {"idtelas": 5, "nombre": "Tela A", "precio": 10, "cantidad": 2, "total": null, "ganancias": null}
+      ]}
+    },
+    {
+      "nombre": "registrar_venta_telas: nombre con tildes, ñ y comillas",
+      "entrada": {"rpc": "registrar_venta_telas", "idsucursal": 3, "fecha": "2026-11-07T15:42:10.123", "descuento": 0, "id_operacion": null, "detalles": [
+        {"idtelas": 5, "nombre": "Paño \"Señorial\" – algodón", "cantidad": 1, "precio": 1, "total": 1, "ganancias": 0}
+      ]},
+      "esperado": {"p_idsucursales": 3, "p_fecha": "2026-11-07T15:42:10.123", "p_descuento": 0, "p_detalles": [
+        {"idtelas": 5, "nombre": "Paño \"Señorial\" – algodón", "precio": 1, "cantidad": 1, "total": 1, "ganancias": 0}
+      ]}
+    },
+    {
+      "nombre": "registrar_venta_telas: fecha con microsegundos",
+      "entrada": {"rpc": "registrar_venta_telas", "idsucursal": 3, "fecha": "2026-11-07T15:42:10.123456", "descuento": 0, "id_operacion": null, "detalles": [
+        {"idtelas": 5, "nombre": "Tela", "cantidad": 1, "precio": 1, "total": 1, "ganancias": 0}
+      ]},
+      "esperado": {"p_idsucursales": 3, "p_fecha": "2026-11-07T15:42:10.123456", "p_descuento": 0, "p_detalles": [
+        {"idtelas": 5, "nombre": "Tela", "precio": 1, "cantidad": 1, "total": 1, "ganancias": 0}
+      ]}
+    },
+    {
+      "nombre": "registrar_venta_telas: fecha a medianoche (la que elige el calendario)",
+      "entrada": {"rpc": "registrar_venta_telas", "idsucursal": 3, "fecha": "2026-11-07T00:00:00", "descuento": 0, "id_operacion": null, "detalles": [
+        {"idtelas": 5, "nombre": "Tela", "cantidad": 1, "precio": 1, "total": 1, "ganancias": 0}
+      ]},
+      "esperado": {"p_idsucursales": 3, "p_fecha": "2026-11-07T00:00:00.000", "p_descuento": 0, "p_detalles": [
+        {"idtelas": 5, "nombre": "Tela", "precio": 1, "cantidad": 1, "total": 1, "ganancias": 0}
+      ]},
+      "difiere": {"android": {
+        "paridad": "openspec/specs/ventas-telas/spec.md: al aceptar la hora pasa a 00:00 (la fecha se envía como \"aaaa-mm-ddT00:00\"); openspec/project.md: las fechas se mandan sin segundos",
+        "esperado": {"p_idsucursales": 3, "p_fecha": "2026-11-07T00:00", "p_descuento": 0, "p_detalles": [
+          {"idtelas": 5, "nombre": "Tela", "precio": 1, "cantidad": 1, "total": 1, "ganancias": 0}
+        ]}
+      }}
+    },
+    {
+      "nombre": "registrar_venta_telas: fecha con segundos y sin fracción",
+      "entrada": {"rpc": "registrar_venta_telas", "idsucursal": 3, "fecha": "2026-11-07T15:42:10", "descuento": 0, "id_operacion": null, "detalles": [
+        {"idtelas": 5, "nombre": "Tela", "cantidad": 1, "precio": 1, "total": 1, "ganancias": 0}
+      ]},
+      "esperado": {"p_idsucursales": 3, "p_fecha": "2026-11-07T15:42:10.000", "p_descuento": 0, "p_detalles": [
+        {"idtelas": 5, "nombre": "Tela", "precio": 1, "cantidad": 1, "total": 1, "ganancias": 0}
+      ]}
+    },
+    {
+      "nombre": "crear_venta_apliques: con clave de operación y solo las siete columnas de cada línea",
+      "entrada": {"rpc": "crear_venta_apliques", "idsucursales": 2, "total": 85.5, "ganancias": 20, "descuento": 4.5, "id_operacion": "c1d2", "detalles": [
+        {"idapliques": 7, "idcolor": 3, "nombre": "Flor (Rojo)", "cantidad": 3, "precio": 30, "total": 90, "ganancias": 24, "otra": 1}
+      ]},
+      "esperado": {"p_idsucursales": 2, "p_fecha": "<ahora>", "p_total": 85.5, "p_ganancias": 20, "p_descuento": 4.5, "p_id_operacion": "c1d2", "p_detalles": [
+        {"idapliques": 7, "idcolor": 3, "nombre": "Flor (Rojo)", "precio": 30, "cantidad": 3, "total": 90, "ganancias": 24}
+      ]}
+    },
+    {
+      "nombre": "crear_venta_apliques: sin clave (como una app vieja) y varias líneas",
+      "entrada": {"rpc": "crear_venta_apliques", "idsucursales": 2, "total": 0.3, "ganancias": -0.1, "descuento": 0, "id_operacion": null, "detalles": [
+        {"idapliques": 7, "idcolor": 3, "nombre": "Flor (Rojo)", "cantidad": 0.5, "precio": 0.2, "total": 0.1, "ganancias": -0.05},
+        {"idapliques": 8, "idcolor": 1, "nombre": "Moño (Café)", "cantidad": 1, "precio": 0.2, "total": 0.2, "ganancias": -0.05}
+      ]},
+      "esperado": {"p_idsucursales": 2, "p_fecha": "<ahora>", "p_total": 0.3, "p_ganancias": -0.1, "p_descuento": 0, "p_detalles": [
+        {"idapliques": 7, "idcolor": 3, "nombre": "Flor (Rojo)", "precio": 0.2, "cantidad": 0.5, "total": 0.1, "ganancias": -0.05},
+        {"idapliques": 8, "idcolor": 1, "nombre": "Moño (Café)", "precio": 0.2, "cantidad": 1, "total": 0.2, "ganancias": -0.05}
+      ]}
+    },
+    {
+      "nombre": "registrar_produccion: la fecha es el día (DATE) y las líneas solo llevan aplique, color y cantidad",
+      "entrada": {"rpc": "registrar_produccion", "sucursal_id": 4, "fecha": "2026-01-05", "id_operacion": "e5f6", "lineas": [
+        {"idaplique": 7, "apliqueNombre": "Flor", "idcolor": 3, "colorNombre": "Rojo", "hex": "C0392B", "cantidad": 10}
+      ]},
+      "esperado": {"p_sucursal_id": 4, "p_fecha": "2026-01-05", "p_id_operacion": "e5f6", "p_lineas": [
+        {"idaplique": 7, "idcolor": 3, "cantidad": 10}
+      ]}
+    },
+    {
+      "nombre": "registrar_produccion: sin clave, cantidades con decimales y varias líneas",
+      "entrada": {"rpc": "registrar_produccion", "sucursal_id": 4, "fecha": "2026-12-31", "id_operacion": null, "lineas": [
+        {"idaplique": 7, "apliqueNombre": "Flor", "idcolor": 3, "colorNombre": "Rojo", "hex": "", "cantidad": 2.5},
+        {"idaplique": 8, "apliqueNombre": "Moño", "idcolor": 1, "colorNombre": "Café", "hex": "6F4E37", "cantidad": 1}
+      ]},
+      "esperado": {"p_sucursal_id": 4, "p_fecha": "2026-12-31", "p_lineas": [
+        {"idaplique": 7, "idcolor": 3, "cantidad": 2.5},
+        {"idaplique": 8, "idcolor": 1, "cantidad": 1}
+      ]}
+    },
+    {
+      "nombre": "inventario_con_ventas: días completos, hasta el último microsegundo",
+      "entrada": {"rpc": "inventario_con_ventas", "sucursal_id": 4, "desde": "2026-10-10", "hasta": "2026-11-07"},
+      "esperado": {"p_sucursal_id": 4, "desde": "2026-10-10T00:00:00.000", "hasta": "2026-11-07T23:59:59.999999"},
+      "difiere": {"android": {
+        "paridad": "openspec/specs/inventario/spec.md: desde se manda sin segundos (\"…T00:00\", no \"…T00:00:00.000\"); como se compara como texto, abarca lo mismo",
+        "esperado": {"p_sucursal_id": 4, "desde": "2026-10-10T00:00", "hasta": "2026-11-07T23:59:59.999999"}
+      }}
+    },
+    {
+      "nombre": "inventario_con_ventas: ventana que cruza el fin de año",
+      "entrada": {"rpc": "inventario_con_ventas", "sucursal_id": 1, "desde": "2025-12-04", "hasta": "2026-01-01"},
+      "esperado": {"p_sucursal_id": 1, "desde": "2025-12-04T00:00:00.000", "hasta": "2026-01-01T23:59:59.999999"},
+      "difiere": {"android": {
+        "paridad": "openspec/specs/inventario/spec.md: desde se manda sin segundos (\"…T00:00\", no \"…T00:00:00.000\"); como se compara como texto, abarca lo mismo",
+        "esperado": {"p_sucursal_id": 1, "desde": "2025-12-04T00:00", "hasta": "2026-01-01T23:59:59.999999"}
+      }}
+    }
+  ]
+}

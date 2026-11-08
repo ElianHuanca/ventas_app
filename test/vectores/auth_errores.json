@@ -1,0 +1,43 @@
+{
+  "tema": "auth_errores",
+  "descripcion": "Traducción del mensaje de error de Supabase Auth al iniciar sesión (Flutter: AuthRepositoryImpl.mensajeDeError; Android: mensajeDeErrorDeLogin(String)). Sin distinguir mayúsculas. Android además entiende los códigos de GoTrue (invalid_credentials, email_not_confirmed, over_request_rate_limit): diferencia a propósito de su spec de sesión.",
+  "casos": [
+    {"nombre": "credenciales inválidas", "entrada": {"mensaje": "Invalid login credentials"}, "esperado": "Email o contraseña incorrectos"},
+    {"nombre": "credenciales inválidas en mayúsculas", "entrada": {"mensaje": "INVALID LOGIN CREDENTIALS"}, "esperado": "Email o contraseña incorrectos"},
+    {"nombre": "credenciales inválidas dentro de un texto más largo", "entrada": {"mensaje": "AuthApiException: Invalid login credentials (400)"}, "esperado": "Email o contraseña incorrectos"},
+    {"nombre": "email sin confirmar", "entrada": {"mensaje": "Email not confirmed"}, "esperado": "El email de esta cuenta no está confirmado"},
+    {"nombre": "límite de pedidos", "entrada": {"mensaje": "Request rate limit reached"}, "esperado": "Demasiados intentos. Espera un momento."},
+    {"nombre": "demasiados pedidos", "entrada": {"mensaje": "Too many requests"}, "esperado": "Demasiados intentos. Espera un momento."},
+    {"nombre": "mensaje vacío", "entrada": {"mensaje": ""}, "esperado": "No se pudo iniciar sesión"},
+    {"nombre": "otro error", "entrada": {"mensaje": "Database error querying schema"}, "esperado": "No se pudo iniciar sesión"},
+    {"nombre": "un mensaje en español no se reconoce", "entrada": {"mensaje": "Credenciales inválidas"}, "esperado": "No se pudo iniciar sesión"},
+    {"nombre": "credenciales gana sobre límite si vienen los dos", "entrada": {"mensaje": "Invalid login credentials; rate limit"}, "esperado": "Email o contraseña incorrectos"},
+    {
+      "nombre": "código invalid_credentials",
+      "entrada": {"mensaje": "invalid_credentials"},
+      "esperado": "No se pudo iniciar sesión",
+      "difiere": {"android": {
+        "paridad": "openspec/specs/sesion/spec.md: además traduce los códigos de error de GoTrue (invalid_credentials, email_not_confirmed, over_request_rate_limit)",
+        "esperado": "Email o contraseña incorrectos"
+      }}
+    },
+    {
+      "nombre": "código email_not_confirmed",
+      "entrada": {"mensaje": "email_not_confirmed"},
+      "esperado": "No se pudo iniciar sesión",
+      "difiere": {"android": {
+        "paridad": "openspec/specs/sesion/spec.md: además traduce los códigos de error de GoTrue (invalid_credentials, email_not_confirmed, over_request_rate_limit)",
+        "esperado": "El email de esta cuenta no está confirmado"
+      }}
+    },
+    {
+      "nombre": "código over_request_rate_limit",
+      "entrada": {"mensaje": "over_request_rate_limit"},
+      "esperado": "No se pudo iniciar sesión",
+      "difiere": {"android": {
+        "paridad": "openspec/specs/sesion/spec.md: además traduce los códigos de error de GoTrue (invalid_credentials, email_not_confirmed, over_request_rate_limit)",
+        "esperado": "Demasiados intentos. Espera un momento."
+      }}
+    }
+  ]
+}
