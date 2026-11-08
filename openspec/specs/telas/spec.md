@@ -275,7 +275,7 @@ La pantalla de colores de una tela DEBE titularse con el nombre de la tela ("Col
 - **WHEN** no se pudo obtener el nombre de la tela
 - **THEN** el título es "Colores de la tela"
 
-<!-- revisar: telas_datasource_impl.dart:76 — los colores de una tela salen en el orden de la base (order('nombre')) sin el reordenamiento sin mayúsculas que sí hacen el listado de colores y los colores de un aplique. -->
+<!-- revisar: telas_datasource_impl.dart:76 — los colores de una tela salen por nombre de la Z a la A: `order('nombre')` sin `ascending: true` le pide `nombre.desc` a PostgREST (postgrest-dart ordena descendente por defecto), y no tienen el reordenamiento sin mayúsculas que sí hacen el listado de colores y los colores de un aplique. Android los muestra de la A a la Z sin distinguir mayúsculas. -->
 
 ---
 
