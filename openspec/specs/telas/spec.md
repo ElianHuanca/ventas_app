@@ -6,7 +6,7 @@ description: Catálogo de telas (listado, búsqueda por nombre, alta, modificaci
 
 > Extraído automáticamente por spec-miner. Última extracción: 2026-11-06.
 > Fuente: lib/features/telas/ (tela.dart, telas_datasource_impl.dart, tela_mapper.dart, telas_bloc.dart, tela_bloc.dart, tela_form_cubit.dart, tela_colores_cubit.dart, telas_screen.dart, tela_screen.dart, tela_colores_screen.dart), lib/features/shared/widgets/producto_colores_list.dart, lib/features/shared/ (carga_fallida.dart, show_snackbar.dart), lib/config/router/app_router.dart, supabase/migrations/20260925000000_prod_schema.sql, supabase/migrations/20261003000100_integridad_stock_y_ventas.sql, supabase/migrations/20261021000000_fotos_de_productos.sql
-> Last verified: 2026-11-06 (commit 1d15233)
+> Last verified: 2026-11-08 (change ordenar-colores-de-la-tela-a-z, sobre 4c0196b)
 
 ---
 
@@ -262,7 +262,7 @@ Un precio 0 DEBE aceptarse al guardar, en la app y en la base, y significa que l
 <!-- entities: ColorItem, colores, tela_colores -->
 <!-- enforced: TelasDatasourceImpl.getColoresTela(), TelaColoresCubit.load(), TelaColoresScreen.build(), ProductoColoresList.build() -->
 
-La pantalla de colores de una tela DEBE titularse con el nombre de la tela ("Colores de la tela" si no se conoce) y listar bajo "Colores" todos los colores activos, cada uno con su muestra redonda, su nombre y un interruptor encendido si existe un vínculo con `activo = true` en `tela_colores` para esa tela. Los colores dados de baja NO DEBEN aparecer. Mientras carga muestra un indicador de progreso; si la carga falla la lista queda vacía, sin aviso.
+La pantalla de colores de una tela DEBE titularse con el nombre de la tela ("Colores de la tela" si no se conoce) y listar bajo "Colores" todos los colores activos, ordenados por nombre de la A a la Z sin distinguir mayúsculas, cada uno con su muestra redonda, su nombre y un interruptor encendido si existe un vínculo con `activo = true` en `tela_colores` para esa tela. Los colores dados de baja NO DEBEN aparecer. Mientras carga muestra un indicador de progreso; si la carga falla la lista queda vacía, sin aviso.
 
 #### Scenario: Colores de la tela
 <!-- test: test/features/telas/presentation/screens/tela_colores_screen_test.dart::el título es el nombre de la tela y hay un switch por color -->
@@ -270,12 +270,16 @@ La pantalla de colores de una tela DEBE titularse con el nombre de la tela ("Col
 - **WHEN** se abren los colores de una tela
 - **THEN** el título es el nombre de la tela y hay un interruptor por color activo, encendido en los vinculados
 
+#### Scenario: Orden de los colores
+<!-- test: test/features/telas/infrastructure/datasources/telas_datasource_impl_test.dart::colores de la tela > getColoresTela los trae por nombre, de la A a la Z sin distinguir mayúsculas -->
+<!-- test: test/features/telas/infrastructure/datasources/telas_datasource_impl_test.dart::colores de la tela > la pantalla muestra los interruptores en ese orden -->
+- **WHEN** se abren los colores de una tela y los colores activos son "Rojo", "azul" y "Verde"
+- **THEN** se listan "azul", "Rojo" y "Verde": por nombre de la A a la Z, sin distinguir mayúsculas
+
 #### Scenario: Nombre desconocido
 <!-- test: test/features/telas/presentation/screens/tela_colores_screen_test.dart::sin nombre de tela usa el título genérico -->
 - **WHEN** no se pudo obtener el nombre de la tela
 - **THEN** el título es "Colores de la tela"
-
-<!-- revisar: telas_datasource_impl.dart:76 — los colores de una tela salen por nombre de la Z a la A: `order('nombre')` sin `ascending: true` le pide `nombre.desc` a PostgREST (postgrest-dart ordena descendente por defecto), y no tienen el reordenamiento sin mayúsculas que sí hacen el listado de colores y los colores de un aplique. Android los muestra de la A a la Z sin distinguir mayúsculas. -->
 
 ---
 

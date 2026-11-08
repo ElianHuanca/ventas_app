@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:textiles_app/features/telas/domain/domain.dart';
 import 'package:textiles_app/features/telas/infrastructure/infrastructure.dart';
 import 'package:textiles_app/features/telas/presentation/bloc/bloc.dart';
+import 'package:textiles_app/features/telas/presentation/screens/screens.dart';
 import 'package:textiles_app/features/ventas/presentation/bloc/bloc.dart';
 import 'package:textiles_app/features/ventas/presentation/screens/screens.dart';
 
@@ -15,6 +16,8 @@ import '../../../../helpers/fake_repositories.dart';
 // prueba con el TelasDatasourceImpl real contra la BaseFalsa, que resuelve el
 // embed `tela_sucursales!inner(*)` y sus filtros como PostgREST. Contra la
 // base de verdad lo fija la integración (integration_test/flujos/sucursales.dart).
+// El orden de los colores de una tela también lo decide el datasource: se
+// prueba igual, de la pantalla a la BaseFalsa.
 void main() {
   final base = usarBaseFalsa();
 
@@ -129,5 +132,71 @@ void main() {
         tester.widget<DropdownMenu<Tela>>(find.byType(DropdownMenu<Tela>));
     expect(selector.dropdownMenuEntries, isEmpty);
     expect(telasBloc.state.telas, isEmpty);
+  });
+
+  // Spec telas, "Ver los colores de una tela": por nombre de la A a la Z sin
+  // distinguir mayúsculas, como en Android. El datasource pide
+  // `ascending: true` (postgrest-dart ordena descendente si no) y reordena en
+  // minúsculas: la BaseFalsa ordena distinguiendo mayúsculas ("Rojo" antes
+  // que "azul").
+  group('colores de la tela', () {
+    // Desordenados a propósito y con un nombre en minúscula; Negro está dado
+    // de baja (no se lista).
+    setUp(() => base
+      ..tabla('telas', [tela(7, 'Lino')])
+      ..tabla('colores', [
+        {'id': 1, 'nombre': 'Rojo', 'hex': 'FF0000', 'activo': true},
+        {'id': 2, 'nombre': 'azul', 'hex': '0000FF', 'activo': true},
+        {'id': 3, 'nombre': 'Negro', 'hex': '000000', 'activo': false},
+        {'id': 4, 'nombre': 'Verde', 'hex': '00FF00', 'activo': true},
+      ])
+      ..tabla('tela_colores', [
+        {'idtela': 7, 'idcolor': 1, 'activo': true},
+        {'idtela': 7, 'idcolor': 4, 'activo': false},
+        {'idtela': 8, 'idcolor': 2, 'activo': true},
+      ])
+      ..relacion('colores', 'tela_colores',
+          columna: 'id', referencia: 'idcolor'));
+
+    test(
+        'getColoresTela los trae por nombre, de la A a la Z sin distinguir '
+        'mayúsculas', () async {
+      final colores = await TelasDatasourceImpl().getColoresTela(7);
+
+      expect([for (final c in colores) (c.nombre, c.vinculado)], [
+        ('azul', false),
+        ('Rojo', true),
+        ('Verde', false),
+      ]);
+    });
+
+    testWidgets('la pantalla muestra los interruptores en ese orden',
+        (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      // Como en app_router (/tela-colores/:idtela)
+      final cubit = TelaColoresCubit(
+        telasRepository: TelasRepositoryImpl(TelasDatasourceImpl()),
+        idtela: 7,
+      );
+      addTearDown(cubit.close);
+      await tester.pumpWidget(MaterialApp(
+        home: BlocProvider.value(
+          value: cubit,
+          child: const TelaColoresScreen(idtela: 7),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Lino'), findsOneWidget);
+      expect(
+          [
+            for (final s in tester
+                .widgetList<SwitchListTile>(find.byType(SwitchListTile)))
+              ((s.title! as Text).data, s.value),
+          ],
+          [('azul', false), ('Rojo', true), ('Verde', false)]);
+    });
   });
 }
