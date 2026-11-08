@@ -314,6 +314,8 @@ El selector de telas del registro de venta de una sucursal DEBE ofrecer solo las
 - **THEN** esa tela deja de ofrecerse y las otras siguen
 
 #### Scenario: Vínculos activos solo con telas dadas de baja
+<!-- test: test/features/telas/infrastructure/datasources/telas_datasource_impl_test.dart::getTelasPorSucursal > con vínculos activos solo a telas dadas de baja no ofrece ninguna (no aplica la regla de transición) -->
+<!-- test: test/features/telas/infrastructure/datasources/telas_datasource_impl_test.dart::el selector de telas del registro de venta queda vacío si las habilitadas están todas dadas de baja -->
 - **WHEN** la sucursal tiene vínculos activos pero todas esas telas tienen `activo = false`
 - **THEN** el selector queda vacío (no se aplica la regla de transición)
 

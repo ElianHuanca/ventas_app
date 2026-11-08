@@ -175,6 +175,8 @@ Si el ingreso falla, la app DEBE quedarse en la pantalla de ingreso sin sesión,
 - **THEN** se muestra "No se pudo iniciar sesión"
 
 #### Scenario: Sin conexión
+<!-- test: test/features/auth/infrastructure/repositories/auth_repository_impl_test.dart::sin red el cliente de Auth lo informa como error de autenticación y se traduce a "No se pudo iniciar sesión" -->
+<!-- test: test/features/auth/infrastructure/repositories/auth_repository_impl_test.dart::sin red la pantalla de ingreso muestra "No se pudo iniciar sesión" y deja reintentar -->
 - **WHEN** el pedido de autenticación no llega al servidor (sin red)
 - **THEN** el cliente de Auth lo informa como error de autenticación y se muestra "No se pudo iniciar sesión"
 

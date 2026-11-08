@@ -141,6 +141,60 @@ void main() {
     });
   });
 
+  group('color no encontrado', () {
+    String textoDe(WidgetTester tester, String label) => tester
+        .widget<EditableText>(find.descendant(
+            of: campo(label), matching: find.byType(EditableText)))
+        .controller
+        .text;
+
+    Future<void> guardarTurquesa(WidgetTester tester) async {
+      await tester.enterText(campo('Nombre'), 'Turquesa');
+      await tester.enterText(campo('Hex (ej: C0392B)'), '40E0D0');
+      await tester.pump();
+      await tester.tap(find.text('Guardar'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets(
+        'un id que no está entre los activos muestra "Crear Color" vacío y '
+        '"Guardar" crea uno nuevo', (tester) async {
+      // El 8 no existe o está dado de baja: el bloc solo trae los activos
+      await montar(tester, 8);
+
+      expect(find.text('Crear Color'), findsOneWidget);
+      expect(find.text('Editar Color'), findsNothing);
+      expect(find.text('Eliminar'), findsNothing);
+      expect(textoDe(tester, 'Nombre'), isEmpty);
+      expect(textoDe(tester, 'Hex (ej: C0392B)'), isEmpty);
+
+      await guardarTurquesa(tester);
+
+      expect(repo.creado, {'id': 0, 'nombre': 'Turquesa', 'hex': '40E0D0'});
+      expect(repo.actualizado, isNull);
+    });
+
+    testWidgets(
+        'si la consulta falla también muestra "Crear Color" vacío y "Guardar" '
+        'crea uno nuevo', (tester) async {
+      // El 5 existe, pero la carga de colores falla
+      repo.error = Exception('sin conexión');
+      await montar(tester, 5);
+
+      expect(find.text('Crear Color'), findsOneWidget);
+      expect(find.text('Eliminar'), findsNothing);
+      expect(textoDe(tester, 'Nombre'), isEmpty);
+      expect(textoDe(tester, 'Hex (ej: C0392B)'), isEmpty);
+
+      repo.error = null;
+      await guardarTurquesa(tester);
+
+      // Se crea otro color en vez de editar el 5 (ver el revisar de la spec)
+      expect(repo.creado, {'id': 0, 'nombre': 'Turquesa', 'hex': '40E0D0'});
+      expect(repo.actualizado, isNull);
+    });
+  });
+
   group('dar de baja', () {
     testWidgets('"Eliminar" llama a deleteColor con el id y vuelve a la lista',
         (tester) async {
