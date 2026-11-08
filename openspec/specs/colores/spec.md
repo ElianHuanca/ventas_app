@@ -5,7 +5,7 @@ description: Gestión de colores (listado de activos, alta, modificación y baja
 # Spec: colores
 
 > Extraído automáticamente por spec-miner. Última extracción: 2026-11-06.
-> Fuente: lib/features/colores/ (colores_datasource.dart, colores_datasource_impl.dart, colores_bloc.dart, color_form_cubit.dart, colores_screen.dart, color_screen.dart), lib/features/apliques/domain/entities/color_item.dart, lib/features/shared/widgets/ (muestra_color.dart, color_from_hex.dart, my_text_form.dart, show_snackbar.dart), lib/features/telas/infrastructure/datasources/telas_datasource_impl.dart (getColoresTela), lib/features/apliques/infrastructure/datasources/apliques_datasource_impl.dart (getColores, getColoresAplique), lib/config/router/app_router.dart, supabase/migrations/20260925000000_prod_schema.sql, supabase/migrations/20261003000100_integridad_stock_y_ventas.sql, supabase/migrations/20261021000000_fotos_de_productos.sql
+> Fuente: lib/features/colores/ (colores_datasource.dart, colores_datasource_impl.dart, colores_bloc.dart, color_form_cubit.dart, colores_screen.dart, color_screen.dart), lib/features/apliques/domain/entities/color_item.dart, lib/features/shared/widgets/ (muestra_color.dart, color_from_hex.dart, my_text_form.dart, show_snackbar.dart), lib/features/telas/infrastructure/datasources/telas_datasource_impl.dart (getColoresTela), lib/features/apliques/infrastructure/datasources/apliques_datasource_impl.dart (getColoresAplique), lib/config/router/app_router.dart, supabase/migrations/20260925000000_prod_schema.sql, supabase/migrations/20261003000100_integridad_stock_y_ventas.sql, supabase/migrations/20261021000000_fotos_de_productos.sql
 > Last verified: 2026-11-06 (commit 1d15233)
 
 ---
@@ -232,7 +232,7 @@ Ningún usuario de la app DEBE poder borrar filas de `colores`: la baja es siemp
 
 ### Invariant: Solo los colores activos se ofrecen para vincular y se publican
 <!-- entities: colores, tela_colores, aplique_colores -->
-<!-- enforced: TelasDatasourceImpl.getColoresTela(), ApliquesDatasourceImpl.getColores(), ApliquesDatasourceImpl.getColoresAplique(), 20261021000000_fotos_de_productos.sql:catalogo_telas_web, 20261021000000_fotos_de_productos.sql:catalogo_apliques_web -->
+<!-- enforced: TelasDatasourceImpl.getColoresTela(), ApliquesDatasourceImpl.getColoresAplique(), 20261021000000_fotos_de_productos.sql:catalogo_telas_web, 20261021000000_fotos_de_productos.sql:catalogo_apliques_web -->
 <!-- verified_by: supabase/tests/database/07_vistas_web.test.sql::catalogo_telas_web: también telas sin precio, precio 0 → NULL, solo colores activos con vínculo activo (orden sin mayúsculas), fotos activas por id y foto = la primera -->
 
 Un color con `activo = false` NO DEBE aparecer en las listas para vincular colores a telas o a apliques ni en los colores que publican los catálogos web, aunque conserve vínculos activos.

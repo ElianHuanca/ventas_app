@@ -52,11 +52,9 @@ void main() {
       ]);
     });
 
-    test('getColores y getColoresAplique', () async {
-      expect(await repo.getColores(), same(ds.colores));
+    test('getColoresAplique es del aplique pedido', () async {
       expect(await repo.getColoresAplique(4), same(ds.colores));
       expect(ds.llamadas, [
-        ['getColores'],
         ['getColoresAplique', 4],
       ]);
     });
@@ -120,7 +118,6 @@ void main() {
       'createAplique': () => repo.createAplique({}),
       'updateAplique': () => repo.updateAplique({}, 1),
       'getStock': () => repo.getStock(1),
-      'getColores': () => repo.getColores(),
       'getColoresAplique': () => repo.getColoresAplique(1),
       'setColorAplique': () => repo.setColorAplique(1, 1, true),
       'addInventario': () => repo.addInventario(1, 1, 1),

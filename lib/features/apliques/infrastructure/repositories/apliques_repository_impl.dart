@@ -26,11 +26,6 @@ class ApliquesRepositoryImpl extends ApliquesRepository {
   }
 
   @override
-  Future<List<ColorItem>> getColores() {
-    return datasource.getColores();
-  }
-
-  @override
   Future<List<ColorItem>> getColoresAplique(int idaplique) {
     return datasource.getColoresAplique(idaplique);
   }
