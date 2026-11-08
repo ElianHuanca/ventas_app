@@ -20,6 +20,8 @@ La app DEBE mostrar solo las sucursales con `activo = true`, ordenadas por id as
 #### Scenario: Hay sucursales activas
 <!-- test: test/features/sucursales/presentation/screens/sucursales_screen_test.dart::muestra una tarjeta por sucursal con el nombre en mayúsculas -->
 <!-- test: test/features/sucursales/presentation/bloc/sucursales_bloc_test.dart::carga inicial trae las sucursales -->
+<!-- test: test/features/sucursales/infrastructure/datasources/sucursales_datasource_impl_test.dart::getSucursales las trae ordenadas por id ascendente (spec sucursales: "Listar las sucursales activas") -->
+<!-- test: test/features/sucursales/infrastructure/datasources/sucursales_datasource_impl_test.dart::inicio (venta de telas): las tarjetas van por id, de la sucursal más vieja a la más nueva -->
 - **WHEN** se abre el listado y la base tiene sucursales activas
 - **THEN** se ve una tarjeta por sucursal, en orden de id, con el nombre en mayúsculas
 
@@ -246,6 +248,8 @@ La pantalla "Disponibilidad de telas" DEBE mostrar la ayuda "Activá qué telas 
 <!-- test: test/features/sucursales/presentation/bloc/sucursal_disponibilidad_cubit_test.dart::carga las telas con su disponibilidad en la sucursal -->
 <!-- test: test/features/sucursales/infrastructure/mappers/sucursales_mappers_test.dart::disponible true cuando hay un vínculo activo -->
 <!-- test: test/features/sucursales/infrastructure/mappers/sucursales_mappers_test.dart::un vínculo con activo null no cuenta como disponible -->
+<!-- test: test/features/sucursales/infrastructure/datasources/sucursales_datasource_impl_test.dart::disponibilidad de telas > getTelasSucursal las trae por nombre, de la A a la Z -->
+<!-- test: test/features/sucursales/infrastructure/datasources/sucursales_datasource_impl_test.dart::disponibilidad de telas > la pantalla muestra los interruptores en ese orden -->
 - **WHEN** se abre la disponibilidad de una sucursal
 - **THEN** cada tela aparece con su interruptor encendido si tiene vínculo activo con la sucursal y apagado si no
 
