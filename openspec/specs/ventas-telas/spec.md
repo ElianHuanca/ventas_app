@@ -28,6 +28,8 @@ La pantalla de inicio (entrada "Venta telas" del menú lateral) DEBE mostrar una
 - **THEN** no aparece la tarjeta "Agregar Sucursal"
 
 #### Scenario: Sucursal dada de baja
+<!-- test: test/features/sucursales/infrastructure/datasources/sucursales_datasource_impl_test.dart::inicio (venta de telas): una sucursal dada de baja no aparece entre las tarjetas -->
+<!-- test: test/features/sucursales/infrastructure/datasources/sucursales_datasource_impl_test.dart::getSucursales no trae las dadas de baja -->
 - **WHEN** una sucursal tiene `activo = false`
 - **THEN** no aparece entre las tarjetas
 

@@ -84,6 +84,8 @@ El formulario de alta se titula "Crear Color", tiene "Nombre", "Hex (ej: C0392B)
 - **THEN** queda en la base el color activo "Coral" con código "FF7F50", se ve "Realizado correctamente" y se vuelve
 
 #### Scenario: Nombre repetido
+<!-- test: test/features/colores/infrastructure/datasources/colores_datasource_impl_test.dart::nombre repetido > dado de baja: la base rechaza el alta, se ve "Hubo un error" y el formulario sigue abierto -->
+<!-- test: test/features/colores/infrastructure/datasources/colores_datasource_impl_test.dart::nombre repetido > activo: la base rechaza el alta y se ve "Hubo un error" -->
 - **WHEN** ya existe un color, activo o dado de baja, con el mismo nombre
 - **THEN** la base rechaza el alta y se ve "Hubo un error"
 
@@ -194,6 +196,8 @@ El formulario de un color existente se titula "Editar Color", precarga nombre y 
 El formulario de edición DEBE buscar el color pedido entre los colores activos recién consultados; mientras consulta muestra un indicador de progreso. Si el color no está (id inexistente, color dado de baja o consulta fallida), DEBE mostrar el formulario de alta vacío ("Crear Color"). Cuando el color aparece, el formulario se recarga con sus datos para que editar no cree un duplicado.
 
 #### Scenario: Color no encontrado
+<!-- test: test/features/colores/presentation/screens/color_screen_test.dart::color no encontrado > un id que no está entre los activos muestra "Crear Color" vacío y "Guardar" crea uno nuevo -->
+<!-- test: test/features/colores/presentation/screens/color_screen_test.dart::color no encontrado > si la consulta falla también muestra "Crear Color" vacío y "Guardar" crea uno nuevo -->
 - **WHEN** se abre la edición de un color que no está entre los activos o la consulta falla
 - **THEN** se ve "Crear Color" vacío y "Guardar" crearía un color nuevo
 
