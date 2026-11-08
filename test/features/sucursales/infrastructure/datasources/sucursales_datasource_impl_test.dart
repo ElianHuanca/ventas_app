@@ -28,6 +28,16 @@ void main() {
         unorderedEquals(['Centro', 'Ramada']));
   });
 
+  test(
+      'getSucursales las trae ordenadas por id ascendente (spec sucursales: '
+      '"Listar las sucursales activas")',
+      // bug: lib/features/sucursales/infrastructure/datasources/sucursales_datasource_impl.dart:14 — `.order('id')` sin `ascending: true` le pide `id.desc` a PostgREST (postgrest-dart ordena descendente por defecto) y nadie reordena: las tarjetas de inicio, gestión, Venta Apliques, Fabricación e Inventario salen de la sucursal más nueva a la más vieja
+      skip: true, () async {
+    final sucursales = await SucursalesDatasourceImpl().getSucursales();
+
+    expect([for (final s in sucursales) s.id], [1, 3]);
+  });
+
   testWidgets(
       'inicio (venta de telas): una sucursal dada de baja no aparece entre '
       'las tarjetas', (tester) async {
