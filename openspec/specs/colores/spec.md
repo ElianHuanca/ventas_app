@@ -86,6 +86,7 @@ El formulario de alta se titula "Crear Color", tiene "Nombre", "Hex (ej: C0392B)
 - **THEN** queda en la base el color activo "Coral" con código "FF7F50", se ve "Realizado correctamente" y se vuelve
 
 #### Scenario: Nombre repetido
+<!-- test: supabase/tests/database/05_restricciones.test.sql::colores: el nombre de un color dado de baja tampoco se repite -->
 <!-- test: test/features/colores/infrastructure/datasources/colores_datasource_impl_test.dart::nombre repetido > dado de baja: la base rechaza el alta, se ve "Hubo un error" y el formulario sigue abierto -->
 <!-- test: test/features/colores/infrastructure/datasources/colores_datasource_impl_test.dart::nombre repetido > activo: la base rechaza el alta y se ve "Hubo un error" -->
 - **WHEN** ya existe un color, activo o dado de baja, con el mismo nombre
