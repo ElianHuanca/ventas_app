@@ -273,7 +273,7 @@ flutter pub get          # instalar dependencias
 flutter run              # correr en debug
 flutter build apk        # build Android APK
 flutter analyze          # lints estrictos (ver "Lints"): tiene que quedar limpio
-flutter test             # 1220 unitarios/de widget (204 de vectores compartidos) + 247 capturas golden; 2 omitidos (bug: orden de sucursales; paridad: hex con espacios)
+flutter test             # 1223 unitarios/de widget (204 de vectores compartidos) + 247 capturas golden; 1 omitido (paridad: hex con espacios)
 dart run tool/sincronizar_vectores.dart --verificar ../ventas_app_android   # copias de los vectores en Android al día
 flutter test --exclude-tags golden          # sin las capturas (p. ej. fuera de Windows)
 flutter test test/goldens --update-goldens  # regenerar capturas tras un cambio visual buscado
