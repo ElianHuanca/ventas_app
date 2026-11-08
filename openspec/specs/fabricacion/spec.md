@@ -97,11 +97,13 @@ El registro DEBE proponer el día de hoy, mostrarlo como dd/mm/aaaa y permitir e
 
 #### Scenario: Mismo aplique y color
 <!-- test: test/features/apliques/presentation/bloc/produccion_form_cubit_test.dart::addDetalleProduccion > mismo aplique+color suma la cantidad en vez de duplicar -->
+<!-- test: test/vectores/carritos_vectores_test.dart::fabricación: el mismo aplique y color suma sin ruido (1,03 + 1 + 1,23 = 3,26); lo nuevo va primero -->
 - **WHEN** se agrega dos veces el mismo aplique+color
 - **THEN** queda una línea con la cantidad sumada
 
 #### Scenario: Sin selección
 <!-- test: test/features/apliques/presentation/screens/produccion_screen_test.dart::Añadir sin selección muestra error y no agrega línea -->
+<!-- test: test/vectores/carritos_vectores_test.dart::fabricación: sin aplique, sin color o con una cantidad que no es mayor a 0 no agrega -->
 - **WHEN** se toca "Añadir" sin aplique
 - **THEN** se avisa "Seleccione un aplique" y no se agrega nada
 

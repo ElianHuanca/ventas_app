@@ -38,6 +38,8 @@ La pantalla "Colores" (con menú lateral) DEBE listar solo los colores con `acti
 #### Scenario: Código guardado inválido
 <!-- test: test/features/shared/utils_test.dart::valor inválido devuelve negro opaco -->
 <!-- test: test/features/shared/utils_test.dart::hex de largo inválido cae al negro por defecto -->
+<!-- test: test/vectores/colores_vectores_test.dart::colorFromHex: vacío es negro -->
+<!-- test: test/vectores/colores_vectores_test.dart::colorFromHex: letras que no son hex es negro -->
 - **WHEN** un color tiene en la base un código vacío o que no es hexadecimal de 6 u 8 dígitos
 - **THEN** su muestra se dibuja negra
 
@@ -105,6 +107,7 @@ El código DEBE aceptarse con o sin "#" y con espacios alrededor, y DEBE tener e
 
 #### Scenario: Código válido con "#" y minúsculas
 <!-- test: test/features/colores/colores_test.dart::acepta 6 dígitos con o sin # y normaliza a mayúsculas sin # -->
+<!-- test: test/vectores/colores_vectores_test.dart::normalizarHex: saca el # y los espacios alrededor -->
 - **WHEN** el código escrito es "#c0392b"
 - **THEN** se guarda "C0392B"
 
