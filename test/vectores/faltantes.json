@@ -1,0 +1,200 @@
+{
+  "tema": "faltantes",
+  "descripcion": "Lo que se le manda al fabricante. tipo \"faltantes\": mensajeFaltantes (el texto de \"Copiar lista\", en el orden recibido), ordenParaFabricante (aplique/color) y el contenido de texto del PDF (no el dibujo): sucursal, día, filas de la tabla en el orden para el fabricante (el aplique solo en la primera fila de su grupo), resumen, total y nombre del archivo. tipo \"cantidad_legible\": cómo se escribe lo que queda (entero sin decimales, si no con 2).",
+  "casos": [
+    {
+      "nombre": "dos apliques con varios colores: el mensaje respeta el orden recibido y el PDF agrupa por aplique",
+      "entrada": {"tipo": "faltantes", "sucursal": "Ramada", "fecha": "2026-10-05", "faltantes": [
+        {"aplique": "Mariposa", "color": "Verde", "hex": "#27AE60", "stock": 1, "hacer": 4},
+        {"aplique": "Flor Grande", "color": "Rojo", "hex": "#C0392B", "stock": 0, "hacer": 10},
+        {"aplique": "Mariposa", "color": "Rosa", "hex": "FF69B4", "stock": 2.5, "hacer": 12},
+        {"aplique": "Flor Grande", "color": "Azul", "hex": "#2980B9", "stock": 3, "hacer": 43}
+      ]},
+      "esperado": {
+        "mensaje": "*Huantex – Faltantes Ramada* (05/10/2026)\n\n• Mariposa – Verde: hacer *4* (quedan 1)\n• Flor Grande – Rojo: hacer *10* (quedan 0)\n• Mariposa – Rosa: hacer *12* (quedan 2.50)\n• Flor Grande – Azul: hacer *43* (quedan 3)\n\nTotal a hacer: 69",
+        "orden_fabricante": ["Flor Grande/Azul", "Flor Grande/Rojo", "Mariposa/Rosa", "Mariposa/Verde"],
+        "pdf": {
+          "nombre_archivo": "faltantes_ramada_2026-10-05.pdf",
+          "sucursal": "Ramada",
+          "dia": "05/10/2026",
+          "filas": [
+            {"aplique": "Flor Grande", "color": "Azul", "quedan": "3", "hacer": "43"},
+            {"aplique": "", "color": "Rojo", "quedan": "0", "hacer": "10"},
+            {"aplique": "Mariposa", "color": "Rosa", "quedan": "2.50", "hacer": "12"},
+            {"aplique": "", "color": "Verde", "quedan": "1", "hacer": "4"}
+          ],
+          "resumen": "2 apliques, 4 colores",
+          "total_texto": "Total a hacer: 69"
+        }
+      }
+    },
+    {
+      "nombre": "un solo aplique y un solo color: el resumen va en singular",
+      "entrada": {"tipo": "faltantes", "sucursal": "Shopping Miami", "fecha": "2026-01-09", "faltantes": [
+        {"aplique": "Flor", "color": "Rojo", "hex": "#C0392B", "stock": 0, "hacer": 5}
+      ]},
+      "esperado": {
+        "mensaje": "*Huantex – Faltantes Shopping Miami* (09/01/2026)\n\n• Flor – Rojo: hacer *5* (quedan 0)\n\nTotal a hacer: 5",
+        "orden_fabricante": ["Flor/Rojo"],
+        "pdf": {
+          "nombre_archivo": "faltantes_shopping_miami_2026-01-09.pdf",
+          "sucursal": "Shopping Miami",
+          "dia": "09/01/2026",
+          "filas": [
+            {"aplique": "Flor", "color": "Rojo", "quedan": "0", "hacer": "5"}
+          ],
+          "resumen": "1 aplique, 1 color",
+          "total_texto": "Total a hacer: 5"
+        }
+      }
+    },
+    {
+      "nombre": "sin faltantes: total 0 y tabla vacía",
+      "entrada": {"tipo": "faltantes", "sucursal": "Centro", "fecha": "2026-12-31", "faltantes": []},
+      "esperado": {
+        "mensaje": "*Huantex – Faltantes Centro* (31/12/2026)\n\n\nTotal a hacer: 0",
+        "orden_fabricante": [],
+        "pdf": {
+          "nombre_archivo": "faltantes_centro_2026-12-31.pdf",
+          "sucursal": "Centro",
+          "dia": "31/12/2026",
+          "filas": [],
+          "resumen": "0 apliques, 0 colores",
+          "total_texto": "Total a hacer: 0"
+        }
+      }
+    },
+    {
+      "nombre": "el orden ignora mayúsculas y a igual cantidad va por color, pero los grupos del PDF distinguen mayúsculas",
+      "entrada": {"tipo": "faltantes", "sucursal": "Ramada", "fecha": "2026-10-05", "faltantes": [
+        {"aplique": "mariposa", "color": "verde", "hex": "", "stock": 0, "hacer": 5},
+        {"aplique": "Flor", "color": "Rojo", "hex": "", "stock": 0, "hacer": 5},
+        {"aplique": "Mariposa", "color": "azul", "hex": "zzz", "stock": 0, "hacer": 5}
+      ]},
+      "esperado": {
+        "mensaje": "*Huantex – Faltantes Ramada* (05/10/2026)\n\n• mariposa – verde: hacer *5* (quedan 0)\n• Flor – Rojo: hacer *5* (quedan 0)\n• Mariposa – azul: hacer *5* (quedan 0)\n\nTotal a hacer: 15",
+        "orden_fabricante": ["Flor/Rojo", "Mariposa/azul", "mariposa/verde"],
+        "pdf": {
+          "nombre_archivo": "faltantes_ramada_2026-10-05.pdf",
+          "sucursal": "Ramada",
+          "dia": "05/10/2026",
+          "filas": [
+            {"aplique": "Flor", "color": "Rojo", "quedan": "0", "hacer": "5"},
+            {"aplique": "Mariposa", "color": "azul", "quedan": "0", "hacer": "5"},
+            {"aplique": "mariposa", "color": "verde", "quedan": "0", "hacer": "5"}
+          ],
+          "resumen": "3 apliques, 3 colores",
+          "total_texto": "Total a hacer: 15"
+        }
+      }
+    },
+    {
+      "nombre": "tildes y ñ: quedan en el texto y el nombre del archivo solo lleva letras y números ASCII",
+      "entrada": {"tipo": "faltantes", "sucursal": "Ñandú Centro", "fecha": "2026-03-07", "faltantes": [
+        {"aplique": "Moño", "color": "Café", "hex": "#6F4E37", "stock": 12, "hacer": 20}
+      ]},
+      "esperado": {
+        "mensaje": "*Huantex – Faltantes Ñandú Centro* (07/03/2026)\n\n• Moño – Café: hacer *20* (quedan 12)\n\nTotal a hacer: 20",
+        "orden_fabricante": ["Moño/Café"],
+        "pdf": {
+          "nombre_archivo": "faltantes_and_centro_2026-03-07.pdf",
+          "sucursal": "Ñandú Centro",
+          "dia": "07/03/2026",
+          "filas": [
+            {"aplique": "Moño", "color": "Café", "quedan": "12", "hacer": "20"}
+          ],
+          "resumen": "1 aplique, 1 color",
+          "total_texto": "Total a hacer: 20"
+        }
+      }
+    },
+    {
+      "nombre": "sucursal sin letras ni números ASCII: el archivo se llama \"sucursal\"",
+      "entrada": {"tipo": "faltantes", "sucursal": "Ñ", "fecha": "2026-01-09", "faltantes": [
+        {"aplique": "Flor", "color": "Rojo", "hex": "#C0392B", "stock": 0, "hacer": 2}
+      ]},
+      "esperado": {
+        "mensaje": "*Huantex – Faltantes Ñ* (09/01/2026)\n\n• Flor – Rojo: hacer *2* (quedan 0)\n\nTotal a hacer: 2",
+        "orden_fabricante": ["Flor/Rojo"],
+        "pdf": {
+          "nombre_archivo": "faltantes_sucursal_2026-01-09.pdf",
+          "sucursal": "Ñ",
+          "dia": "09/01/2026",
+          "filas": [
+            {"aplique": "Flor", "color": "Rojo", "quedan": "0", "hacer": "2"}
+          ],
+          "resumen": "1 aplique, 1 color",
+          "total_texto": "Total a hacer: 2"
+        }
+      }
+    },
+    {
+      "nombre": "guion largo, comillas tipográficas y emoji: el texto los deja; el PDF de Flutter los cambia (Latin-1)",
+      "entrada": {"tipo": "faltantes", "sucursal": "Ramada – Centro", "fecha": "2026-10-05", "faltantes": [
+        {"aplique": "Flor “Grande” 🌸", "color": "Rojo—oscuro", "hex": "#8B0000", "stock": 0, "hacer": 3}
+      ]},
+      "esperado": {
+        "mensaje": "*Huantex – Faltantes Ramada – Centro* (05/10/2026)\n\n• Flor “Grande” 🌸 – Rojo—oscuro: hacer *3* (quedan 0)\n\nTotal a hacer: 3",
+        "orden_fabricante": ["Flor “Grande” 🌸/Rojo—oscuro"],
+        "pdf": {
+          "nombre_archivo": "faltantes_ramada_centro_2026-10-05.pdf",
+          "sucursal": "Ramada - Centro",
+          "dia": "05/10/2026",
+          "filas": [
+            {"aplique": "Flor \"Grande\" ?", "color": "Rojo-oscuro", "quedan": "0", "hacer": "3"}
+          ],
+          "resumen": "1 aplique, 1 color",
+          "total_texto": "Total a hacer: 3"
+        }
+      },
+      "difiere": {
+        "android": {
+          "paridad": "openspec/specs/inventario/spec.md: el PDF no sanea el texto a Latin-1 (las fuentes del sistema dibujan guiones largos, comillas tipográficas y emojis)",
+          "esperado": {
+            "mensaje": "*Huantex – Faltantes Ramada – Centro* (05/10/2026)\n\n• Flor “Grande” 🌸 – Rojo—oscuro: hacer *3* (quedan 0)\n\nTotal a hacer: 3",
+            "orden_fabricante": ["Flor “Grande” 🌸/Rojo—oscuro"],
+            "pdf": {
+              "nombre_archivo": "faltantes_ramada_centro_2026-10-05.pdf",
+              "sucursal": "Ramada – Centro",
+              "dia": "05/10/2026",
+              "filas": [
+                {"aplique": "Flor “Grande” 🌸", "color": "Rojo—oscuro", "quedan": "0", "hacer": "3"}
+              ],
+              "resumen": "1 aplique, 1 color",
+              "total_texto": "Total a hacer: 3"
+            }
+          }
+        }
+      }
+    },
+    {
+      "nombre": "lo que queda con decimales lleva dos",
+      "entrada": {"tipo": "faltantes", "sucursal": "Ramada", "fecha": "2026-10-05", "faltantes": [
+        {"aplique": "Flor", "color": "Rojo", "hex": "#C0392B", "stock": 0.5, "hacer": 6}
+      ]},
+      "esperado": {
+        "mensaje": "*Huantex – Faltantes Ramada* (05/10/2026)\n\n• Flor – Rojo: hacer *6* (quedan 0.50)\n\nTotal a hacer: 6",
+        "orden_fabricante": ["Flor/Rojo"],
+        "pdf": {
+          "nombre_archivo": "faltantes_ramada_2026-10-05.pdf",
+          "sucursal": "Ramada",
+          "dia": "05/10/2026",
+          "filas": [
+            {"aplique": "Flor", "color": "Rojo", "quedan": "0.50", "hacer": "6"}
+          ],
+          "resumen": "1 aplique, 1 color",
+          "total_texto": "Total a hacer: 6"
+        }
+      }
+    },
+    {"nombre": "cantidad entera: sin decimales", "entrada": {"tipo": "cantidad_legible", "cantidad": 12}, "esperado": "12"},
+    {"nombre": "cantidad cero", "entrada": {"tipo": "cantidad_legible", "cantidad": 0}, "esperado": "0"},
+    {"nombre": "cantidad con un decimal: dos decimales", "entrada": {"tipo": "cantidad_legible", "cantidad": 2.5}, "esperado": "2.50"},
+    {"nombre": "cantidad grande", "entrada": {"tipo": "cantidad_legible", "cantidad": 1000000}, "esperado": "1000000"},
+    {"nombre": "cantidad casi entera: redondea a 4.00", "entrada": {"tipo": "cantidad_legible", "cantidad": 3.999}, "esperado": "4.00"},
+    {"nombre": "cantidad 2.004: 2.00", "entrada": {"tipo": "cantidad_legible", "cantidad": 2.004}, "esperado": "2.00"},
+    {"nombre": "cantidad 0.125 (empate exacto en binario): 0.13", "entrada": {"tipo": "cantidad_legible", "cantidad": 0.125}, "esperado": "0.13"},
+    {"nombre": "cantidad 2.675 (el double queda apenas abajo de la mitad): 2.67", "entrada": {"tipo": "cantidad_legible", "cantidad": 2.675}, "esperado": "2.67"},
+    {"nombre": "cantidad 1.005 (el double queda apenas abajo de la mitad): 1.00", "entrada": {"tipo": "cantidad_legible", "cantidad": 1.005}, "esperado": "1.00"}
+  ]
+}

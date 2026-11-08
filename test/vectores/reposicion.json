@@ -1,0 +1,155 @@
+{
+  "tema": "reposicion",
+  "descripcion": "Regla de reposición del inventario (ReglaReposicion.aplicar). Entrada: el inventario de una sucursal con lo vendido en la ventana de 4 semanas. Esperado: cada aplique+color en el orden de la pantalla (faltantes primero; por aplique A→Z sin distinguir mayúsculas; de más a menos para hacer; a igual cantidad, por color). minimo = ⌈vendidas × 2,5 / 4⌉; falta si stock ≤ minimo y se pide hasta el doble. semanas_de_stock null = infinito (no se vende).",
+  "casos": [
+    {
+      "nombre": "inventario vacío",
+      "entrada": {"inventario": []},
+      "esperado": []
+    },
+    {
+      "nombre": "con el stock justo en el mínimo falta (vende 4: mínimo ⌈2,5⌉ = 3)",
+      "entrada": {"inventario": [
+        {"aplique": "Flor", "color": "Rojo", "stock": 3, "vendidas": 4, "vendidas_otras": 0}
+      ]},
+      "esperado": [
+        {"aplique": "Flor", "color": "Rojo", "estimada": false, "por_semana": 1.0, "minimo": 3, "hacer": 3, "faltante": true, "semanas_de_stock": 3.0}
+      ]
+    },
+    {
+      "nombre": "una unidad más que el mínimo ya no falta",
+      "entrada": {"inventario": [
+        {"aplique": "Flor", "color": "Rojo", "stock": 4, "vendidas": 4, "vendidas_otras": 0}
+      ]},
+      "esperado": [
+        {"aplique": "Flor", "color": "Rojo", "estimada": false, "por_semana": 1.0, "minimo": 3, "hacer": 0, "faltante": false, "semanas_de_stock": 4.0}
+      ]
+    },
+    {
+      "nombre": "vende 8: el mínimo da 5 exacto, sin subir uno por la coma flotante",
+      "entrada": {"inventario": [
+        {"aplique": "Flor", "color": "Rojo", "stock": 5, "vendidas": 8, "vendidas_otras": 0}
+      ]},
+      "esperado": [
+        {"aplique": "Flor", "color": "Rojo", "estimada": false, "por_semana": 2.0, "minimo": 5, "hacer": 5, "faltante": true, "semanas_de_stock": 2.5}
+      ]
+    },
+    {
+      "nombre": "sin stock pide el doble del mínimo",
+      "entrada": {"inventario": [
+        {"aplique": "Flor", "color": "Rojo", "stock": 0, "vendidas": 12, "vendidas_otras": 0}
+      ]},
+      "esperado": [
+        {"aplique": "Flor", "color": "Rojo", "estimada": false, "por_semana": 3.0, "minimo": 8, "hacer": 16, "faltante": true, "semanas_de_stock": 0.0}
+      ]
+    },
+    {
+      "nombre": "stock con decimales: lo que hay que hacer se redondea para arriba",
+      "entrada": {"inventario": [
+        {"aplique": "Flor", "color": "Rojo", "stock": 2.5, "vendidas": 4, "vendidas_otras": 0}
+      ]},
+      "esperado": [
+        {"aplique": "Flor", "color": "Rojo", "estimada": false, "por_semana": 1.0, "minimo": 3, "hacer": 4, "faltante": true, "semanas_de_stock": 2.5}
+      ]
+    },
+    {
+      "nombre": "vende 1 en la ventana: mínimo 1",
+      "entrada": {"inventario": [
+        {"aplique": "Flor", "color": "Rojo", "stock": 1, "vendidas": 1, "vendidas_otras": 0}
+      ]},
+      "esperado": [
+        {"aplique": "Flor", "color": "Rojo", "estimada": false, "por_semana": 0.25, "minimo": 1, "hacer": 1, "faltante": true, "semanas_de_stock": 4.0}
+      ]
+    },
+    {
+      "nombre": "ventas con decimales (0,4): mínimo 1",
+      "entrada": {"inventario": [
+        {"aplique": "Flor", "color": "Rojo", "stock": 0, "vendidas": 0.4, "vendidas_otras": 0}
+      ]},
+      "esperado": [
+        {"aplique": "Flor", "color": "Rojo", "estimada": false, "por_semana": 0.1, "minimo": 1, "hacer": 2, "faltante": true, "semanas_de_stock": 0.0}
+      ]
+    },
+    {
+      "nombre": "ventas grandes",
+      "entrada": {"inventario": [
+        {"aplique": "Flor", "color": "Rojo", "stock": 0, "vendidas": 1000, "vendidas_otras": 0}
+      ]},
+      "esperado": [
+        {"aplique": "Flor", "color": "Rojo", "estimada": false, "por_semana": 250.0, "minimo": 625, "hacer": 1250, "faltante": true, "semanas_de_stock": 0.0}
+      ]
+    },
+    {
+      "nombre": "lo que no se vendió no se pide aunque no haya stock (y no se estima si la sucursal vendió otra cosa)",
+      "entrada": {"inventario": [
+        {"aplique": "Mariposa", "color": "Azul", "stock": 0, "vendidas": 0, "vendidas_otras": 10},
+        {"aplique": "Flor", "color": "Rojo", "stock": 0, "vendidas": 4, "vendidas_otras": 0}
+      ]},
+      "esperado": [
+        {"aplique": "Flor", "color": "Rojo", "estimada": false, "por_semana": 1.0, "minimo": 3, "hacer": 6, "faltante": true, "semanas_de_stock": 0.0},
+        {"aplique": "Mariposa", "color": "Azul", "estimada": false, "por_semana": 0.0, "minimo": 0, "hacer": 0, "faltante": false, "semanas_de_stock": null}
+      ]
+    },
+    {
+      "nombre": "sucursal sin ventas propias: estima con lo que venden las otras",
+      "entrada": {"inventario": [
+        {"aplique": "Flor", "color": "Rojo", "stock": 1, "vendidas": 0, "vendidas_otras": 6},
+        {"aplique": "Flor", "color": "Verde", "stock": 0, "vendidas": 0, "vendidas_otras": 0}
+      ]},
+      "esperado": [
+        {"aplique": "Flor", "color": "Rojo", "estimada": true, "por_semana": 1.5, "minimo": 4, "hacer": 7, "faltante": true, "semanas_de_stock": 0.6666666666666666},
+        {"aplique": "Flor", "color": "Verde", "estimada": true, "por_semana": 0.0, "minimo": 0, "hacer": 0, "faltante": false, "semanas_de_stock": null}
+      ]
+    },
+    {
+      "nombre": "estimada con un promedio de las otras con decimales",
+      "entrada": {"inventario": [
+        {"aplique": "Flor", "color": "Rojo", "stock": 0, "vendidas": 0, "vendidas_otras": 2.5}
+      ]},
+      "esperado": [
+        {"aplique": "Flor", "color": "Rojo", "estimada": true, "por_semana": 0.625, "minimo": 2, "hacer": 4, "faltante": true, "semanas_de_stock": 0.0}
+      ]
+    },
+    {
+      "nombre": "orden: faltantes primero, por aplique sin distinguir mayúsculas, más para hacer primero y a igual cantidad por color",
+      "entrada": {"inventario": [
+        {"aplique": "mariposa", "color": "Verde", "stock": 0, "vendidas": 4, "vendidas_otras": 0},
+        {"aplique": "Flor", "color": "Azul", "stock": 10, "vendidas": 4, "vendidas_otras": 0},
+        {"aplique": "Abeja", "color": "Negro", "stock": 5, "vendidas": 0, "vendidas_otras": 0},
+        {"aplique": "Mariposa", "color": "azul", "stock": 0, "vendidas": 4, "vendidas_otras": 0},
+        {"aplique": "Flor", "color": "rojo", "stock": 0, "vendidas": 8, "vendidas_otras": 0}
+      ]},
+      "esperado": [
+        {"aplique": "Flor", "color": "rojo", "estimada": false, "por_semana": 2.0, "minimo": 5, "hacer": 10, "faltante": true, "semanas_de_stock": 0.0},
+        {"aplique": "Mariposa", "color": "azul", "estimada": false, "por_semana": 1.0, "minimo": 3, "hacer": 6, "faltante": true, "semanas_de_stock": 0.0},
+        {"aplique": "mariposa", "color": "Verde", "estimada": false, "por_semana": 1.0, "minimo": 3, "hacer": 6, "faltante": true, "semanas_de_stock": 0.0},
+        {"aplique": "Abeja", "color": "Negro", "estimada": false, "por_semana": 0.0, "minimo": 0, "hacer": 0, "faltante": false, "semanas_de_stock": null},
+        {"aplique": "Flor", "color": "Azul", "estimada": false, "por_semana": 1.0, "minimo": 3, "hacer": 0, "faltante": false, "semanas_de_stock": 10.0}
+      ]
+    },
+    {
+      "nombre": "dentro de un aplique, de más a menos para hacer",
+      "entrada": {"inventario": [
+        {"aplique": "Flor", "color": "Amarillo", "stock": 2, "vendidas": 4, "vendidas_otras": 0},
+        {"aplique": "Flor", "color": "Zafiro", "stock": 0, "vendidas": 12, "vendidas_otras": 0}
+      ]},
+      "esperado": [
+        {"aplique": "Flor", "color": "Zafiro", "estimada": false, "por_semana": 3.0, "minimo": 8, "hacer": 16, "faltante": true, "semanas_de_stock": 0.0},
+        {"aplique": "Flor", "color": "Amarillo", "estimada": false, "por_semana": 1.0, "minimo": 3, "hacer": 4, "faltante": true, "semanas_de_stock": 2.0}
+      ]
+    },
+    {
+      "nombre": "tildes: se compara carácter por carácter (la Á minúscula va después de la z)",
+      "entrada": {"inventario": [
+        {"aplique": "Árbol", "color": "Rojo", "stock": 0, "vendidas": 4, "vendidas_otras": 0},
+        {"aplique": "Zapato", "color": "Rojo", "stock": 0, "vendidas": 4, "vendidas_otras": 0},
+        {"aplique": "abeja", "color": "Rojo", "stock": 0, "vendidas": 4, "vendidas_otras": 0}
+      ]},
+      "esperado": [
+        {"aplique": "abeja", "color": "Rojo", "estimada": false, "por_semana": 1.0, "minimo": 3, "hacer": 6, "faltante": true, "semanas_de_stock": 0.0},
+        {"aplique": "Zapato", "color": "Rojo", "estimada": false, "por_semana": 1.0, "minimo": 3, "hacer": 6, "faltante": true, "semanas_de_stock": 0.0},
+        {"aplique": "Árbol", "color": "Rojo", "estimada": false, "por_semana": 1.0, "minimo": 3, "hacer": 6, "faltante": true, "semanas_de_stock": 0.0}
+      ]
+    }
+  ]
+}
