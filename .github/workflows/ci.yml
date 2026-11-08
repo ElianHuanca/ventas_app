@@ -108,3 +108,10 @@ jobs:
       # del runner y Gradle avisa: alcanza para detectar roturas del build.
       - name: flutter build apk --debug
         run: flutter build apk --debug
+
+      # Que el APK no lleve claves secretas: JWT service_role, sb_secret_,
+      # claves privadas, postgres:// o datos del keystore (la publishable key
+      # es pública). En debug el código Dart va en kernel_blob.bin, que también
+      # revisa. Sale con 1 si encuentra algo, sin imprimir el secreto.
+      - name: Secretos en el APK
+        run: dart run tool/verificar_secretos_apk.dart build/app/outputs/flutter-apk/app-debug.apk
