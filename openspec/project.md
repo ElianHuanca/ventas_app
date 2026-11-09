@@ -46,8 +46,8 @@ solo lo que sale al escaparate. Comparar ambas muestra dónde queda el filtro: `
 capacidades (`pagina`, `catalogo`, `contacto` y `datos`) son propias de la landing.
 
 Una feature de acá (Spec Kit) que **toque una vista pública o una columna que ellas leen** tiene que
-anotarlo como impacto en su spec y abrir el change correspondiente en `sitio` (que sigue con
-OpenSpec) con el mismo nombre: la landing no se entera sola de un cambio de esquema. El sentido es
+anotarlo como impacto en su spec y abrir la feature correspondiente en `sitio` (que también usa
+Spec Kit) con el mismo nombre: la landing no se entera sola de un cambio de esquema. El sentido es
 siempre este: la feature empieza acá (`contrato-de-datos` en el catálogo + `supabase/landing.sql`
 reaplicado) y `sitio` la referencia.
 

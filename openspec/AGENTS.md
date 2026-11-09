@@ -85,8 +85,9 @@ paso 3.
   referencia de comportamiento.** Su capacidad `contrato-de-datos` describe las reglas de la base
   (RLS, baja lógica, restricciones, idempotencia y vistas públicas).
 - Un cambio de comportamiento compartido empieza acá, como feature de Spec Kit (si toca la base,
-  incluye `contrato-de-datos` en el catálogo). Los ports siguen con OpenSpec: su change usa el mismo
-  nombre que la feature (`NNN-<nombre>` sin el número) y la referencia en su `proposal.md`.
+  incluye `contrato-de-datos` en el catálogo). Android y `sitio` también usan Spec Kit: abren una
+  feature con el mismo nombre (`<nombre>`, sin el número) que referencia la de acá. iOS sigue con
+  OpenSpec: abre un change con ese nombre y la referencia en su `proposal.md`.
 - Los cambios de esquema siguen además el runbook del vault:
   `../notas/runbooks/cambiar-el-esquema.md`. El conocimiento que cruza repos (decisiones, riesgos,
   registro de migraciones) sigue viviendo en `../notas`: las specs no lo duplican, lo enlazan.
