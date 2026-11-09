@@ -68,13 +68,14 @@ class TelasDatasourceImpl implements TelasDatasource {
 
   @override
   Future<List<ColorItem>> getColoresTela(int idtela) async {
+    // postgrest-dart ordena descendente si no se pide `ascending: true`
     final list = await _db
         .from('colores')
         .select('id, nombre, hex, tela_colores(activo)')
         .eq('activo', true)
         .eq('tela_colores.idtela', idtela)
-        .order('nombre');
-    return list
+        .order('nombre', ascending: true);
+    final colores = list
         .map<ColorItem>((e) => ColorItem(
               id: e['id'] as int,
               nombre: e['nombre'] as String? ?? '',
@@ -84,6 +85,11 @@ class TelasDatasourceImpl implements TelasDatasource {
                       (v) => v is Map && (v['activo'] as bool? ?? false)),
             ))
         .toList();
+    // Postgres ordena distinguiendo mayúsculas; se reordena sin distinguir
+    // (mismo criterio que getTelas y los colores de un aplique; Android igual)
+    colores.sort((a, b) =>
+        a.nombre.toLowerCase().compareTo(b.nombre.toLowerCase()));
+    return colores;
   }
 
   @override

@@ -28,6 +28,8 @@ La pantalla de inicio (entrada "Venta telas" del menú lateral) DEBE mostrar una
 - **THEN** no aparece la tarjeta "Agregar Sucursal"
 
 #### Scenario: Sucursal dada de baja
+<!-- test: test/features/sucursales/infrastructure/datasources/sucursales_datasource_impl_test.dart::inicio (venta de telas): una sucursal dada de baja no aparece entre las tarjetas -->
+<!-- test: test/features/sucursales/infrastructure/datasources/sucursales_datasource_impl_test.dart::getSucursales no trae las dadas de baja -->
 - **WHEN** una sucursal tiene `activo = false`
 - **THEN** no aparece entre las tarjetas
 
@@ -135,6 +137,7 @@ El formulario DEBE proponer la fecha y hora en que se abrió, mostrarla como dd/
 
 #### Scenario: Cantidad o precio inválidos
 <!-- test: test/features/ventas/presentation/bloc/detalle_venta_form_cubit_test.dart::addDetalleVenta > no agrega con cantidad o precio menores o iguales a 0 -->
+<!-- test: test/vectores/carritos_vectores_test.dart::telas: los datos inválidos no cambian el carrito y vender bajo el precio de compra da ganancia negativa -->
 - **WHEN** la cantidad o el precio son texto, NaN, Infinity, 0 o negativos
 - **THEN** el carrito no cambia
 
@@ -151,11 +154,13 @@ Si el carrito ya tiene una línea de la misma tela al mismo precio, "Añadir" DE
 
 #### Scenario: Misma tela y precio
 <!-- test: test/features/ventas/presentation/bloc/detalle_venta_form_cubit_test.dart::addDetalleVenta > mismo producto y precio hace merge sumando cantidad -->
+<!-- test: test/vectores/carritos_vectores_test.dart::telas: la misma tela al mismo precio suma la cantidad sin ruido; a otro precio es otra línea -->
 - **WHEN** se agregan 2 m y luego 1 m de la misma tela a 100 Bs
 - **THEN** queda una sola línea de 3 m con total 300 Bs
 
 #### Scenario: Misma tela a otro precio
 <!-- test: test/features/ventas/presentation/bloc/detalle_venta_form_cubit_test.dart::addDetalleVenta > mismo producto con distinto precio genera líneas separadas -->
+<!-- test: test/vectores/carritos_vectores_test.dart::telas: la misma tela al mismo precio suma la cantidad sin ruido; a otro precio es otra línea -->
 - **WHEN** se agrega la misma tela a 100 Bs y a 120 Bs
 - **THEN** quedan dos líneas
 
@@ -175,11 +180,13 @@ El total de una línea DEBE ser cantidad × precio redondeado a centavos con la 
 
 #### Scenario: Sin precio de compra
 <!-- test: test/features/ventas/presentation/bloc/detalle_venta_form_cubit_test.dart::addDetalleVenta > ganancia es 0 cuando precxcompra es 0 -->
+<!-- test: test/vectores/carritos_vectores_test.dart::telas: dos telas distintas, la última queda primera; sin precio de compra la ganancia es 0 -->
 - **WHEN** la tela tiene precio de compra 0
 - **THEN** las ganancias de la línea son 0
 
 #### Scenario: Acumular sin sumar redondeos
 <!-- test: test/features/ventas/presentation/bloc/detalle_venta_form_cubit_test.dart::addDetalleVenta > el merge sube el total lo que sube la línea, sin sumar redondeos -->
+<!-- test: test/vectores/carritos_vectores_test.dart::telas: medio metro dos veces a un centavo y quitar todo vuelve a 0 -->
 - **WHEN** se agregan dos veces 0.5 m a 0.01 Bs
 - **THEN** queda una línea de 1 m con total 0.01, el carrito suma 0.01 y al quitarla vuelve a 0
 

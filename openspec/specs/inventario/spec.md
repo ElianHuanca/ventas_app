@@ -76,16 +76,20 @@ Para cada aplique+color, con `vendidas` = lo vendido en la ventana (o la estimac
 
 #### Scenario: Stock igual al mínimo
 <!-- test: test/features/apliques/domain/reposicion_test.dart::Reposicion.de > falta con el stock igual al mínimo, no con uno más -->
+<!-- test: test/vectores/reposicion_vectores_test.dart::con el stock justo en el mínimo falta (vende 4: mínimo ⌈2,5⌉ = 3) -->
+<!-- test: test/vectores/reposicion_vectores_test.dart::una unidad más que el mínimo ya no falta -->
 - **WHEN** el stock es igual al mínimo
 - **THEN** falta; con una unidad más, no
 
 #### Scenario: Sin ventas
 <!-- test: test/features/apliques/domain/reposicion_test.dart::Reposicion.de > lo que no se vendió en la ventana no falta, aunque esté en 0 -->
+<!-- test: test/vectores/reposicion_vectores_test.dart::lo que no se vendió no se pide aunque no haya stock (y no se estima si la sucursal vendió otra cosa) -->
 - **WHEN** un aplique+color no se vendió en la ventana aunque tenga stock 0
 - **THEN** no es faltante
 
 #### Scenario: Stock con decimales
 <!-- test: test/features/apliques/domain/reposicion_test.dart::Reposicion.de > con stock con decimales, lo que hay que hacer redondea para arriba -->
+<!-- test: test/vectores/reposicion_vectores_test.dart::stock con decimales: lo que hay que hacer se redondea para arriba -->
 - **WHEN** el stock tiene decimales
 - **THEN** lo que hay que hacer se redondea hacia arriba
 
@@ -105,6 +109,7 @@ Si ningún aplique+color de la sucursal tiene ventas propias en la ventana, la r
 
 #### Scenario: Con alguna venta propia
 <!-- test: test/features/apliques/domain/reposicion_test.dart::ReglaReposicion.aplicar > con alguna venta propia no estima: ignora a las otras -->
+<!-- test: test/vectores/reposicion_vectores_test.dart::lo que no se vendió no se pide aunque no haya stock (y no se estima si la sucursal vendió otra cosa) -->
 - **WHEN** la sucursal vendió al menos un aplique+color
 - **THEN** se usan solo sus ventas
 
@@ -119,11 +124,13 @@ La pantalla DEBE listar primero los faltantes y después el resto; cada parte, p
 
 #### Scenario: Orden de la pantalla
 <!-- test: test/features/apliques/domain/reposicion_test.dart::ReglaReposicion.aplicar > faltantes primero, por aplique y de más a menos para hacer -->
+<!-- test: test/vectores/reposicion_vectores_test.dart::orden: faltantes primero, por aplique sin distinguir mayúsculas, más para hacer primero y a igual cantidad por color -->
 - **WHEN** hay faltantes y no faltantes de varios apliques
 - **THEN** primero van los faltantes por aplique A→Z y de más a menos para hacer
 
 #### Scenario: Orden del fabricante
 <!-- test: test/features/apliques/domain/pdf_faltantes_test.dart::ordenParaFabricante > ignora mayúsculas y a igual cantidad ordena por color -->
+<!-- test: test/vectores/faltantes_vectores_test.dart::el orden ignora mayúsculas y a igual cantidad va por color, pero los grupos del PDF distinguen mayúsculas -->
 - **WHEN** dos colores del mismo aplique tienen igual cantidad a hacer
 - **THEN** se ordenan por color sin distinguir mayúsculas
 
@@ -233,6 +240,7 @@ Todo texto variable del PDF (título, sucursal, aplique, color) DEBE pasar por u
 
 #### Scenario: Caracteres especiales
 <!-- test: test/features/apliques/domain/pdf_faltantes_test.dart::latin1Pdf: deja tildes y ñ, cambia lo que Helvetica no dibuja -->
+<!-- test: test/vectores/faltantes_vectores_test.dart::guion largo, comillas tipográficas y emoji: el texto los deja; el PDF de Flutter los cambia (Latin-1) -->
 - **WHEN** un nombre es "Moño – “rojo” 🎀"
 - **THEN** en el PDF se escribe "Moño - \"rojo\" ?"
 

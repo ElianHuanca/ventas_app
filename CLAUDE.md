@@ -273,7 +273,8 @@ flutter pub get          # instalar dependencias
 flutter run              # correr en debug
 flutter build apk        # build Android APK
 flutter analyze          # lints estrictos (ver "Lints"): tiene que quedar limpio
-flutter test             # 988 unitarios/de widget + 174 capturas golden (sin omitidos)
+flutter test             # 1225 unitarios/de widget (204 de vectores compartidos) + 247 capturas golden; 1 omitido (paridad: hex con espacios)
+dart run tool/sincronizar_vectores.dart --verificar ../ventas_app_android   # copias de los vectores en Android al día
 flutter test --exclude-tags golden          # sin las capturas (p. ej. fuera de Windows)
 flutter test test/goldens --update-goldens  # regenerar capturas tras un cambio visual buscado
 flutter test benchmark/micro                # 176 micro-benchmarks (~1 min)
@@ -286,10 +287,11 @@ flutter clean            # limpiar build
 
 | Tipo | Dónde | Contra qué |
 |---|---|---|
-| Unitarios | `test/` (mappers, cubits, blocs, repositorios, router, utilidades) | **fakes en memoria** (`test/helpers/fake_repositories.dart`, `fake_datasources.dart`), nunca Supabase |
+| Unitarios | `test/` (mappers, cubits, blocs, repositorios, router, utilidades; algunos `*DatasourceImpl` reales) | **fakes en memoria** (`test/helpers/fake_repositories.dart`, `fake_datasources.dart`), nunca Supabase; los datasources, contra la **base falsa** (`test/helpers/base_falsa.dart`: el cliente de Supabase de verdad contra un PostgREST en memoria, sin red) |
 | De widget | `test/` (todas las pantallas y widgets compartidos; la navegación se verifica con un `GoRouter` de rutas stub) | los mismos fakes |
-| Captura (golden) | `test/goldens/` (todas las pantallas y widgets compartidos, en cada estado) y `test/goldens/pantalla_chica/` (cada pantalla en 360×640 dp con letra grande) | los mismos fakes; compara contra PNG |
+| Captura (golden) | `test/goldens/` (todas las pantallas y widgets compartidos, en cada estado), `pantalla_chica/` (cada pantalla en 360×640 dp con letra grande), `apaisado/` (teléfono acostado, 915×412 dp, en sus estados principales) y `tablet/` (800×1280 dp) | los mismos fakes; compara contra PNG |
 | Property-based | `test/propiedades/` (carritos, colores/hex, mappers, fechas, router, dashboard) | glados: 500 entradas generadas por propiedad, contra un modelo en enteros |
+| Vectores compartidos | `test/vectores/` (reposición, redondeo, parámetros de las RPC, faltantes y PDF, mappers, colores/hex, carritos, fechas, errores de login) | JSON `{nombre, entrada, esperado}` que recorren también Android (y más adelante iOS): misma entrada, mismo resultado en cada port |
 | Micro-benchmarks | `benchmark/micro/` (mappers, utilidades, router, cubits, blocs, montaje de widgets) | fakes; µs/op o ms/montaje con presupuesto |
 | Macro-benchmarks | `benchmark/macro/` + `test_driver/perf_driver.dart` | la app completa en el **celular**, contra el Supabase local |
 | De integración | `integration_test/app_test.dart` | la app completa (`HuantexApp`: router, login, datasources, RLS, RPC) contra el **Supabase local** |
@@ -298,10 +300,12 @@ flutter clean            # limpiar build
 | Concurrencia | `concurrencia/` | 8 clientes Supabase a la vez contra el **Supabase local**: las RPC no pierden unidades ni duplican cabeceras |
 | Base de datos (pgTAP) | `supabase/tests/database/` | la **base local** en SQL: RLS y permisos, RPC, restricciones, dashboard, vistas web y el **contrato** con las otras apps |
 | Red (fallas de conexión) | `red/` | la app (cubits y datasources reales vía `SupabaseConfig.client`) con la red de `RedConFallas` contra el **Supabase local**: respuesta perdida después del commit, sin conexión, falla en la llamada N o en una RPC |
-| Firma, actualización y monkey | `tool/*.dart` | el APK (certificado oficial), y la app instalada en el **emulador**: actualizar encima de la versión de `main`, y miles de toques al azar |
+| Firma, secretos, actualización y monkey | `tool/*.dart` (el escáner de secretos, con tests en `test/tool/`) | el APK (certificado oficial y que no lleve claves secretas), y la app instalada en el **emulador**: actualizar encima de la versión de `main`, y miles de toques al azar |
 | Mutación | `mutacion/*.xml` (carritos y formularios; mappers, utilidades y dashboard; router y listados) | mutation_test: altera `lib/` línea por línea y verifica que algún test de `test/` lo detecte |
 
 Cada flujo (login, sucursales y su disponibilidad, telas, colores, apliques, fabricación, venta de apliques, venta de telas, dashboard, inventario, menú) tiene los seis tipos. Los tests de `test/` siguen la estructura de `lib/` (los de `features/shared/` van sueltos en `test/features/shared/`). Los fakes no se pisan entre tests: si uno necesita otro comportamiento, se hace una subclase local en ese archivo.
+
+**Datasources en `test/`: la base falsa.** `usarBaseFalsa()` (`test/helpers/base_falsa.dart`) inicializa `Supabase.instance` con un `http.Client` que responde como PostgREST desde tablas en memoria (`select` con columnas y un embed `otra(*)` / `otra!inner(*)`, filtros `eq`, `order`, `limit`; altas con defaults, id serial y UNIQUE que mira también las filas dadas de baja → 409 / `23505`) o falla como sin red (`sinConexion`, y Auth también). Así se prueban los `*DatasourceImpl` reales y lo que hay arriba (pantalla → bloc → repositorio → datasource) sin tocar `lib/`. Lo que no entiende responde 501. No reemplaza a la integración ni a pgTAP: las RLS, las RPC y las restricciones de verdad se prueban contra el Supabase local.
 
 **Tests omitidos = bugs conocidos.** Los `skip: true` describen el comportamiento correcto y llevan un comentario `// bug: archivo:línea — qué pasa`. Al arreglar el bug, quitar el `skip` (el test tiene que pasar; si es una captura, generarla con `--update-goldens`).
 
@@ -312,7 +316,11 @@ Cada flujo (login, sucursales y su disponibilidad, telas, colores, apliques, fab
 - **Generadas en Windows**: el antialiasing cambia entre SO; en otro, regenerarlas o `--exclude-tags golden`. Las sombras salen como contorno (flutter_test las apaga por determinismo).
 - Determinísticas: nada de `DateTime.now()` (las fechas se fijan por el cubit, p. ej. `onFechaChanged`, `cambiarRango`). Un loader se captura con un fake que espera un `Completer`, `asentar: false` y `pump(400 ms)`; el `complete()` va en un `finally` (si la captura falla y queda pendiente, `Bloc.close()` cuelga el test 10 min).
 - Un cambio visual buscado se acepta regenerando (`--update-goldens`) y revisando el PNG en el diff.
-- **Pantalla chica** (`test/goldens/pantalla_chica/`): cada pantalla (las rutas de la tabla y el menú abierto) en un teléfono de gama baja (`telefonoChico`, 360×640 dp) con la letra del sistema en "Grande" (`letraGrande`, 1.3), con `montarChica` / `compararChica` → `goldens/<pantalla>_chica.png`. Ahí aparecen los textos que desbordan o se cortan. `montarParaCaptura(escalaTexto:)` fija la escala por `textScaleFactorTestValue`, de donde la lee el `MediaQuery` igual que en el celular.
+- **Otros dispositivos**: cada pantalla (las rutas de la tabla y el menú abierto) se arma una vez en `test/goldens/escenarios/<grupo>.dart` (`capturasDeVentas(d)`, `capturasDeTelas(d)`…, con los mismos fakes y fechas fijas) y se repite en cada `Dispositivo` de `golden_helpers.dart` (tamaño, letra y sufijo): `d.montar` / `d.comparar('<pantalla>')` → `goldens/<pantalla>_<sufijo>.png` al lado del test. Cada carpeta tiene un test por grupo que llama a los escenarios con su dispositivo:
+  - **Pantalla chica** (`pantalla_chica/`, `pantallaChica`): un teléfono de gama baja (`telefonoChico`, 360×640 dp) con la letra del sistema en "Grande" (`letraGrande`, 1.3). Ahí aparecen los textos que desbordan o se cortan. `montarParaCaptura(escalaTexto:)` fija la escala por `textScaleFactorTestValue`, de donde la lee el `MediaQuery` igual que en el celular.
+  - **Acostado** (`apaisado/`, `apaisado`): el teléfono de referencia girado (`telefonoAcostado`, 915×412 dp; la app no bloquea la orientación), con `todosLosEstados: true`: además de la captura de cada pantalla, las altas, los registros sin líneas, la confirmación de borrado, el dashboard sin ventas, el login con error y el inventario "Todos" y estimado. Con 412 dp de alto lo que no entra tiene que quedar en algo desplazable.
+  - **Tablet** (`tablet/`, `tablet`): vertical de 10" (`tabletVertical`, 800×1280 dp). Las grillas de 2 columnas (sucursales, ventas, producciones) quedan con tarjetas enormes acostado y en tablet, pero se usan.
+  - Una pantalla que en un dispositivo tiene un bug conocido se saltea con `omitidas: {'<pantalla>'}` en el test de ese dispositivo, con su `// bug: archivo:línea — qué pasa` (hoy ninguna).
 - Un `DataTable` que no entra en el ancho **no tira overflow**: achica las columnas y recorta lo que sobra (la columna de borrar quedaba inalcanzable). Por eso las tablas van en `TablaDesplazable` (`lib/features/shared/widgets/tabla_desplazable.dart`): si entra se dibuja igual; si no, se desplaza de costado.
 
 ### Micro-benchmarks
@@ -388,6 +396,32 @@ Otros cuelgues vistos (2026-10-15), los dos en `(setUpAll)`:
 - Los carritos (telas, apliques, fabricación) se comparan contra un modelo en enteros (centésimos): una línea por clave con la cantidad sumada, total y ganancias = suma de las líneas con 2 decimales y la mitad del centavo hacia arriba (como `numeric`), quitar todo vuelve a 0, el orden de agregado no cambia nada y nunca se pasa del stock.
 - glados re-exporta `package:test` y choca con `flutter_test`: importarlo con `show`. Para enteros usar `any.entero(min, max)` de `generadores.dart` (el `intInRange` de glados achica de a 1 y una falla tardaba más de 10 minutos en llegar a la mínima).
 
+### Vectores de prueba compartidos (paridad con Android e iOS)
+
+Los tests de cada port prueban sus reglas, pero nada garantizaba que dieran **lo mismo** ante la misma entrada. Los vectores son casos canónicos que recorren todos los ports con sus propias funciones.
+
+- **Fuente de verdad: `test/vectores/<tema>.json` de este repo.** Cada archivo tiene `descripcion` y `casos`: `{ "nombre", "entrada", "esperado" }`. Temas: `reposicion` (`ReglaReposicion.aplicar`), `redondeo` (centavos, suma sin ruido y lectura de lo tipeado de los carritos), `params_rpc` (`registrar_venta_telas`, `crear_venta_apliques`, `registrar_produccion`, `inventario_con_ventas`), `faltantes` (`mensajeFaltantes`, `ordenParaFabricante`, `cantidadLegible`, nombre y **texto** del PDF), `mappers` (fila de PostgREST → entidad), `colores` (`colorFromHex`, `normalizarHex`), `carritos` (secuencias de agregar/quitar en los tres carritos), `fechas` (`changeFormatDate`, día de la venta), `auth_errores` (traducción de los errores de login).
+- Flutter los recorre en `test/vectores/<tema>_vectores_test.dart` (un test por caso; corren con `flutter test`). `vectores.dart` carga el JSON y compara (`expectComoVector`: números por valor pero el cero con signo). Lo que en Flutter es privado se recorre por el camino real: el redondeo por el carrito de apliques, los parámetros de las RPC con los datasources de verdad sobre una **red de mentira** (`supabase_de_prueba.dart`: `Supabase.initialize` con un `http.Client` que anota el cuerpo de cada pedido), el PDF descomprimiendo sus streams y leyendo las palabras que dibuja.
+- **Diferencia a propósito** (la que la spec de otro port marca con `<!-- paridad: ... -->`, p. ej. el PDF de Android sin sanear a Latin-1 o `desde` sin segundos): va en el caso como `"difiere": { "android": { "esperado": ..., "paridad": "<spec>: ..." } }`; ese port compara contra su `esperado`. **Diferencia que no es a propósito**: el caso queda desactivado del lado que difiere (acá `probarVectores(..., paridad: {'<caso>': 'paridad: ...'})`, que lo omite con `skip`, más su `// bug:`; en Android `@Ignore("paridad: ...")`) hasta que se resuelva.
+- **Al cambiar una regla** que tiene vector: actualizar primero el caso en `test/vectores/*.json` de este repo (no en las copias), y después sincronizar las copias y correr los tests de los otros ports. Al agregar un caso, incluir bordes: vacíos, ceros, decimales, tildes y los límites de la regla.
+- **Sincronizar** (Android lee una copia en `app/src/test/resources/vectores/` de `ventas_app_android`):
+
+  ```bash
+  dart run tool/sincronizar_vectores.dart                       # copia a ../ventas_app_android (borra los .json que sobran)
+  dart run tool/sincronizar_vectores.dart <ruta_android>        # otro checkout o worktree
+  dart run tool/sincronizar_vectores.dart --verificar [<ruta>]  # no copia: sale con 1 si falta, sobra o difiere alguna copia
+  ```
+
+  Compara sin importar CRLF/LF (git los cambia en Windows). La CI de este repo no lo verifica (el repo de Android es otro y privado): correr `--verificar` antes de mergear un cambio de vectores.
+- **iOS** (`../ventas_app_ios`, Swift, no compila en Windows): todavía sin copia ni tests. Irían la copia en `VentasAppTests/Resources/vectores/*.json` (como recurso del target de tests) y los tests en `VentasAppTests/Vectores/<Tema>VectoresTests.swift` (Swift Testing, `@Test(arguments:)` sobre los casos, con `difiere.ios` para sus diferencias a propósito); `tool/sincronizar_vectores.dart` habría que extenderlo con ese destino.
+- **Diferencias de paridad abiertas** (2026-11-07), todas del lado de Android salvo la primera:
+  - Flutter: `colorFromHex("C0392B  ")` (8 caracteres con espacios) da transparente `00C0392B` porque `int.tryParse` ignora los espacios; la spec dice negro (Android da negro).
+  - Android: `cantidadLegible` con `String.format("%.2f")` redondea el decimal más corto (2.675 → "2.68", 1.005 → "1.01"; Flutter "2.67" y "1.00").
+  - Android: `VentaMapper` solo lee `LocalDateTime.parse`: las fechas del viejo PHP (`2025-03-14 10:20:30`), solo con el día o con zona quedan en "ahora"; `VentaApliqueMapper` pierde la hora del formato PHP y con zona toma la hora de pared en vez de UTC.
+  - Android: `p_fecha` sin fracción cuando es cero (`…T15:42:10`, Flutter `…T15:42:10.000`); la spec solo marca la medianoche.
+  - Android: `centavos()` devuelve `-0.0` para una pérdida menor a medio centavo; `aDecimalFinito` acepta `"1.5f"` y rechaza `" 3"` (Dart al revés).
+  - Android: `colorFromHex` acepta dígitos Unicode (`"ＦＦＦＦＦＦ"` → blanco); `normalizarHex` acepta la ligadura `ﬀ` y no saca el BOM.
+
 ### Mutación
 
 ```bash
@@ -444,9 +478,10 @@ npx supabase@latest test db   # con el Supabase local levantado
 
 `analysis_options.yaml`: flutter_lints + `strict-casts` / `strict-inference` / `strict-raw-types` + 25 reglas curadas que detectan bugs (futures sin esperar, llamadas dinámicas, throws de algo que no es Exception, strings pegados…), cada una con su porqué; las de estilo puro quedaron afuera con su motivo. `flutter analyze` tiene que quedar limpio (también falla con "info"). Una fila de Supabase es `Map<String, dynamic>`: castear explícito (`json['nombre'] as String? ?? ''`); `rpc<T>` siempre con tipo (`rpc<List<dynamic>>`, `rpc<Map<String, dynamic>?>`, `rpc<dynamic>` si no se usa). Un Future que no se espera a propósito (`router.push` en tests, la carga del constructor de un cubit) va en `unawaited(...)`.
 
-### Firma, actualización y monkey (`tool/`)
+### Firma, secretos, actualización y monkey (`tool/`)
 
 - `dart run tool/verificar_firma_apk.dart [apk]` (default `build/app/outputs/flutter-apk/app-release.apk`): compara el SHA-256 del certificado con el oficial (`48e1da98d963f1dddfb0965090b1599a4151cfabc6c5d2999b345d9fc4c47bfb`). Sale 1 si quedó con la clave de debug: `flutter build apk` NO muestra el aviso de `key.properties` faltante (en un worktree nuevo no está: es ignorado por git).
+- `dart run tool/verificar_secretos_apk.dart [apk] [--key-properties ruta]` (mismo default): que el APK no lleve claves secretas. Recorre el zip (lector propio, solo `dart:io`) y revisa `classes*.dex`, `lib/*/libapp.so` (el snapshot AOT de Dart: ahí quedan los strings de la app y los `--dart-define`), `assets/` (en debug el código Dart va en `assets/flutter_assets/kernel_blob.bin`), `res/`, `resources.arsc` y `AndroidManifest.xml`, byte a byte y como UTF-16LE. Busca JWT con `"role":"service_role"`, claves `sb_secret_`, claves privadas PEM (con su cuerpo en base64: el kernel de debug trae los encabezados sueltos del parser de `dart_jsonwebtoken`), `postgres://` / `postgresql://` y el keystore (`storePassword=` / `keyPassword=`, un `.jks`/`.keystore`/`.p12` o sus bytes, y las contraseñas literales de `android/key.properties` si existe). La publishable y la anon key son públicas: no se marcan. Sale 1 si encuentra algo (muestra tipo, entrada y 6 caracteres, nunca el secreto; de una contraseña ni eso) y 2 si no pudo revisar. Las demás `.so` (libflutter, plugins) y `META-INF/` no se revisan. El 2026-11-08: release arm64 (con la clave de debug: faltaba `key.properties`) y debug, sin hallazgos. Lo corre el CI sobre el APK debug.
 - Los builds **profile** salen siempre con la clave de debug de la PC (Flutter crea profile con `initWith(debug)` antes de que `build.gradle.kts` asigne la firma): no se instalan encima de la app oficial.
 - `dart run tool/prueba_actualizacion.dart` (solo emulador, Supabase local levantado): compila `origin/main` en un worktree temporal y HEAD (profile + `env/local-android.json`), instala la vieja, inicia sesión, `adb install -r` la nueva y verifica misma firma, que actualiza en el lugar, que abre sin caerse y que la sesión sobrevive. Con poca RAM: `--solo-compilar` con el emulador apagado y después `--sin-compilar`. Logs en `build/actualizacion/`.
 - `dart run tool/monkey.dart [--semillas 1,2,3] [--eventos 2000]` (solo emulador): instala `build/actualizacion/nueva.apk` (o compila con `--compilar`), entra con el usuario de integración y corre `adb shell monkey` por semilla; falla con CRASH, ANR o FATAL EXCEPTION. Logs en `build/monkey/`. ⚠️ Escribe datos al azar en el Supabase local (limpiar con `db reset`); no correrlo junto con la integración. El 2026-10-20: semillas 1, 2 y 3 × 2000 eventos sin fallas.
@@ -458,11 +493,11 @@ El repo es **público** desde el 2026-10-20 (minutos ilimitados en los runners d
 
 | Workflow | Cuándo | Jobs |
 |---|---|---|
-| `ci.yml` | cada PR y push a `main` (un push nuevo a un PR cancela la corrida anterior) | `analisis-y-tests` (ubuntu: `flutter analyze` + `flutter test --exclude-tags golden --coverage` + `tool/cobertura.dart --minimo 83`, sube `lcov.info`); `capturas` (windows-latest: `flutter test --tags golden`, sube `test/goldens/**/failures/` si falla); `base-de-datos` (pgTAP, incluido el contrato); `build-android` (`flutter build apk --debug`, Java 17) |
+| `ci.yml` | cada PR y push a `main` (un push nuevo a un PR cancela la corrida anterior) | `analisis-y-tests` (ubuntu: `flutter analyze` + `flutter test --exclude-tags golden --coverage` + `tool/cobertura.dart --minimo 83`, sube `lcov.info`); `capturas` (windows-latest: `flutter test --tags golden`, sube `test/goldens/**/failures/` si falla); `base-de-datos` (pgTAP, incluido el contrato); `build-android` (`flutter build apk --debug`, Java 17, y `tool/verificar_secretos_apk.dart` sobre ese APK) |
 | `noche.yml` | 06:00 UTC diario + a mano | `concurrencia` y `red` contra el Supabase local; `integracion` en emulador Android API 34 (google_apis x86_64, KVM) que llega al Supabase del host por `10.0.2.2`; `micro-benchmarks` (informativo: los presupuestos se calibraron en la PC; sube los JSON) |
 | `semanal.yml` | domingo 07:00 UTC + a mano | `mutacion`: matriz en windows-latest con cada XML de `mutacion/` (los comandos pasan por cmd), `mutation_test 1.8.0`, sube `build/mutacion/<xml>`; un XML que no existe se saltea con aviso |
 
-- **Cobertura:** `tool/cobertura.dart` lee `coverage/lcov.info`, descarta archivos generados, imprime el % por carpeta (`--profundidad`, 3 por defecto) y el total, y falla si el total < `--minimo`. Medido el 2026-10-20: 83.6 % (lo más flojo: `lib/config/router`, 27.0 %; los `*DatasourceImpl` quedan en 0 % a propósito: hablan con Supabase y los cubren `red/` e integración). El mínimo va un punto abajo: si baja, falta un test para lo nuevo. Lista aparte los archivos de `lib/` con código que ningún test importa.
+- **Cobertura:** `tool/cobertura.dart` lee `coverage/lcov.info`, descarta archivos generados, imprime el % por carpeta (`--profundidad`, 3 por defecto) y el total, y falla si el total < `--minimo`. Medido el 2026-10-20: 83.6 % (lo más flojo: `lib/config/router`, 27.0 %; los `*DatasourceImpl` quedaban en 0 % a propósito: hablan con Supabase y los cubren `red/` e integración; desde el 2026-11-08 la base falsa de `test/helpers/base_falsa.dart` cubre partes de los de colores, telas y sucursales). El mínimo va un punto abajo: si baja, falta un test para lo nuevo. Lista aparte los archivos de `lib/` con código que ningún test importa.
 - `noche.yml` y `semanal.yml` se lanzan a mano desde Actions → Run workflow. Los artifacts (lcov, diferencias de capturas, benchmarks, reportes de mutación) quedan en cada corrida.
 - Los workflows se validan con `actionlint` (binario de su release de GitHub; con `-shellcheck` si está shellcheck).
 

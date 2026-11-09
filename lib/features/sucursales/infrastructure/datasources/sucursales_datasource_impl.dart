@@ -11,7 +11,12 @@ class SucursalesDatasourceImpl implements SucursalesDatasource {
 
   @override
   Future<List<Sucursal>> getSucursales() async {
-    final list = await _db.from(_table).select().eq('activo', true).order('id');
+    // postgrest-dart ordena descendente si no se pide `ascending: true`
+    final list = await _db
+        .from(_table)
+        .select()
+        .eq('activo', true)
+        .order('id', ascending: true);
     return list.map<Sucursal>((e) => SucursalMapper.jsonToEntity(e)).toList();
   }
 
@@ -57,7 +62,7 @@ class SucursalesDatasourceImpl implements SucursalesDatasource {
         .from('telas')
         .select('id, nombre, tela_sucursales(activo)')
         .eq('tela_sucursales.idsucursal', idsucursal)
-        .order('nombre');
+        .order('nombre', ascending: true);
     return list
         .map<TelaSucursal>((e) => TelaSucursalMapper.jsonToEntity(e))
         .toList();

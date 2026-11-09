@@ -8,11 +8,13 @@
 --     producción por sucursal+fecha, y una línea por (idventa, idtelas,
 --     precio), (idventa, idapliques, idcolor, precio) y (idproduccion,
 --     idaplique, idcolor).
+--   * UNIQUE colores.nombre (del esquema de producción), también contra los
+--     colores dados de baja.
 --
 -- Corre como authenticated (el rol de la app). Rollback al final.
 -- =====================================================================
 begin;
-select plan(50);
+select plan(53);
 
 -- ---------------------------------------------------------------------
 -- Datos de apoyo (solo viven en esta transacción)
@@ -322,6 +324,20 @@ select throws_ok($$
   insert into public.tela_sucursales (idtela, idsucursal) values (pg_temp.id('tela'), pg_temp.id('sucursal'))
 $$, '23505', 'duplicate key value violates unique constraint "tela_sucursales_pkey"',
 'tela_sucursales: un vínculo por tela+sucursal');
+
+-- colores: el nombre no se repite, tampoco contra uno dado de baja
+-- (spec colores, "Nombre repetido"; la app lo ve como "Hubo un error").
+select throws_ok($$
+  insert into public.colores (nombre) values ('pgTAP rojo')
+$$, '23505', 'duplicate key value violates unique constraint "colores_nombre_key"',
+'colores: el nombre de un color activo no se repite');
+select lives_ok($$
+  update public.colores set activo = false where id = pg_temp.id('azul')
+$$, 'colores: dar de baja un color');
+select throws_ok($$
+  insert into public.colores (nombre) values ('pgTAP azul')
+$$, '23505', 'duplicate key value violates unique constraint "colores_nombre_key"',
+'colores: el nombre de un color dado de baja tampoco se repite');
 
 reset role;
 

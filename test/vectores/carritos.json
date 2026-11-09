@@ -1,0 +1,201 @@
+{
+  "tema": "carritos",
+  "descripcion": "Los tres carritos (venta de telas, venta de apliques y fabricación) con una secuencia de pasos. entrada.productos: id, nombre y costo (precio de compra de la tela o costo de fabricación del aplique). entrada.colores y entrada.stock: solo apliques y fabricación (sin fila de stock = 0). Paso \"agregar\": producto o color null = sin elegir; \"quitar\": índice de la línea en el carrito de ese momento. Esperado: lo que devolvió cada paso (null = se agregó o no devuelve nada; si no, el mensaje), las líneas en el orden del carrito (la nueva va primera) y los totales.",
+  "casos": [
+    {
+      "nombre": "telas: dos telas distintas, la última queda primera; sin precio de compra la ganancia es 0",
+      "entrada": {"carrito": "telas", "productos": [{"id": 1, "nombre": "Razo", "costo": 7.5}, {"id": 2, "nombre": "Seda", "costo": 0}], "pasos": [
+        {"agregar": {"producto": 1, "cantidad": "1.5", "precio": "12.5"}},
+        {"agregar": {"producto": 2, "cantidad": "2", "precio": "10"}}
+      ]},
+      "esperado": {"resultados": [null, null], "lineas": [
+        {"idtelas": 2, "nombre": "Seda", "cantidad": 2.0, "precio": 10.0, "total": 20.0, "ganancias": 0.0},
+        {"idtelas": 1, "nombre": "Razo", "cantidad": 1.5, "precio": 12.5, "total": 18.75, "ganancias": 7.5}
+      ], "total": 38.75, "ganancias": 7.5}
+    },
+    {
+      "nombre": "telas: la misma tela al mismo precio suma la cantidad sin ruido; a otro precio es otra línea",
+      "entrada": {"carrito": "telas", "productos": [{"id": 1, "nombre": "Razo", "costo": 7.5}], "pasos": [
+        {"agregar": {"producto": 1, "cantidad": "0.3", "precio": "10"}},
+        {"agregar": {"producto": 1, "cantidad": "0.6", "precio": "10"}},
+        {"agregar": {"producto": 1, "cantidad": "1", "precio": "11"}}
+      ]},
+      "esperado": {"resultados": [null, null, null], "lineas": [
+        {"idtelas": 1, "nombre": "Razo", "cantidad": 1.0, "precio": 11.0, "total": 11.0, "ganancias": 3.5},
+        {"idtelas": 1, "nombre": "Razo", "cantidad": 0.9, "precio": 10.0, "total": 9.0, "ganancias": 2.25}
+      ], "total": 20.0, "ganancias": 5.75}
+    },
+    {
+      "nombre": "telas: los datos inválidos no cambian el carrito y vender bajo el precio de compra da ganancia negativa",
+      "entrada": {"carrito": "telas", "productos": [{"id": 1, "nombre": "Razo", "costo": 7.5}], "pasos": [
+        {"agregar": {"producto": null, "cantidad": "1", "precio": "10"}},
+        {"agregar": {"producto": 1, "cantidad": "abc", "precio": "10"}},
+        {"agregar": {"producto": 1, "cantidad": "1", "precio": "NaN"}},
+        {"agregar": {"producto": 1, "cantidad": "0", "precio": "10"}},
+        {"agregar": {"producto": 1, "cantidad": "1", "precio": "-5"}},
+        {"agregar": {"producto": 1, "cantidad": "1,5", "precio": "10"}},
+        {"agregar": {"producto": 1, "cantidad": "Infinity", "precio": "10"}},
+        {"agregar": {"producto": 1, "cantidad": "", "precio": "10"}},
+        {"agregar": {"producto": 1, "cantidad": "2", "precio": "3"}}
+      ]},
+      "esperado": {"resultados": [null, null, null, null, null, null, null, null, null], "lineas": [
+        {"idtelas": 1, "nombre": "Razo", "cantidad": 2.0, "precio": 3.0, "total": 6.0, "ganancias": -9.0}
+      ], "total": 6.0, "ganancias": -9.0}
+    },
+    {
+      "nombre": "telas: quitar una línea resta su total y sus ganancias",
+      "entrada": {"carrito": "telas", "productos": [{"id": 1, "nombre": "Razo", "costo": 7.5}, {"id": 2, "nombre": "Seda", "costo": 5}], "pasos": [
+        {"agregar": {"producto": 1, "cantidad": "1", "precio": "10"}},
+        {"agregar": {"producto": 2, "cantidad": "2", "precio": "6"}},
+        {"quitar": 1}
+      ]},
+      "esperado": {"resultados": [null, null, null], "lineas": [
+        {"idtelas": 2, "nombre": "Seda", "cantidad": 2.0, "precio": 6.0, "total": 12.0, "ganancias": 2.0}
+      ], "total": 12.0, "ganancias": 2.0}
+    },
+    {
+      "nombre": "telas: medio metro dos veces a un centavo y quitar todo vuelve a 0",
+      "entrada": {"carrito": "telas", "productos": [{"id": 1, "nombre": "Razo", "costo": 7.5}], "pasos": [
+        {"agregar": {"producto": 1, "cantidad": "0.5", "precio": "0.01"}},
+        {"agregar": {"producto": 1, "cantidad": "0.5", "precio": "0.01"}},
+        {"quitar": 0}
+      ]},
+      "esperado": {"resultados": [null, null, null], "lineas": [], "total": 0.0, "ganancias": 0.0}
+    },
+    {
+      "nombre": "telas: el total no arrastra el ruido de sumar (10,1 + 20,2 = 30,3)",
+      "entrada": {"carrito": "telas", "productos": [{"id": 1, "nombre": "Razo", "costo": 0}], "pasos": [
+        {"agregar": {"producto": 1, "cantidad": "1", "precio": "10.1"}},
+        {"agregar": {"producto": 1, "cantidad": "1", "precio": "20.2"}}
+      ]},
+      "esperado": {"resultados": [null, null], "lineas": [
+        {"idtelas": 1, "nombre": "Razo", "cantidad": 1.0, "precio": 20.2, "total": 20.2, "ganancias": 0.0},
+        {"idtelas": 1, "nombre": "Razo", "cantidad": 1.0, "precio": 10.1, "total": 10.1, "ganancias": 0.0}
+      ], "total": 30.3, "ganancias": 0.0}
+    },
+    {
+      "nombre": "apliques: se agrega con stock y la línea se llama aplique (color)",
+      "entrada": {"carrito": "apliques", "productos": [{"id": 1, "nombre": "Flor", "costo": 15}], "colores": [{"id": 1, "nombre": "Rojo", "hex": "C0392B"}], "stock": [{"producto": 1, "color": 1, "stock": 5}], "pasos": [
+        {"agregar": {"producto": 1, "color": 1, "cantidad": "2", "precio": "30"}}
+      ]},
+      "esperado": {"resultados": [null], "lineas": [
+        {"idapliques": 1, "idcolor": 1, "nombre": "Flor (Rojo)", "cantidad": 2.0, "precio": 30.0, "total": 60.0, "ganancias": 30.0}
+      ], "total": 60.0, "ganancias": 30.0}
+    },
+    {
+      "nombre": "apliques: el stock cuenta lo que ya está en el carrito a cualquier precio",
+      "entrada": {"carrito": "apliques", "productos": [{"id": 1, "nombre": "Flor", "costo": 15}], "colores": [{"id": 1, "nombre": "Rojo", "hex": "C0392B"}], "stock": [{"producto": 1, "color": 1, "stock": 5}], "pasos": [
+        {"agregar": {"producto": 1, "color": 1, "cantidad": "3", "precio": "30"}},
+        {"agregar": {"producto": 1, "color": 1, "cantidad": "2", "precio": "25"}},
+        {"agregar": {"producto": 1, "color": 1, "cantidad": "1", "precio": "30"}}
+      ]},
+      "esperado": {"resultados": [null, null, "Stock insuficiente. Disponible: 5.0"], "lineas": [
+        {"idapliques": 1, "idcolor": 1, "nombre": "Flor (Rojo)", "cantidad": 2.0, "precio": 25.0, "total": 50.0, "ganancias": 20.0},
+        {"idapliques": 1, "idcolor": 1, "nombre": "Flor (Rojo)", "cantidad": 3.0, "precio": 30.0, "total": 90.0, "ganancias": 45.0}
+      ], "total": 140.0, "ganancias": 65.0}
+    },
+    {
+      "nombre": "apliques: con stock 2,07 entran 1,07 + 1 (sin ruido) y nada más",
+      "entrada": {"carrito": "apliques", "productos": [{"id": 1, "nombre": "Flor", "costo": 15}], "colores": [{"id": 1, "nombre": "Rojo", "hex": "C0392B"}], "stock": [{"producto": 1, "color": 1, "stock": 2.07}], "pasos": [
+        {"agregar": {"producto": 1, "color": 1, "cantidad": "1.07", "precio": "10"}},
+        {"agregar": {"producto": 1, "color": 1, "cantidad": "1", "precio": "10"}},
+        {"agregar": {"producto": 1, "color": 1, "cantidad": "0.01", "precio": "10"}}
+      ]},
+      "esperado": {"resultados": [null, null, "Stock insuficiente. Disponible: 2.07"], "lineas": [
+        {"idapliques": 1, "idcolor": 1, "nombre": "Flor (Rojo)", "cantidad": 2.07, "precio": 10.0, "total": 20.7, "ganancias": -10.35}
+      ], "total": 20.7, "ganancias": -10.35}
+    },
+    {
+      "nombre": "apliques: los datos inválidos devuelven su mensaje y no cambian el carrito",
+      "entrada": {"carrito": "apliques", "productos": [{"id": 1, "nombre": "Flor", "costo": 15}], "colores": [{"id": 1, "nombre": "Rojo", "hex": "C0392B"}], "stock": [{"producto": 1, "color": 1, "stock": 10}], "pasos": [
+        {"agregar": {"producto": null, "color": null, "cantidad": "1", "precio": "10"}},
+        {"agregar": {"producto": 1, "color": null, "cantidad": "1", "precio": "10"}},
+        {"agregar": {"producto": 1, "color": 1, "cantidad": "abc", "precio": "10"}},
+        {"agregar": {"producto": 1, "color": 1, "cantidad": "1", "precio": ""}},
+        {"agregar": {"producto": 1, "color": 1, "cantidad": "0", "precio": "10"}},
+        {"agregar": {"producto": 1, "color": 1, "cantidad": "1", "precio": "-1"}},
+        {"agregar": {"producto": 1, "color": 1, "cantidad": "NaN", "precio": "10"}},
+        {"agregar": {"producto": 1, "color": 1, "cantidad": "1", "precio": "Infinity"}}
+      ]},
+      "esperado": {"resultados": ["Seleccione un aplique", "Seleccione un color", "Ingrese una cantidad válida", "Ingrese un precio válido", "La cantidad debe ser mayor a 0", "El precio debe ser mayor a 0", "Ingrese una cantidad válida", "Ingrese un precio válido"], "lineas": [], "total": 0.0, "ganancias": 0.0}
+    },
+    {
+      "nombre": "apliques: vender bajo el costo da ganancia negativa con la mitad del centavo lejos del cero",
+      "entrada": {"carrito": "apliques", "productos": [{"id": 1, "nombre": "Flor", "costo": 0.2}], "colores": [{"id": 1, "nombre": "Rojo", "hex": "C0392B"}], "stock": [{"producto": 1, "color": 1, "stock": 10}], "pasos": [
+        {"agregar": {"producto": 1, "color": 1, "cantidad": "1.5", "precio": "0.15"}}
+      ]},
+      "esperado": {"resultados": [null], "lineas": [
+        {"idapliques": 1, "idcolor": 1, "nombre": "Flor (Rojo)", "cantidad": 1.5, "precio": 0.15, "total": 0.23, "ganancias": -0.08}
+      ], "total": 0.23, "ganancias": -0.08}
+    },
+    {
+      "nombre": "apliques: otro color al mismo precio es otra línea; el mismo color y precio suma en su lugar",
+      "entrada": {"carrito": "apliques", "productos": [{"id": 1, "nombre": "Flor", "costo": 15}], "colores": [{"id": 1, "nombre": "Rojo", "hex": "C0392B"}, {"id": 2, "nombre": "Azul", "hex": "2980B9"}], "stock": [{"producto": 1, "color": 1, "stock": 10}, {"producto": 1, "color": 2, "stock": 10}], "pasos": [
+        {"agregar": {"producto": 1, "color": 1, "cantidad": "1", "precio": "10"}},
+        {"agregar": {"producto": 1, "color": 2, "cantidad": "1", "precio": "10"}},
+        {"agregar": {"producto": 1, "color": 1, "cantidad": "2", "precio": "10"}}
+      ]},
+      "esperado": {"resultados": [null, null, null], "lineas": [
+        {"idapliques": 1, "idcolor": 2, "nombre": "Flor (Azul)", "cantidad": 1.0, "precio": 10.0, "total": 10.0, "ganancias": -5.0},
+        {"idapliques": 1, "idcolor": 1, "nombre": "Flor (Rojo)", "cantidad": 3.0, "precio": 10.0, "total": 30.0, "ganancias": -15.0}
+      ], "total": 40.0, "ganancias": -20.0}
+    },
+    {
+      "nombre": "apliques: sin fila de stock no se puede vender",
+      "entrada": {"carrito": "apliques", "productos": [{"id": 1, "nombre": "Flor", "costo": 15}], "colores": [{"id": 1, "nombre": "Rojo", "hex": "C0392B"}], "stock": [], "pasos": [
+        {"agregar": {"producto": 1, "color": 1, "cantidad": "1", "precio": "10"}}
+      ]},
+      "esperado": {"resultados": ["Stock insuficiente. Disponible: 0.0"], "lineas": [], "total": 0.0, "ganancias": 0.0}
+    },
+    {
+      "nombre": "apliques: quitar todas las líneas vuelve a 0",
+      "entrada": {"carrito": "apliques", "productos": [{"id": 1, "nombre": "Flor", "costo": 15}], "colores": [{"id": 1, "nombre": "Rojo", "hex": "C0392B"}, {"id": 2, "nombre": "Azul", "hex": "2980B9"}], "stock": [{"producto": 1, "color": 1, "stock": 10}, {"producto": 1, "color": 2, "stock": 5}], "pasos": [
+        {"agregar": {"producto": 1, "color": 1, "cantidad": "1", "precio": "10.1"}},
+        {"agregar": {"producto": 1, "color": 2, "cantidad": "2", "precio": "20.2"}},
+        {"quitar": 0},
+        {"quitar": 0}
+      ]},
+      "esperado": {"resultados": [null, null, null, null], "lineas": [], "total": 0.0, "ganancias": 0.0}
+    },
+    {
+      "nombre": "fabricación: el mismo aplique y color suma sin ruido (1,03 + 1 + 1,23 = 3,26); lo nuevo va primero",
+      "entrada": {"carrito": "fabricacion", "productos": [{"id": 1, "nombre": "Flor", "costo": 0}, {"id": 2, "nombre": "Moño", "costo": 0}], "colores": [{"id": 1, "nombre": "Rojo", "hex": "C0392B"}, {"id": 2, "nombre": "Azul", "hex": "2980B9"}], "pasos": [
+        {"agregar": {"producto": 1, "color": 1, "cantidad": "1.03"}},
+        {"agregar": {"producto": 1, "color": 2, "cantidad": "5"}},
+        {"agregar": {"producto": 1, "color": 1, "cantidad": "1"}},
+        {"agregar": {"producto": 1, "color": 1, "cantidad": "1.23"}},
+        {"agregar": {"producto": 2, "color": 1, "cantidad": " 2 "}}
+      ]},
+      "esperado": {"resultados": [null, null, null, null, null], "lineas": [
+        {"idaplique": 2, "apliqueNombre": "Moño", "idcolor": 1, "colorNombre": "Rojo", "hex": "C0392B", "cantidad": 2.0},
+        {"idaplique": 1, "apliqueNombre": "Flor", "idcolor": 2, "colorNombre": "Azul", "hex": "2980B9", "cantidad": 5.0},
+        {"idaplique": 1, "apliqueNombre": "Flor", "idcolor": 1, "colorNombre": "Rojo", "hex": "C0392B", "cantidad": 3.26}
+      ]}
+    },
+    {
+      "nombre": "fabricación: sin aplique, sin color o con una cantidad que no es mayor a 0 no agrega",
+      "entrada": {"carrito": "fabricacion", "productos": [{"id": 1, "nombre": "Flor", "costo": 0}], "colores": [{"id": 1, "nombre": "Rojo", "hex": "C0392B"}], "pasos": [
+        {"agregar": {"producto": null, "color": null, "cantidad": "1"}},
+        {"agregar": {"producto": 1, "color": null, "cantidad": "1"}},
+        {"agregar": {"producto": 1, "color": 1, "cantidad": ""}},
+        {"agregar": {"producto": 1, "color": 1, "cantidad": "0"}},
+        {"agregar": {"producto": 1, "color": 1, "cantidad": "-1"}},
+        {"agregar": {"producto": 1, "color": 1, "cantidad": "NaN"}},
+        {"agregar": {"producto": 1, "color": 1, "cantidad": "Infinity"}},
+        {"agregar": {"producto": 1, "color": 1, "cantidad": "abc"}}
+      ]},
+      "esperado": {"resultados": ["Seleccione un aplique", "Seleccione un color", "Ingrese una cantidad válida mayor a 0", "Ingrese una cantidad válida mayor a 0", "Ingrese una cantidad válida mayor a 0", "Ingrese una cantidad válida mayor a 0", "Ingrese una cantidad válida mayor a 0", "Ingrese una cantidad válida mayor a 0"], "lineas": []}
+    },
+    {
+      "nombre": "fabricación: quitar una línea",
+      "entrada": {"carrito": "fabricacion", "productos": [{"id": 1, "nombre": "Flor", "costo": 0}], "colores": [{"id": 1, "nombre": "Rojo", "hex": "C0392B"}, {"id": 2, "nombre": "Azul", "hex": "2980B9"}], "pasos": [
+        {"agregar": {"producto": 1, "color": 1, "cantidad": "2"}},
+        {"agregar": {"producto": 1, "color": 2, "cantidad": "3"}},
+        {"quitar": 1}
+      ]},
+      "esperado": {"resultados": [null, null, null], "lineas": [
+        {"idaplique": 1, "apliqueNombre": "Flor", "idcolor": 2, "colorNombre": "Azul", "hex": "2980B9", "cantidad": 3.0}
+      ]}
+    }
+  ]
+}

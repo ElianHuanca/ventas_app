@@ -156,25 +156,32 @@ Si el ingreso falla, la app DEBE quedarse en la pantalla de ingreso sin sesión,
 <!-- test: test/features/auth/auth_test.dart::traduce los mensajes conocidos de Supabase -->
 <!-- test: test/features/auth/auth_test.dart::credenciales incorrectas muestran el error en pantalla -->
 <!-- test: integration_test/flujos/auth.dart::exige ambos campos, rechaza credenciales malas, entra con las buenas y cierra sesión -->
+<!-- test: test/vectores/auth_errores_vectores_test.dart::credenciales inválidas -->
 - **WHEN** Supabase Auth responde "invalid login credentials"
 - **THEN** se muestra "Email o contraseña incorrectos"
 
 #### Scenario: Email sin confirmar
 <!-- test: test/features/auth/auth_test.dart::traduce los mensajes conocidos de Supabase -->
+<!-- test: test/vectores/auth_errores_vectores_test.dart::email sin confirmar -->
 - **WHEN** Supabase Auth responde "email not confirmed"
 - **THEN** se muestra "El email de esta cuenta no está confirmado"
 
 #### Scenario: Demasiados intentos
 <!-- test: test/features/auth/auth_test.dart::traduce los mensajes conocidos de Supabase -->
+<!-- test: test/vectores/auth_errores_vectores_test.dart::límite de pedidos -->
+<!-- test: test/vectores/auth_errores_vectores_test.dart::demasiados pedidos -->
 - **WHEN** el mensaje de Supabase Auth contiene "rate limit" o "too many"
 - **THEN** se muestra "Demasiados intentos. Espera un momento."
 
 #### Scenario: Otro error de autenticación
 <!-- test: test/features/auth/auth_test.dart::mensaje genérico para lo desconocido -->
+<!-- test: test/vectores/auth_errores_vectores_test.dart::otro error -->
 - **WHEN** Supabase Auth responde con cualquier otro mensaje
 - **THEN** se muestra "No se pudo iniciar sesión"
 
 #### Scenario: Sin conexión
+<!-- test: test/features/auth/infrastructure/repositories/auth_repository_impl_test.dart::sin red el cliente de Auth lo informa como error de autenticación y se traduce a "No se pudo iniciar sesión" -->
+<!-- test: test/features/auth/infrastructure/repositories/auth_repository_impl_test.dart::sin red la pantalla de ingreso muestra "No se pudo iniciar sesión" y deja reintentar -->
 - **WHEN** el pedido de autenticación no llega al servidor (sin red)
 - **THEN** el cliente de Auth lo informa como error de autenticación y se muestra "No se pudo iniciar sesión"
 

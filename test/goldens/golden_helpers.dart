@@ -13,6 +13,58 @@ const telefonoChico = Size(360, 640);
 /// La opción "Grande" del tamaño de letra de Android.
 const letraGrande = 1.3;
 
+/// El teléfono de referencia acostado (la app no bloquea la orientación).
+const telefonoAcostado = Size(915, 412);
+
+/// Tablet de 10" en vertical (800×1280 dp).
+const tabletVertical = Size(800, 1280);
+
+/// Un dispositivo donde se repite la captura de cada pantalla
+/// (test/goldens/escenarios/): su tamaño, la letra del sistema y el sufijo
+/// del PNG (`goldens/<pantalla>_<sufijo>.png`, al lado del test).
+class Dispositivo {
+  const Dispositivo(this.sufijo, this.tamano, {this.escalaTexto});
+
+  final String sufijo;
+  final Size tamano;
+
+  /// Tamaño de letra del sistema (`null` = el normal).
+  final double? escalaTexto;
+
+  /// [montarParaCaptura] en este dispositivo.
+  Future<void> montar(
+    WidgetTester tester,
+    Widget pantalla, {
+    List<RouteBase> rutas = const [],
+    bool asentar = true,
+  }) =>
+      montarParaCaptura(
+        tester,
+        pantalla,
+        tamano: tamano,
+        escalaTexto: escalaTexto,
+        rutas: rutas,
+        asentar: asentar,
+      );
+
+  /// Compara con `goldens/<pantalla>_<sufijo>.png`.
+  Future<void> comparar(String pantalla) =>
+      compararCaptura('${pantalla}_$sufijo');
+}
+
+/// Android de gama baja con la letra en "Grande": ahí aparecen los textos
+/// que desbordan o se cortan (test/goldens/pantalla_chica/).
+const pantallaChica =
+    Dispositivo('chica', telefonoChico, escalaTexto: letraGrande);
+
+/// El teléfono acostado: poco alto, ahí se ve lo que no entra en vertical
+/// (test/goldens/apaisado/).
+const apaisado = Dispositivo('apaisado', telefonoAcostado);
+
+/// Tablet en vertical: mucho ancho, ahí se ve lo que se estira o queda
+/// perdido (test/goldens/tablet/).
+const tablet = Dispositivo('tablet', tabletVertical);
+
 /// Monta [pantalla] como en la app real (tema, español, GoRouter) en un
 /// teléfono de [tamano] dp y espera a que termine de dibujarse.
 ///

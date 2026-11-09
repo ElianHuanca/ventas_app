@@ -323,9 +323,6 @@ class FakeApliquesRepository implements ApliquesRepository {
   }
 
   @override
-  Future<List<ColorItem>> getColores() async => colores;
-
-  @override
   Future<List<ColorItem>> getColoresAplique(int idaplique) async {
     _throwIfError();
     lastGetColoresApliqueId = idaplique;

@@ -11,7 +11,6 @@ abstract class ApliquesRepository {
   Future<Aplique> updateAplique(Map<String, dynamic> apliqueLike, int id);
 
   Future<List<StockAplique>> getStock(int sucursalId);
-  Future<List<ColorItem>> getColores();
   Future<List<ColorItem>> getColoresAplique(int idaplique);
   Future<void> setColorAplique(int idaplique, int idcolor, bool activo);
 

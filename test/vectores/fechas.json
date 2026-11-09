@@ -1,0 +1,16 @@
+{
+  "tema": "fechas",
+  "descripcion": "funcion \"changeFormatDate\": día-mes-año sin ceros a la izquierda (títulos de ventas y producciones). funcion \"dia_de_la_venta\": el día con el que la base decide la venta del día (left(p_fecha, 10) en registrar_venta_telas) para una fecha-hora local; tiene que ser el mismo en todos los ports aunque el formato de la hora difiera.",
+  "casos": [
+    {"nombre": "changeFormatDate: día y mes de una cifra sin cero", "entrada": {"funcion": "changeFormatDate", "fecha": "2026-01-05T10:00:00"}, "esperado": "5-1-2026"},
+    {"nombre": "changeFormatDate: último instante del año", "entrada": {"funcion": "changeFormatDate", "fecha": "2026-12-31T23:59:59.999999"}, "esperado": "31-12-2026"},
+    {"nombre": "changeFormatDate: 29 de febrero", "entrada": {"funcion": "changeFormatDate", "fecha": "2024-02-29T00:00:00"}, "esperado": "29-2-2024"},
+    {"nombre": "changeFormatDate: año de tres cifras sin ceros", "entrada": {"funcion": "changeFormatDate", "fecha": "0999-03-04T12:00:00"}, "esperado": "4-3-999"},
+    {"nombre": "dia_de_la_venta: una hora cualquiera", "entrada": {"funcion": "dia_de_la_venta", "fecha": "2026-11-07T15:42:10.123"}, "esperado": "2026-11-07"},
+    {"nombre": "dia_de_la_venta: a medianoche es ese día", "entrada": {"funcion": "dia_de_la_venta", "fecha": "2026-11-07T00:00:00"}, "esperado": "2026-11-07"},
+    {"nombre": "dia_de_la_venta: el último microsegundo sigue siendo ese día", "entrada": {"funcion": "dia_de_la_venta", "fecha": "2026-11-07T23:59:59.999999"}, "esperado": "2026-11-07"},
+    {"nombre": "dia_de_la_venta: fin de año", "entrada": {"funcion": "dia_de_la_venta", "fecha": "2025-12-31T23:59:59"}, "esperado": "2025-12-31"},
+    {"nombre": "dia_de_la_venta: 29 de febrero", "entrada": {"funcion": "dia_de_la_venta", "fecha": "2024-02-29T08:00:00.5"}, "esperado": "2024-02-29"},
+    {"nombre": "dia_de_la_venta: mes y día de una cifra llevan cero", "entrada": {"funcion": "dia_de_la_venta", "fecha": "2026-01-05T10:00:00"}, "esperado": "2026-01-05"}
+  ]
+}

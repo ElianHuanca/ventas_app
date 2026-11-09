@@ -78,22 +78,6 @@ class ApliquesDatasourceImpl implements ApliquesDatasource {
   }
 
   @override
-  Future<List<ColorItem>> getColores() async {
-    final list = await _db
-        .from(_tableColores)
-        .select('id, nombre, hex')
-        .eq('activo', true)
-        .order('nombre');
-    return list
-        .map<ColorItem>((e) => ColorItem(
-              id: e['id'] as int,
-              nombre: e['nombre'] as String? ?? '',
-              hex: e['hex'] as String? ?? '',
-            ))
-        .toList();
-  }
-
-  @override
   Future<List<ColorItem>> getColoresAplique(int idaplique) async {
     final list = await _db
         .from(_tableColores)
