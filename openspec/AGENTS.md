@@ -1,8 +1,13 @@
-# Spec-driven development (OpenSpec)
+# El catálogo de specs (`openspec/specs`)
 
-Las specs de `openspec/specs/` describen **lo que la app hace hoy**. Son la fuente de verdad del
-comportamiento: si el código y la spec no coinciden, uno de los dos tiene un bug. Ningún cambio de
-comportamiento entra sin pasar primero por una spec.
+Las specs de `openspec/specs/` describen **lo que la app hace hoy**. Son el catálogo del
+comportamiento vigente: si el código y la spec no coinciden, uno de los dos tiene un bug. Ningún
+cambio de comportamiento entra sin pasar primero por una spec.
+
+**El proceso para cambiar algo es Spec Kit** (`/speckit-*`, ver `CLAUDE.md` → "Spec-driven
+development"), con las reglas de `.specify/memory/constitution.md`. Este archivo explica cómo está
+escrito el catálogo y cómo lo actualiza cada feature. Ya no se abren changes en
+`openspec/changes/`: lo archivado ahí es historia.
 
 ## Estructura
 
@@ -11,17 +16,15 @@ openspec/
   project.md                      contexto: la app, las capacidades y la paridad entre las tres apps
   AGENTS.md                       este archivo: cómo se trabaja
   specs/<capacidad>/spec.md       comportamiento vigente (una carpeta por capacidad)
-  changes/<id>/                   cambios en curso
-    proposal.md                   por qué y qué cambia
-    tasks.md                      checklist de implementación
-    design.md                     (opcional) decisiones técnicas, si el cambio las tiene
-    specs/<capacidad>/spec.md     delta: cómo queda la spec de cada capacidad afectada
-  changes/archive/AAAA-MM-DD-<id>/  cambios ya aplicados (historia)
+  changes/archive/AAAA-MM-DD-<id>/  cambios aplicados antes de pasar a Spec Kit (historia)
+
+specs/NNN-<nombre>/               (raíz del repo) cada feature de Spec Kit: spec, plan y tareas
+.specify/memory/constitution.md   las reglas que no se negocian
 ```
 
-## ¿Hace falta un change?
+## ¿Hace falta una feature de Spec Kit?
 
-| Sí: abrir `changes/<id>/` | No: directo al código |
+| Sí: `/speckit-specify` y el resto del flujo | No: directo al código |
 |---|---|
 | Feature nueva o pantalla nueva | Refactor sin cambio de comportamiento |
 | Cambio de una regla, cálculo, validación o mensaje que ve el usuario | Tests nuevos para comportamiento que ya está en la spec |
@@ -31,55 +34,28 @@ openspec/
 
 Ante la duda, sí.
 
-## Flujo
+## Flujo (Spec Kit)
 
-1. **Proponer.** Crear `openspec/changes/<id>/`, con `<id>` en kebab-case y empezando con un verbo
-   (`agregar-devoluciones`, `cambiar-regla-de-reposicion`, `quitar-incrementar-venta`).
-   - `proposal.md`: **Por qué**, **Qué cambia**, **Capacidades afectadas** y **Impacto**: otras
-     apps, base de datos, datos de producción, landing (`sitio`).
-   - `specs/<capacidad>/spec.md`: el delta (formato abajo). Cada Requirement nuevo o modificado
-     lleva al menos un `#### Scenario:`.
-   - `tasks.md`: checklist ordenado (`- [ ] 1.1 ...`), con los tests primero.
-2. **Aprobar.** Mostrar la propuesta y **esperar el OK antes de tocar código**.
-3. **Implementar.** Seguir `tasks.md`, marcando cada tarea. Cada `Scenario` del delta se convierte
-   en al menos un test que primero falla y después pasa. Si al implementar aparece algo que la
-   propuesta no previó, se corrige primero el delta.
-4. **Verificar.** Ver "Verificar en este repo" abajo.
-5. **Archivar.** Aplicar el delta a `openspec/specs/`, actualizar el `Last verified` de cada spec
-   tocada y mover la carpeta a `changes/archive/AAAA-MM-DD-<id>/`. Va en el **mismo PR** que el
-   código: una spec archivada siempre describe código mergeado.
+1. **`/speckit-specify`** con qué se quiere y por qué. La spec de la feature tiene que nombrar las
+   capacidades del catálogo que toca y el **impacto** en Android, iOS, la base, los datos de
+   producción y la landing (`sitio`).
+2. **`/speckit-clarify`** (obligatorio): resuelve ambigüedades. Las decisiones de negocio las toma
+   la persona, no la IA.
+3. **`/speckit-plan`**: el cómo técnico. Tiene que pasar el "Constitution Check".
+4. **`/speckit-tasks`**: tareas ordenadas, con los tests primero e incluida **la actualización del
+   catálogo** (`openspec/specs/`).
+5. **`/speckit-analyze`** (obligatorio): revisión cruzada de spec, plan, tareas y constitución.
+6. **`/speckit-implement`**: cada escenario se vuelve al menos un test que primero falla y después
+   pasa. Si aparece algo que la spec no previó, primero se corrige la spec.
+7. **Verificar** (abajo) y **`/speckit-converge`**: compara el código con la spec y agrega como
+   tareas lo que falte.
+8. **Actualizar el catálogo** en el mismo PR que el código: en `openspec/specs/<capacidad>/spec.md`
+   se agregan, modifican, renombran o quitan los `Requirement` / `Invariant` (con sus escenarios
+   completos) y se actualiza el `Last verified`. El `<!-- id: -->` no cambia al renombrar. Una spec
+   del catálogo siempre describe código mergeado.
 
-## Formato del delta
-
-```markdown
-## ADDED Requirements
-
-### Requirement: <nombre nuevo>
-<!-- enforced: ... -->
-La app DEBE ...
-
-#### Scenario: <nombre>
-- **WHEN** ...
-- **THEN** ...
-
-## MODIFIED Requirements
-
-### Requirement: <nombre exacto como está hoy en specs/>
-(el bloque completo como tiene que quedar, con todos sus escenarios, no solo lo que cambia)
-
-## REMOVED Requirements
-
-### Requirement: <nombre exacto>
-**Motivo**: ...
-
-## RENAMED Requirements
-
-- FROM: `### Requirement: <nombre viejo>`
-- TO: `### Requirement: <nombre nuevo>`
-```
-
-Lo mismo con `Invariant`. Al archivar: ADDED se agrega, MODIFIED reemplaza el bloque entero,
-REMOVED se borra y RENAMED cambia solo el título. El `<!-- id: -->` no cambia al renombrar.
+Si el negocio cambia sobre algo ya hecho: `/speckit-clarify <qué cambia>` y se repite desde el
+paso 3.
 
 ## Cómo están escritas las specs
 
@@ -99,7 +75,7 @@ REMOVED se borra y RENAMED cambia solo el título. El `<!-- id: -->` no cambia a
   - `depends_on` / `triggers`: relaciones con otros requisitos de la misma capacidad.
   Al mover o renombrar un método, actualizar su `enforced`.
 - `<!-- revisar: ... -->` marca un comportamiento actual que parece un bug. La spec describe lo
-  que hace el código **hoy**: para cambiarlo, abrir un change.
+  que hace el código **hoy**: para cambiarlo, hace falta una feature de Spec Kit.
 - `<!-- deferred: ... -->` marca archivos que no se leyeron al extraer la spec. Se completan
   cuando se toca esa capacidad.
 
@@ -108,9 +84,9 @@ REMOVED se borra y RENAMED cambia solo el título. El `<!-- id: -->` no cambia a
 - Las tres apps comparten la base Supabase. **`ventas_app` (Flutter) es el dueño del esquema y la
   referencia de comportamiento.** Su capacidad `contrato-de-datos` describe las reglas de la base
   (RLS, baja lógica, restricciones, idempotencia y vistas públicas).
-- Un cambio de comportamiento compartido se propone con **el mismo `<id>`** en cada app afectada.
-  Si toca la base, empieza en `ventas_app` (delta de `contrato-de-datos` y de la capacidad) y los
-  ports referencian ese change en su `proposal.md`.
+- Un cambio de comportamiento compartido empieza acá, como feature de Spec Kit (si toca la base,
+  incluye `contrato-de-datos` en el catálogo). Los ports siguen con OpenSpec: su change usa el mismo
+  nombre que la feature (`NNN-<nombre>` sin el número) y la referencia en su `proposal.md`.
 - Los cambios de esquema siguen además el runbook del vault:
   `../notas/runbooks/cambiar-el-esquema.md`. El conocimiento que cruza repos (decisiones, riesgos,
   registro de migraciones) sigue viviendo en `../notas`: las specs no lo duplican, lo enlazan.
@@ -118,7 +94,8 @@ REMOVED se borra y RENAMED cambia solo el título. El `<!-- id: -->` no cambia a
 
 ## Herramienta
 
-No hace falta ninguna: son archivos Markdown. Si se instala el CLI de OpenSpec
+El proceso usa Spec Kit (`specify-cli`; instalación en `CLAUDE.md`). El catálogo no necesita
+ninguna herramienta: son archivos Markdown. Si se instala el CLI de OpenSpec
 (`npm i -g @fission-ai/openspec`), `openspec list` y `openspec show <capacidad>` sirven para
 navegar. El validador estricto espera SHALL/MUST en inglés y estas specs usan DEBE.
 
@@ -127,13 +104,13 @@ navegar. El validador estricto espera SHALL/MUST en inglés y estas specs usan D
 ```bash
 flutter analyze                       # tiene que quedar limpio
 flutter test                          # unitarios, de widget y capturas (sin omitidos nuevos)
-npx supabase@latest db reset          # si el change trae migración (Supabase local)
+npx supabase@latest db reset          # si la feature trae migración (Supabase local)
 npx supabase@latest test db           # pgTAP: RLS, RPC, restricciones y 09_contrato
 ```
 
-Si el change cambia un flujo completo, sumar o ajustar su test en `integration_test/flujos/` y
+Si la feature cambia un flujo completo, sumar o ajustar su test en `integration_test/flujos/` y
 correr la integración contra el Supabase local (comandos y cuelgues conocidos en `CLAUDE.md` →
 "Integración").
 
 Un `Scenario` sin test es una tarea pendiente. Los tests omitidos (`skip: true`) son bugs
-conocidos (ver `CLAUDE.md` → "Tests"): si un change los arregla, se quita el `skip`.
+conocidos (ver `CLAUDE.md` → "Tests"): si una feature los arregla, se quita el `skip`.
