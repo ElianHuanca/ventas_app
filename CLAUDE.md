@@ -29,11 +29,14 @@ Como este repo es (parcialmente) dueño del esquema, antes de tocar `supabase/`:
 
 Esta app ahora también cubre **apliques** (ventas con stock, fabricación, gestión y disponibilidad por sucursal), con lo que **reemplazó al repo PHP `textiles`** (eliminado).
 
-## Spec-driven development (`openspec/`)
+## Spec-driven development (Spec Kit + `openspec/specs`)
 
-El comportamiento vigente de cada flujo está especificado en `openspec/specs/<capacidad>/spec.md` (requisitos con escenarios WHEN → THEN, en formato OpenSpec). **Todo cambio de comportamiento empieza con un change en `openspec/changes/<id>/`** (propuesta + delta de la spec + tareas): se aprueba antes de tocar código y se archiva en el mismo PR. Refactors, tests y lints van directo.
+El proceso es **GitHub Spec Kit** (`.specify/` y las skills `/speckit-*` de `.claude/skills/`). Las reglas que no se negocian están en la **constitución**, `.specify/memory/constitution.md`, que manda sobre este archivo: si algo de acá la contradice, se corrige acá.
 
-- Procedimiento completo: `openspec/AGENTS.md`. Capacidades y paridad con Android e iOS: `openspec/project.md`.
+- **Todo cambio de comportamiento** sigue el flujo `/speckit-specify` → `/speckit-clarify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-analyze` → `/speckit-implement` → `/speckit-converge`. Cada feature queda en `specs/NNN-<nombre>/` (spec, plan y tareas) y en su propia rama. Clarify y analyze son obligatorios. Refactors, tests y lints van directo.
+- Si el negocio cambia sobre algo ya hecho: `/speckit-clarify <qué cambia>` actualiza la spec y se sigue desde `/speckit-plan`. Si cambia una regla de fondo: `/speckit-constitution`.
+- `openspec/specs/<capacidad>/spec.md` sigue siendo el **catálogo del comportamiento vigente** (requisitos WHEN → THEN con sus anclas `<!-- test: -->`): cada feature lo actualiza en el mismo PR que el código. Formato y convenciones: `openspec/AGENTS.md`. Capacidades y paridad con Android e iOS: `openspec/project.md`. Ya no se abren changes en `openspec/changes/`; lo archivado ahí queda como historia.
+- Instalación: `specify-cli` 1.3.2 (`uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@v1.3.2`), inicializado con `specify init --here --integration claude --script ps`. Las skills se ven al abrir `claude` en la carpeta del repo.
 - Este repo es la **referencia**: Android e iOS usan los mismos nombres de Requirement, y un cambio que toca la base empieza acá (capacidad `contrato-de-datos`).
 - Si el código y la spec no coinciden, uno de los dos tiene un bug. `<!-- revisar: -->` en una spec marca un comportamiento actual dudoso.
 

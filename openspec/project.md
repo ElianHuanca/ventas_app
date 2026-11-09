@@ -45,10 +45,11 @@ solo lo que sale al escaparate. Comparar ambas muestra dónde queda el filtro: `
 `costo_fabricacion`, el stock y los montos vendidos nunca cruzan a la vista pública. Sus otras
 capacidades (`pagina`, `catalogo`, `contacto` y `datos`) son propias de la landing.
 
-Un change de acá que **toque una vista pública o una columna que ellas leen** tiene que anotarlo en
-el `Impacto` de su `proposal.md` y abrir el change correspondiente en `sitio` con el mismo `<id>`:
-la landing no se entera sola de un cambio de esquema. El sentido es siempre este: el change empieza
-acá (delta de `contrato-de-datos` + `supabase/landing.sql` reaplicado) y `sitio` lo referencia.
+Una feature de acá (Spec Kit) que **toque una vista pública o una columna que ellas leen** tiene que
+anotarlo como impacto en su spec y abrir la feature correspondiente en `sitio` (que también usa
+Spec Kit) con el mismo nombre: la landing no se entera sola de un cambio de esquema. El sentido es
+siempre este: la feature empieza acá (`contrato-de-datos` en el catálogo + `supabase/landing.sql`
+reaplicado) y `sitio` la referencia.
 
 ## Paridad (relevada el 2026-11-06: Flutter `1d15233`, Android `4dab27f`, iOS `5dd16c5`)
 
@@ -81,5 +82,5 @@ con `<!-- revisar: archivo:línea — qué pasa -->`, sin corregir:
 grep -rn "revisar:" openspec/specs
 ```
 
-Cada uno se resuelve con un change (`openspec/AGENTS.md`). Muchos coinciden con los tests
+Cada uno se resuelve con una feature de Spec Kit (`openspec/AGENTS.md`). Muchos coinciden con los tests
 omitidos (`skip: true`) y los `todo()` de pgTAP, que ya los documentaban.
