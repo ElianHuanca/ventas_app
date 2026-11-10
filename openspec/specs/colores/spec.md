@@ -240,3 +240,18 @@ Un color con `activo = false` NO DEBE aparecer en las listas para vincular color
 > Last verified: 2026-11-06 (commit 1d15233)
 
 <!-- uncertainty: la app no ofrece reactivar un color dado de baja; el efecto de dar de baja un color sobre la venta y la fabricación de apliques pertenece a las capacidades apliques/ventas-apliques/fabricacion. -->
+
+---
+
+### Invariant: Nombre saneado por la base
+<!-- id: colores.saneamiento_catalogo -->
+<!-- entities: Color, colores -->
+<!-- enforced: supabase/migrations/20261110000000_saneamiento_catalogo.sql:normalizar_nombre -->
+
+El `nombre` de un color DEBE guardarse recortado, sin espacios dobles y con mayúscula inicial, al crear y al
+modificar (disparador `normalizar_nombre`); la unicidad de `colores.nombre` se evalúa sobre el nombre ya normalizado.
+
+#### Scenario: Alta con espacios al borde
+<!-- test: supabase/tests/database/11_saneamiento_catalogo.test.sql::nombre de color normalizado al insertar -->
+- **WHEN** se inserta el color "violeta prueba "
+- **THEN** queda "Violeta prueba"

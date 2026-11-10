@@ -279,3 +279,19 @@ Ni la app ni ningún usuario de la API DEBEN poder borrar filas de `apliques` ni
 <!-- uncertainty: la columna apliques.tamanio se lee (ApliqueMapper) y la publica catalogo_apliques_web, pero ningún formulario la escribe -->
 <!-- uncertainty: los cambios de interruptor en colores no tienen control de concurrencia ni confirmación; el último en guardar gana (upsert) -->
 <!-- deferred: lib/features/apliques/domain/entities/color_item.dart, lib/features/apliques/infrastructure/repositories/apliques_repository_impl.dart, lib/features/shared/widgets/muestra_color.dart, lib/features/shared/widgets/my_text_form.dart -->
+
+---
+
+### Invariant: Categoría y nombre saneados por la base
+<!-- id: apliques.saneamiento_catalogo -->
+<!-- entities: Aplique, apliques, categorias -->
+<!-- enforced: supabase/migrations/20261110000000_saneamiento_catalogo.sql:normalizar_nombre, DEFAULT apliques.categoria_id -->
+
+Todo aplique DEBE quedar con `categoria_id` = "Apliques" aunque la app no lo mande (DEFAULT 2), y su `nombre`
+DEBE guardarse recortado, sin espacios dobles y con mayúscula inicial (disparador `normalizar_nombre`). El
+costo de fabricación sigue siendo responsabilidad del dueño (hoy 14 apliques en 0; ver specs/001-saneamiento-catalogo).
+
+#### Scenario: Alta sin categoría
+<!-- test: supabase/tests/database/11_saneamiento_catalogo.test.sql::aplique nuevo queda en la categoría Apliques -->
+- **WHEN** se inserta un aplique " mariposa prueba" sin `categoria_id`
+- **THEN** queda "Mariposa prueba" con `categoria_id = 2`

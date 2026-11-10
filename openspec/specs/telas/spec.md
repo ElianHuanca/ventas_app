@@ -353,3 +353,20 @@ Al leer una tela, un precio ausente o nulo DEBE tomarse como 0, un nombre ausent
 
 <!-- uncertainty: slug, descripción, ancho y categoría de la tela (publicados por la web) no tienen campos en el formulario de la app. -->
 <!-- uncertainty: los precios del catálogo no se usan en la venta de telas de esta app (la venta pertenece a ventas-telas); "precio 0 = no se vende" solo tiene efecto observable en las vistas públicas. -->
+
+---
+
+### Invariant: Categoría y nombre saneados por la base
+<!-- id: telas.saneamiento_catalogo -->
+<!-- entities: Tela, telas, categorias -->
+<!-- enforced: supabase/migrations/20261110000000_saneamiento_catalogo.sql:normalizar_nombre, DEFAULT telas.categoria_id -->
+
+Toda tela DEBE quedar con `categoria_id` = "Telas" aunque la app no lo mande (DEFAULT 1), y su `nombre` DEBE
+guardarse recortado, sin espacios dobles y con mayúscula inicial, al crear y al modificar (disparador
+`normalizar_nombre`). Un nombre ya limpio NO DEBE cambiar. Vale para Flutter, Android, iOS y la landing.
+
+#### Scenario: Alta sin categoría y con espacios
+<!-- test: supabase/tests/database/11_saneamiento_catalogo.test.sql::tela nueva queda en la categoría Telas -->
+<!-- test: supabase/tests/database/11_saneamiento_catalogo.test.sql::nombre de tela recortado, sin dobles espacios y con mayúscula inicial -->
+- **WHEN** se inserta una tela "  tull   de  prueba " sin `categoria_id`
+- **THEN** queda "Tull de prueba" con `categoria_id = 1`
